@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL System — Know Where Everything Is. Always.</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap');
+
+  :root {
+    --green: #4cff91;
+    --green-dim: #1a5c36;
+    --green-glow: rgba(76,255,145,0.15);
+    --bg: #080c0a;
+    --bg2: #0d1210;
+    --bg3: #111a14;
+    --text: #e5ede8;
+    --muted: #6b8a72;
+    --border: #1e3028;
+    --amber: #f59e0b;
+    --blue: #4a9eed;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(76,255,145,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(76,255,145,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Watermark addresses */
+  .watermarks {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .watermark {
+    position: absolute;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: rgba(76,255,145,0.06);
+    white-space: nowrap;
+    letter-spacing: 0.1em;
+  }
+
+  /* Corner brackets */
+  .corner {
+    position: fixed;
+    width: 24px;
+    height: 24px;
+    border-color: var(--green);
+    border-style: solid;
+    opacity: 0.4;
+    z-index: 10;
+  }
+  .corner-tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; }
+  .corner-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
+  .corner-bl { bottom: 16px; left: 16px; border-width: 0 0 2px 2px; }
+  .corner-br { bottom: 16px; right: 16px; border-width: 0 2px 2px 0; }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 56px;
+    background: rgba(8,12,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    z-index: 100;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+  }
+  .nav-mark {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    color: var(--green);
+    box-shadow: 0 0 12px rgba(76,255,145,0.3);
+    letter-spacing: -0.5px;
+  }
+  .nav-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text);
+    letter-spacing: 0.08em;
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--green); }
+  .nav-cta {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green) !important;
+    padding: 6px 16px;
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 11px !important;
+    letter-spacing: 0.15em !important;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-cta:hover {
+    background: var(--green-glow) !important;
+    box-shadow: 0 0 16px rgba(76,255,145,0.2);
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 100px 24px 60px;
+    position: relative;
+    z-index: 1;
+    text-align: center;
+  }
+  .hero-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.25em;
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.2s forwards;
+  }
+  .hero-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: clamp(52px, 10vw, 110px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    color: #fff;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.3s forwards;
+  }
+  .hero-title span {
+    color: var(--green);
+    text-shadow: 0 0 40px rgba(76,255,145,0.4);
+  }
+  .hero-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(13px, 2vw, 18px);
+    color: var(--green);
+    letter-spacing: 0.15em;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.4s forwards;
+  }
+  .hero-story {
+    max-width: 580px;
+    font-size: 17px;
+    line-height: 1.7;
+    color: rgba(229,237,232,0.7);
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.5s forwards;
+  }
+  .hero-story strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .hero-btns {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.6s 0.6s forwards;
+  }
+  .btn-primary {
+    background: var(--green);
+    color: #000;
+    border: none;
+    padding: 14px 36px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-primary:hover {
+    background: #fff;
+    box-shadow: 0 0 30px rgba(76,255,145,0.4);
+    transform: translateY(-2px);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 14px 36px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-secondary:hover {
+    border-color: var(--green);
+    color: var(--green);
+    transform: translateY(-2px);
+  }
+  .hero-scroll {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: bounce 2s infinite;
+  }
+  .hero-scroll::after {
+    content: '';
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(var(--green), transparent);
+  }
+
+  /* STORY STRIP */
+  .story-strip {
+    position: relative;
+    z-index: 1;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 24px;
+  }
+  .story-inner {
+    max-width: 860px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .story-text h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 38px;
+    color: #fff;
+    margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .story-text h2 em {
+    color: var(--amber);
+    font-style: normal;
+  }
+  .story-text p {
+    font-size: 16px;
+    line-height: 1.75;
+    color: rgba(229,237,232,0.65);
+    margin-bottom: 12px;
+  }
+  .ogd-badge {
+    background: var(--bg3);
+    border: 1px solid var(--amber);
+    padding: 20px 24px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .ogd-label {
+    font-size: 10px;
+    color: var(--amber);
+    letter-spacing: 0.2em;
+    margin-bottom: 8px;
+  }
+  .ogd-name {
+    font-size: 22px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .ogd-addr {
+    font-size: 13px;
+    color: var(--amber);
+    margin-bottom: 12px;
+  }
+  .ogd-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* HOW IT WORKS */
+  .section {
+    position: relative;
+    z-index: 1;
+    padding: 80px 24px;
+  }
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.25em;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: clamp(36px, 6vw, 58px);
+    color: #fff;
+    text-align: center;
+    margin-bottom: 56px;
+    line-height: 1;
+  }
+  .steps {
+    max-width: 960px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .step {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 36px 28px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .step:hover { border-color: var(--green); }
+  .step-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 72px;
+    color: rgba(76,255,145,0.08);
+    line-height: 1;
+    position: absolute;
+    top: 16px;
+    right: 20px;
+  }
+  .step-icon {
+    font-size: 32px;
+    margin-bottom: 16px;
+  }
+  .step h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #fff;
+    margin-bottom: 10px;
+    letter-spacing: 0.03em;
+  }
+  .step p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  .step-tag {
+    display: inline-block;
+    margin-top: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    border: 1px solid var(--green-dim);
+    padding: 3px 8px;
+    letter-spacing: 0.1em;
+  }
+
+  /* TOOLS */
+  .tools-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2px;
+  }
+  .tool-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 32px 28px;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+  .tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--green));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .tool-card:hover::before { transform: scaleX(1); }
+  .tool-card:hover {
+    border-color: var(--card-accent, var(--green));
+    transform: translateY(-3px);
+  }
+  .tool-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--card-accent, var(--green));
+    margin-bottom: 12px;
+  }
+  .tool-card h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    color: #fff;
+    margin-bottom: 10px;
+    letter-spacing: 0.02em;
+  }
+  .tool-card p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .tool-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--card-accent, var(--green));
+    letter-spacing: 0.1em;
+  }
+  .tool-card.featured {
+    background: linear-gradient(135deg, #0d1f14, #0a1a10);
+  }
+  .soon-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    background: rgba(139,92,246,0.15);
+    border: 1px solid rgba(139,92,246,0.4);
+    color: #8b5cf6;
+    padding: 2px 8px;
+    letter-spacing: 0.1em;
+    display: inline-block;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* DATA PHILOSOPHY */
+  .philosophy {
+    position: relative;
+    z-index: 1;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 80px 24px;
+  }
+  .tiers {
+    max-width: 860px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .tier {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .tier-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 48px;
+    color: var(--green);
+    opacity: 0.3;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .tier h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    color: #fff;
+    margin-bottom: 10px;
+    letter-spacing: 0.05em;
+  }
+  .tier p {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  .tier.active {
+    border-color: var(--green);
+    background: var(--bg3);
+  }
+  .tier.active .tier-num { opacity: 1; }
+
+  /* COMMUNITY */
+  .community-row {
+    max-width: 860px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+  .community-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 32px 28px;
+    text-decoration: none;
+    display: block;
+    transition: all 0.2s;
+  }
+  .community-card:hover {
+    border-color: var(--green);
+    transform: translateY(-2px);
+  }
+  .community-card .platform {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.2em;
+    margin-bottom: 10px;
+  }
+  .community-card h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .community-card p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* DONATE */
+  .donate-strip {
+    position: relative;
+    z-index: 1;
+    background: var(--bg3);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .donate-strip h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .donate-strip p {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .btn-donate {
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    padding: 12px 32px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s;
+  }
+  .btn-donate:hover {
+    background: rgba(245,158,11,0.1);
+    box-shadow: 0 0 20px rgba(245,158,11,0.2);
+  }
+
+  /* FOOTER */
+  footer {
+    position: relative;
+    z-index: 1;
+    padding: 40px 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: gap;
+  }
+  .footer-tagline {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    letter-spacing: 0.15em;
+  }
+  .footer-links {
+    display: flex;
+    gap: 24px;
+  }
+  .footer-links a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--green); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(6px); }
+  }
+
+  @media (max-width: 768px) {
+    .steps { grid-template-columns: 1fr; }
+    .story-inner { grid-template-columns: 1fr; }
+    .tiers { grid-template-columns: 1fr; }
+    .community-row { grid-template-columns: 1fr; }
+    nav .nav-links { display: none; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="watermarks">
+  <span class="watermark" style="top:8%;left:5%">HM-LR-C1-A0</span>
+  <span class="watermark" style="top:15%;left:60%">TOOL-DRILL-CORDLESS-18V</span>
+  <span class="watermark" style="top:32%;left:80%">GR-WS-S2-M0</span>
+  <span class="watermark" style="top:48%;left:12%">FASTENER-SCREW-WOOD-2IN</span>
+  <span class="watermark" style="top:62%;left:70%">HM-KT-CB3-A2</span>
+  <span class="watermark" style="top:75%;left:30%">TOOL-MEASURE-TAPE-25FT</span>
+  <span class="watermark" style="top:88%;left:55%">HM-GR-S1-F0</span>
+  <span class="watermark" style="top:22%;left:40%">KETCHUP-HEINZ-14OZ</span>
+</div>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="nav-mark">HL</div>
+    <span class="nav-name">HIL SYSTEM</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">HOW IT WORKS</a></li>
+    <li><a href="#tools">TOOLS</a></li>
+    <li><a href="#library">LIBRARY</a></li>
+    <li><a href="#community">COMMUNITY</a></li>
+    <li><a href="https://hlsystem.org" target="_blank">OPEN SOURCE</a></li>
+    <li><a href="#try" class="nav-cta">TRY IT FREE</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <p class="hero-label">HOME INVENTORY LOCATOR SYSTEM</p>
+  <h1 class="hero-title">KNOW WHERE<br><span>EVERYTHING</span><br>IS. ALWAYS.</h1>
+  <p class="hero-sub">NOTHING IS LOST. EVERYTHING IS LOGIC.</p>
+  <p class="hero-story">
+    Your garage has <strong>23 tape measures</strong>. Your kitchen cabinet has <strong>11 bottles of ketchup</strong>. Your signed David Bowie album is <em>somewhere</em>.<br><br>
+    HIL gives every shelf, drawer, and object in your home a permanent address — readable by any AI, printable as a label, searchable forever.
+  </p>
+  <div class="hero-btns">
+    <a href="#try" class="btn-primary">TRY IT FREE →</a>
+    <a href="#how" class="btn-secondary">SEE HOW IT WORKS</a>
+  </div>
+  <div class="hero-scroll">SCROLL</div>
+</section>
+
+<!-- STORY -->
+<section class="story-strip">
+  <div class="story-inner">
+    <div class="story-text">
+      <h2>It started with<br><em>Dr. Piper.</em></h2>
+      <p>At 17, he stood up at graduation in Sharon, Wisconsin and said men should never sell their influence to the highest bidder. Then he spent his life as a country vet who took chickens and handshakes instead of money — because the work needed doing.</p>
+      <p>He collected everything. Benjamin Franklin stoves. Spool beds. A lifetime of things that mattered.</p>
+      <p>When he died, the family held an auction. They walked away with $1,200.</p>
+      <p>The things didn't have stories attached. So they sold for nothing.</p>
+      <p><strong>HIL exists so that doesn't happen to your family's stuff.</strong></p>
+    </div>
+    <div class="ogd-badge">
+      <div class="ogd-label">PROVENANCE RECORD — ACTIVE</div>
+      <div class="ogd-name">Old Granddad Cabinet</div>
+      <div class="ogd-addr">OLG-1 — Shop / North Wall / Cabinet 1</div>
+      <div class="ogd-desc">
+        Army-green metal hardware cabinet. Dr. Harry Benjamin Piper, veterinarian, Sharon WI. A man who took food instead of fees. A lifetime of collected things. Passed to family. Status: preserved.<br><br>
+        <span style="color:var(--green)">// This object has a story. Now it has an address.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <p class="section-label">— THE PROCESS —</p>
+  <h2 class="section-title">Three Steps.<br>No Install. No Account.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-icon">📷</div>
+      <h3>Pick a spot.<br>Take a photo.</h3>
+      <p>Any shelf. Any room. Messy is fine. Annotate with your pencil if something is hidden behind something else.</p>
+      <span class="step-tag">IPAD + PENCIL WORKS GREAT</span>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-icon">🤖</div>
+      <h3>Drop it into<br>any AI.</h3>
+      <p>Claude, ChatGPT, or Gemini. Paste the HL prompt. The AI reads your photo and assigns addresses to everything it sees.</p>
+      <span class="step-tag">NO NEW ACCOUNT NEEDED</span>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-icon">📍</div>
+      <h3>You own a<br>record. Forever.</h3>
+      <p>Your inventory lives in your vault. Search it. Ask any AI where something is. Export it anytime. It's yours.</p>
+      <span class="step-tag">YOUR DATA. YOUR FILE.</span>
+    </div>
+  </div>
+</section>
+
+<!-- TOOLS -->
+<section class="section" id="tools" style="background:var(--bg2);border-top:1px solid var(--border);">
+  <p class="section-label">— THE TOOL BELT —</p>
+  <h2 class="section-title">Six Tools.<br>One System.</h2>
+  <div class="tools-grid">
+    <a class="tool-card featured" href="https://hlsystem.org/tools/HL_Starter_Pack.html" target="_blank" style="--card-accent:var(--green)">
+      <div class="tool-badge">TOOL 01 — START HERE</div>
+      <h3>Starter Pack</h3>
+      <p>Print your cardinal anchor signs. Cut them out. Stick them up. Your space is now addressed. Five minutes, no thinking required.</p>
+      <div class="tool-link">OPEN TOOL →</div>
+    </a>
+    <a class="tool-card" href="https://hlsystem.org/tools/hl-super-tool%20(1).html" target="_blank" style="--card-accent:var(--cyan)">
+      <div class="tool-badge">TOOL 02 — THE HUB</div>
+      <h3>Super Tool</h3>
+      <p>Build your addresses, generate labels, create wiki pages, produce HIL exchange records. One tool that does it all.</p>
+      <div class="tool-link">OPEN TOOL →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--blue)">
+      <div class="tool-badge">TOOL 03 — YOUR INVENTORY</div>
+      <h3>Vault <span class="soon-badge">BACKEND SOON</span></h3>
+      <p>Your permanent inventory. Search everything. Save to the cloud or export to your own device. Data sovereignty built in.</p>
+      <div class="tool-link">COMING SOON →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--amber)">
+      <div class="tool-badge">TOOL 04 — IN THE FIELD</div>
+      <h3>Field Tool <span class="soon-badge">IN DEV</span></h3>
+      <p>Scan a space, map it, make zone signs, label your carts. Everything you do when you're on your feet with your phone.</p>
+      <div class="tool-link">IN DEVELOPMENT →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--purple)">
+      <div class="tool-badge">TOOL 05 — MAKE IT YOURS</div>
+      <h3>Sign Studio <span class="soon-badge">COMING SOON</span></h3>
+      <p>Design custom signs for your space. Art Deco, Industrial, Vintage Tin, Workshop, Dr. Piper themes. Print them. Make it permanent.</p>
+      <div class="tool-link">COMING SOON →</div>
+    </a>
+    <a class="tool-card" href="/provenance" style="--card-accent:var(--amber)">
+      <div class="tool-badge">TOOL 06 — TELL THE STORY</div>
+      <h3>Provenance Builder</h3>
+      <p>Five questions. One permanent record. Document the heirloom, the tool, the thing that matters. Output ready to share on Reddit or save forever. Paper card option included.</p>
+      <div class="tool-link">OPEN TOOL →</div>
+    </a>
+  </div>
+</section>
+
+<!-- LIBRARY -->
+<section class="section" id="library" style="border-top:1px solid var(--border);">
+  <p class="section-label">— THE LIBRARY —</p>
+  <h2 class="section-title">Knowledge.<br>Not just tools.</h2>
+  <p style="color:var(--muted);font-size:16px;margin-bottom:40px;max-width:560px;">In 1882 Ellen Swallow Richards — the first woman admitted to MIT — argued that a household runs on principles, not products. The industry spent 140 years proving her right by selling you the same principle in 47 different bottles. The Library finishes her argument.</p>
+  <div class="tools-grid">
+    <a class="tool-card" href="/clean" style="--card-accent:var(--cyan)">
+      <div class="tool-badge">LIBRARY 01 — APPLIED CHEMISTRY</div>
+      <h3>HIL Clean</h3>
+      <p>Ten raw ingredients replace forty branded products. The science behind why they work. An address for where they live. Free forever.</p>
+      <div class="tool-link">EXPLORE →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--blue)">
+      <div class="tool-badge">LIBRARY 02 — SPATIAL METHODS</div>
+      <h3>HIL Organize <span class="soon-badge">COMING SOON</span></h3>
+      <p>Sorting systems, junk drawer methods, seasonal rotation, small parts management. Community-contributed techniques that actually work.</p>
+      <div class="tool-link">COMING SOON →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--amber)">
+      <div class="tool-badge">LIBRARY 03 — HEIRLOOM CARE</div>
+      <h3>HIL Restore <span class="soon-badge">COMING SOON</span></h3>
+      <p>Patina vs damage. Rust removal. Tool restoration. When to preserve and when to repair. Built for the antique tool and heirloom crowd.</p>
+      <div class="tool-link">COMING SOON →</div>
+    </a>
+    <a class="tool-card" href="#" style="--card-accent:var(--green)">
+      <div class="tool-badge">LIBRARY 04 — WHAT TO OWN</div>
+      <h3>HIL Supply <span class="soon-badge">COMING SOON</span></h3>
+      <p>Fewer SKUs. Better system. What to actually own, why, and where it lives in your HL address. The anti-accumulation guide.</p>
+      <div class="tool-link">COMING SOON →</div>
+    </a>
+  </div>
+  <p style="text-align:center;margin-top:32px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.1em;">THE LIBRARY IS EXPANDABLE — COMMUNITY CONTRIBUTIONS WELCOME — <a href="https://reddit.com/r/hilsystem" style="color:var(--green)">r/hilsystem →</a></p>
+</section>
+
+<!-- DATA PHILOSOPHY -->
+<section class="philosophy" id="data">
+  <p class="section-label">— DATA PHILOSOPHY —</p>
+  <h2 class="section-title" style="margin-bottom:16px;">We'll hold it until<br>you're ready.</h2>
+  <p style="text-align:center;color:var(--muted);font-size:16px;margin-bottom:48px;max-width:500px;margin-left:auto;margin-right:auto;">No lock-in. No hostage data. Your inventory is yours from day one.</p>
+  <div class="tiers">
+    <div class="tier active">
+      <div class="tier-num">1</div>
+      <h3>We Host It</h3>
+      <p>Start here. Free. We hold your inventory on our servers. Nothing to set up.</p>
+    </div>
+    <div class="tier">
+      <div class="tier-num">2</div>
+      <h3>You Export It</h3>
+      <p>One button. Download your entire inventory as JSON, CSV, or SQL. Take it anywhere.</p>
+    </div>
+    <div class="tier">
+      <div class="tier-num">3</div>
+      <h3>You Own It</h3>
+      <p>Run it on your own hardware. Raspberry Pi, NAS, whatever. We'll help you get there.</p>
+    </div>
+  </div>
+  <p style="text-align:center;margin-top:32px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--green);letter-spacing:0.15em;">SELF-HOST CONTEST — <span style="color:var(--amber)">COMING SOON</span> — <a href="https://reddit.com/r/hilsystem" style="color:var(--green)">FOLLOW ON REDDIT →</a></p>
+</section>
+
+<!-- COMMUNITY -->
+<section class="section" id="community">
+  <p class="section-label">— COMMUNITY —</p>
+  <h2 class="section-title">Show Your Setup.<br>Share What Works.</h2>
+  <div class="community-row">
+    <a class="community-card" href="https://reddit.com/r/hilsystem" target="_blank">
+      <div class="platform">REDDIT</div>
+      <h3>r/hilsystem</h3>
+      <p>Post your organized spaces. Share workflow tips. Ask questions. Swap ideas. The community that improves the system.</p>
+    </a>
+    <a class="community-card" href="https://hlsystem.org" target="_blank">
+      <div class="platform">OPEN SOURCE</div>
+      <h3>hlsystem.org</h3>
+      <p>The grammar spec. The developer docs. The open standard that HIL is built on. Free forever. Yours to use however you want.</p>
+    </a>
+  </div>
+</section>
+
+<!-- DONATE -->
+<div class="donate-strip">
+  <h3>Keep it free. Keep it running.</h3>
+  <p>HIL is donation-supported. No subscription. No ads. If it's useful to you, buy us a coffee.</p>
+  <a href="https://ko-fi.com/hilsystem" target="_blank" class="btn-donate">☕ SUPPORT THE PROJECT</a>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-tagline">NOTHING IS LOST. EVERYTHING IS LOGIC.</div>
+  <div class="footer-links">
+    <a href="https://hlsystem.org" target="_blank">OPEN SOURCE</a>
+    <a href="https://reddit.com/r/hilsystem" target="_blank">REDDIT</a>
+    <a href="https://github.com/Dvo77/spatial-vector-grammar" target="_blank">GITHUB</a>
+    <a href="mailto:dvo77@yahoo.com">CONTACT</a>
+  </div>
+</footer>
+
+</body>
+</html>
