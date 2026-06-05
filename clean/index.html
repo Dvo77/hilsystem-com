@@ -1,1 +1,396 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Clean — Domestic Science Restored</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0b;
+    --surface: #111412;
+    --surface2: #181c19;
+    --border: #232820;
+    --green: #4cff91;
+    --green-dim: #1a4a2a;
+    --yellow: #ffd84c;
+    --red: #ff5c5c;
+    --text: #dde8e2;
+    --muted: #6b7d72;
+    --cream: #f0e8d0;
+    --mono: 'Share Tech Mono', monospace;
+    --serif: 'Playfair Display', serif;
+    --head: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); overflow-x: hidden; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,12,11,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .nav-badge {
+    width: 32px; height: 32px; background: var(--green); color: #000;
+    font-family: var(--head); font-weight: 900; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .nav-title { font-family: var(--head); font-weight: 900; font-size: 16px; letter-spacing: 3px; color: var(--green); }
+  .nav-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+  .nav-back {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    text-decoration: none; letter-spacing: 2px; transition: color 0.2s;
+  }
+  .nav-back:hover { color: var(--green); }
+
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; padding: 100px 24px 60px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(76,255,145,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(76,255,145,0.04) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none;
+  }
+  .hero-bg-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-family: var(--serif); font-size: clamp(80px,20vw,200px); font-style: italic;
+    color: rgba(76,255,145,0.03); white-space: nowrap; pointer-events: none; user-select: none;
+  }
+  .eyebrow { font-family: var(--mono); font-size: 10px; color: var(--green); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
+  .hero-title { font-family: var(--serif); font-size: clamp(38px,8vw,72px); font-weight: 900; line-height: 1.05; color: #fff; margin-bottom: 8px; }
+  .hero-title em { font-style: italic; color: var(--green); }
+  .hero-subtitle { font-family: var(--head); font-size: clamp(16px,4vw,28px); font-weight: 400; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 32px; }
+  .hero-body { font-size: 15px; color: #aab8b0; line-height: 1.8; max-width: 560px; margin-bottom: 40px; }
+  .hero-body strong { color: var(--text); }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--green); color: #000; font-family: var(--head); font-weight: 900;
+    font-size: 15px; letter-spacing: 2px; text-transform: uppercase;
+    padding: 14px 24px; text-decoration: none; transition: background 0.2s; width: fit-content;
+  }
+  .btn-primary:hover { background: #6fffaa; }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--border); color: var(--muted); font-family: var(--mono);
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    padding: 12px 20px; text-decoration: none; transition: all 0.2s; width: fit-content; margin-top: 12px;
+  }
+  .btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+  section { padding: 70px 24px; border-top: 1px solid var(--border); }
+  .section-eyebrow { font-family: var(--mono); font-size: 10px; color: var(--green); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; }
+  .section-title { font-family: var(--serif); font-size: clamp(28px,5vw,44px); font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 20px; }
+  .section-title em { font-style: italic; color: var(--green); }
+  .section-body { font-size: 14px; color: #9aaa9f; line-height: 1.8; max-width: 580px; }
+  .section-body strong { color: var(--text); }
+
+  .quote-block { border-left: 3px solid var(--green); padding: 16px 20px; margin: 24px 0; background: var(--surface2); }
+  .quote-text { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--cream); line-height: 1.6; margin-bottom: 8px; }
+  .quote-attr { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+
+  .principle-grid { display: flex; flex-direction: column; gap: 1px; margin-top: 28px; background: var(--border); }
+  .principle-card { background: var(--bg); padding: 20px 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .p-number { font-family: var(--serif); font-size: 36px; font-style: italic; color: var(--green); opacity: 0.4; line-height: 1; flex-shrink: 0; min-width: 36px; }
+  .p-title { font-family: var(--head); font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: var(--text); margin-bottom: 5px; }
+  .p-body { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .p-body strong { color: #9aaa9f; }
+
+  .ing-grid { margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .ing-card { background: var(--bg); padding: 14px 16px; }
+  .ing-name { font-family: var(--head); font-size: 14px; font-weight: 900; letter-spacing: 1px; color: var(--text); margin-bottom: 3px; }
+  .ing-aka { font-family: var(--mono); font-size: 10px; color: var(--green); margin-bottom: 4px; }
+  .ing-does { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  .recipe-card { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--green); margin-top: 28px; }
+  .card-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+  .problem-label { font-family: var(--mono); font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .problem-title { font-family: var(--head); font-size: 32px; letter-spacing: 2px; line-height: 1; color: #fff; }
+  .problem-sub { font-size: 13px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+  .quick-stats { display: grid; grid-template-columns: repeat(3,1fr); border-bottom: 1px solid var(--border); }
+  .stat { padding: 14px 16px; border-right: 1px solid var(--border); text-align: center; }
+  .stat:last-child { border-right: none; }
+  .stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-value { font-family: var(--head); font-size: 26px; letter-spacing: 1px; }
+  .stat-unit { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .gc { color: var(--green); } .yc { color: var(--yellow); }
+  .card-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .card-section:last-child { border-bottom: none; }
+  .card-section-title { font-family: var(--mono); font-size: 10px; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+  .ing-row { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 12px; margin-bottom: 8px; }
+  .ing-row-name { color: var(--text); font-weight: 700; min-width: 140px; }
+  .ing-row-amt { color: var(--yellow); }
+  .ing-row-note { color: var(--muted); font-size: 11px; }
+  .safety-list { display: flex; flex-direction: column; gap: 6px; }
+  .safety-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+  .safety-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .safety-warn { color: #ff8c00; }
+  .surface-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .surface-group-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .slabel-safe { color: var(--green); } .slabel-avoid { color: var(--red); }
+  .surface-tag { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 3px 8px; margin: 2px; border: 1px solid; }
+  .stag-safe { border-color: var(--green); color: var(--green); }
+  .stag-avoid { border-color: var(--red); color: var(--red); }
+  .respect-box { background: #0f1a0f; border: 1px solid #1a3a1a; padding: 14px 16px; margin-bottom: 12px; }
+  .respect-title { font-family: var(--head); font-size: 18px; color: var(--green); letter-spacing: 2px; margin-bottom: 6px; }
+  .respect-text { font-size: 13px; color: #aaa; line-height: 1.6; }
+
+  .sku-comparison { margin-top: 28px; display: flex; flex-direction: column; gap: 16px; }
+  .sku-col { border: 1px solid var(--border); overflow: hidden; }
+  .sku-col-header { padding: 12px 16px; font-family: var(--head); font-size: 13px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+  .sku-bad-header { background: #2a0f0f; color: var(--red); border-bottom: 1px solid #4a1a1a; }
+  .sku-good-header { background: var(--green-dim); color: var(--green); border-bottom: 1px solid #2a6a3a; }
+  .sku-items { padding: 12px 16px; display: flex; flex-direction: column; gap: 5px; }
+  .sku-item { font-family: var(--mono); font-size: 11px; display: flex; align-items: center; gap: 8px; }
+  .sku-bad { color: #aa6666; } .sku-bad::before { content: '×'; color: var(--red); font-weight: 700; }
+  .sku-good { color: #66aa88; } .sku-good::before { content: '✓'; color: var(--green); font-weight: 700; }
+  .sku-note { color: var(--muted); font-size: 10px; font-style: italic; padding-left: 14px; }
+  .sku-total { padding: 10px 16px; font-family: var(--mono); font-size: 12px; border-top: 1px solid var(--border); }
+  .sku-total-bad { color: var(--red); background: #1a0a0a; }
+  .sku-total-good { color: var(--green); background: #0a1a10; }
+
+  .connect-block { background: var(--green-dim); border: 1px solid #2a6a3a; padding: 20px 18px; margin-top: 28px; }
+  .connect-title { font-family: var(--head); font-size: 18px; font-weight: 900; letter-spacing: 2px; color: var(--green); margin-bottom: 10px; }
+  .connect-body { font-size: 13px; color: #7aaa88; line-height: 1.7; margin-bottom: 14px; }
+  .connect-body strong { color: var(--green); }
+
+  footer { padding: 30px 24px; border-top: 1px solid var(--border); text-align: center; font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 2; }
+  footer a { color: var(--green); text-decoration: none; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="nav-badge">HL</div>
+    <div>
+      <div class="nav-title">HIL CLEAN</div>
+      <div class="nav-sub">DOMESTIC SCIENCE RESTORED</div>
+    </div>
+  </a>
+  <a href="/" class="nav-back">← BACK TO HILSYSTEM.COM</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-bg-text">Domestic Science</div>
+  <div class="eyebrow">HIL Clean · Library 01 · Free Forever</div>
+  <h1 class="hero-title">They took the science.<br><em>We're putting it back.</em></h1>
+  <div class="hero-subtitle">Home Chemistry · SKU Reduction · Principles</div>
+  <p class="hero-body">
+    In 1882, Ellen Swallow Richards — the first woman admitted to MIT —
+    published <em>The Chemistry of Cooking and Cleaning</em>. Her argument:
+    <strong>a household runs on principles, not products.</strong>
+    The industry spent the next 140 years proving her right
+    by selling you the same principle in 47 different bottles.
+    <br><br>
+    HIL Clean finishes her argument.
+    Ten raw ingredients. The science behind why they work.
+    An address for where they live.
+  </p>
+  <a href="#principles" class="btn-primary">→ See the Principles</a>
+  <a href="#ingredients" class="btn-secondary">The Ten Ingredients ↓</a>
+</div>
+
+<!-- RICHARDS -->
+<section id="principles" style="background:var(--surface);">
+  <div class="section-eyebrow">The Origin — 1882</div>
+  <h2 class="section-title">She figured it out<br><em>140 years ago.</em></h2>
+  <div class="quote-block">
+    <div class="quote-text">"The object of this book is to give the housekeeper a knowledge of the chemistry involved in domestic processes, so that she may act from principles and not from recipes alone."</div>
+    <div class="quote-attr">— Ellen Swallow Richards · The Chemistry of Cooking and Cleaning · 1882</div>
+  </div>
+  <p class="section-body">Richards wasn't teaching cleaning tips. She was teaching <strong>why things work</strong> — so that a homemaker with washing soda and vinegar could outperform a cabinet full of branded products. The consumer goods industry replaced her principles with recipes, her raw materials with proprietary formulas, and her self-sufficiency with brand dependency.<br><br>HIL Clean restores what she built.</p>
+
+  <div class="principle-grid">
+    <div class="principle-card">
+      <div class="p-number">1</div>
+      <div>
+        <div class="p-title">Like Dissolves Like</div>
+        <div class="p-body">Oil stains need oil or a surfactant — not water. Water-based stains need water. <strong>Match the chemistry of the cleaner to the chemistry of the stain.</strong> This one rule eliminates half the products under your sink.</div>
+      </div>
+    </div>
+    <div class="principle-card">
+      <div class="p-number">2</div>
+      <div>
+        <div class="p-title">Patience is the Active Ingredient</div>
+        <div class="p-body">Every cleaning agent needs time to break the bond before your arm has to do it mechanically. <strong>Dwell time replaces elbow grease.</strong> The commercial version is watered down precisely because they can't trust you to wait.</div>
+      </div>
+    </div>
+    <div class="principle-card">
+      <div class="p-number">3</div>
+      <div>
+        <div class="p-title">The Wrong Move Sets the Stain</div>
+        <div class="p-body">Hot water on protein cooks it into fiber permanently. Heat before a stain is out bonds it forever. <strong>Diagnosis before action.</strong> The wrong first move closes the window.</div>
+      </div>
+    </div>
+    <div class="principle-card">
+      <div class="p-number">4</div>
+      <div>
+        <div class="p-title">Concentrated = Effective = Respect</div>
+        <div class="p-body">Commercial cleaners are diluted for safety, not effectiveness. The raw chemistry works better — and <strong>requires more awareness.</strong> That awareness is what Richards wanted to teach.</div>
+      </div>
+    </div>
+    <div class="principle-card">
+      <div class="p-number">5</div>
+      <div>
+        <div class="p-title">Fewer SKUs = More Competence</div>
+        <div class="p-body">Ten raw ingredients that you understand outperform forty branded products you don't. <strong>Knowledge is the most efficient tool in any household.</strong> Richards' original argument. Never wrong.</div>
+      </div>
+    </div>
+    <div class="principle-card">
+      <div class="p-number">6</div>
+      <div>
+        <div class="p-title">Multiple Light Passes Beat One Heavy Scrub</div>
+        <div class="p-body">Pre-treat. Walk away. Wipe what lifts. Repeat. <strong>Parallel chemistry, minimal labor.</strong> Let the chemistry do the first 80%.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INGREDIENTS -->
+<section id="ingredients">
+  <div class="section-eyebrow">The Ten Raw Ingredients</div>
+  <h2 class="section-title">Everything else<br><em>is a ratio.</em></h2>
+  <p class="section-body">These ten items replace the majority of what's under your sink. One bag of citric acid costs less than one bottle of the branded product it replaces — and makes fifty applications instead of one.</p>
+  <div class="ing-grid">
+    <div class="ing-card"><div class="ing-name">Citric Acid</div><div class="ing-aka">CHELATING AGENT</div><div class="ing-does">Rust removal, descaling, mineral deposits. What's inside Evapo-Rust and most descalers.</div></div>
+    <div class="ing-card"><div class="ing-name">Oxalic Acid</div><div class="ing-aka">IRON CHELATOR</div><div class="ing-does">Rust stains on surfaces, countertop spots. The active agent in Bar Keepers Friend.</div></div>
+    <div class="ing-card"><div class="ing-name">White Vinegar</div><div class="ing-aka">ACETIC ACID 5%</div><div class="ing-does">Glass, mineral scale, general surface acid cleaning. Safer than ammonia for most applications.</div></div>
+    <div class="ing-card"><div class="ing-name">Baking Soda</div><div class="ing-aka">SODIUM BICARBONATE</div><div class="ing-does">Mild abrasive, alkaline agent for tannin stains, odor neutralizer.</div></div>
+    <div class="ing-card"><div class="ing-name">Washing Soda</div><div class="ing-aka">SODIUM CARBONATE</div><div class="ing-does">Stronger alkaline than baking soda. Heavy grease, laundry booster, drain cleaning.</div></div>
+    <div class="ing-card"><div class="ing-name">Hydrogen Peroxide</div><div class="ing-aka">OXIDIZING AGENT 3%</div><div class="ing-does">Mold, mildew, disinfection, tannin stains. Safer than bleach for most household surfaces.</div></div>
+    <div class="ing-card"><div class="ing-name">Isopropyl Alcohol</div><div class="ing-aka">SOLVENT / DISINFECTANT</div><div class="ing-does">Ink, marker, adhesive residue, disinfection. 70% for sanitizing, 90%+ for solvent work.</div></div>
+    <div class="ing-card"><div class="ing-name">Dish Soap</div><div class="ing-aka">SURFACTANT</div><div class="ing-does">Emulsifies oil and grease so water can carry it away. Foundation of most cleaning recipes.</div></div>
+    <div class="ing-card"><div class="ing-name">Powdered Silica</div><div class="ing-aka">MICRO-ABRASIVE</div><div class="ing-does">Mechanical scrubbing at microscopic level. What makes Comet and similar cleansers work.</div></div>
+    <div class="ing-card"><div class="ing-name">Enzyme Cleaner</div><div class="ing-aka">BIOLOGICAL AGENT</div><div class="ing-does">Protein stains — blood, dairy, pet. Breaks peptide bonds. Cold water activates, heat destroys.</div></div>
+  </div>
+  <div style="margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.8;">+ WATER — The most underrated cleaner in every household. Free. Zero disposal concern. Most everyday spills are water-soluble. Try water and three minutes before anything else.</div>
+</section>
+
+<!-- RECIPE: CITRIC ACID RUST -->
+<section id="recipes" style="background:var(--surface);">
+  <div class="section-eyebrow">Recipe Library — Growing</div>
+  <h2 class="section-title">The formula.<br><em>Not the brand.</em></h2>
+  <p class="section-body">Each recipe includes the active chemistry, dwell curve, surface compatibility, safety notes, and cost vs commercial breakdown. No filler. No brand names.</p>
+
+  <div class="recipe-card">
+    <div class="card-header">
+      <div class="problem-label">Problem → Solution</div>
+      <div class="problem-title">RUST ON METAL SURFACES</div>
+      <div class="problem-sub">cast iron · carbon steel · antique tools · hardware</div>
+    </div>
+    <div class="quick-stats">
+      <div class="stat"><div class="stat-label">Active Agent</div><div class="stat-value gc" style="font-size:18px">CITRIC</div><div class="stat-unit">ACID</div></div>
+      <div class="stat"><div class="stat-label">Min Dwell</div><div class="stat-value yc">15</div><div class="stat-unit">MINUTES</div></div>
+      <div class="stat"><div class="stat-label">Cost vs Commercial</div><div class="stat-value gc">~90%</div><div class="stat-unit">CHEAPER</div></div>
+    </div>
+    <div class="card-section">
+      <div class="card-section-title">Why It Works</div>
+      <p style="font-size:13px;line-height:1.7;color:#bbb;">Citric acid is a <strong style="color:#fff">chelating agent</strong> — it binds to iron oxide molecules (rust) and pulls them off the metal surface. The acid doesn't eat the metal, it grabs the rust. Given enough dwell time it does this without any mechanical scrubbing. Same chemistry as commercial rust removers — without the markup.</p>
+    </div>
+    <div class="card-section">
+      <div class="card-section-title">Ingredients</div>
+      <div class="ing-row"><span class="ing-row-name">Citric acid powder</span><span class="ing-row-amt">1–2 tbsp</span><span class="ing-row-note">per cup of warm water</span></div>
+      <div class="ing-row"><span class="ing-row-name">Warm water</span><span class="ing-row-amt">enough to submerge</span><span class="ing-row-note">or saturate surface</span></div>
+      <div class="ing-row"><span class="ing-row-name">Steel wool (optional)</span><span class="ing-row-amt">0000 grade</span><span class="ing-row-note">only if dwell time is short</span></div>
+    </div>
+    <div class="card-section">
+      <div class="card-section-title">Dwell Curve — Wait vs Scrubbing</div>
+      <div style="font-family:var(--mono);font-size:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:12px;"><span style="color:var(--red);width:60px">0 min</span><div style="flex:1;height:8px;background:#1a1a1a;"><div style="width:90%;height:100%;background:var(--red)"></div></div><span style="color:var(--red);width:30px">9/10</span><span style="color:var(--muted);font-size:11px">Chemistry hasn't started</span></div>
+        <div style="display:flex;align-items:center;gap:12px;"><span style="color:var(--yellow);width:60px">15 min</span><div style="flex:1;height:8px;background:#1a1a1a;"><div style="width:40%;height:100%;background:var(--yellow)"></div></div><span style="color:var(--yellow);width:30px">4/10</span><span style="color:var(--muted);font-size:11px">Light scrub, rinse, repeat</span></div>
+        <div style="display:flex;align-items:center;gap:12px;"><span style="color:var(--green);width:60px">30 min</span><div style="flex:1;height:8px;background:#1a1a1a;"><div style="width:20%;height:100%;background:var(--green)"></div></div><span style="color:var(--green);width:30px">2/10</span><span style="color:var(--muted);font-size:11px">Wipe and rinse</span></div>
+        <div style="display:flex;align-items:center;gap:12px;"><span style="color:var(--green);width:60px">60+ min</span><div style="flex:1;height:8px;background:#1a1a1a;"><div style="width:10%;height:100%;background:var(--green)"></div></div><span style="color:var(--green);width:30px">1/10</span><span style="color:var(--muted);font-size:11px">Rinse only, almost no scrubbing</span></div>
+      </div>
+    </div>
+    <div class="card-section">
+      <div class="card-section-title">Surface Compatibility</div>
+      <div class="surface-grid">
+        <div><div class="surface-group-label slabel-safe">✓ Safe On</div><span class="surface-tag stag-safe">Cast iron</span><span class="surface-tag stag-safe">Carbon steel</span><span class="surface-tag stag-safe">Antique tools</span><span class="surface-tag stag-safe">Stainless steel</span></div>
+        <div><div class="surface-group-label slabel-avoid">✕ Avoid</div><span class="surface-tag stag-avoid">Aluminum</span><span class="surface-tag stag-avoid">Chrome plating</span><span class="surface-tag stag-avoid">Galvanized</span><span class="surface-tag stag-avoid">Painted surfaces</span></div>
+      </div>
+    </div>
+    <div class="card-section">
+      <div class="card-section-title">Respect the Chemistry</div>
+      <div class="respect-box">
+        <div class="respect-title">CITRIC ACID — HANDLE WITH AWARENESS</div>
+        <div class="respect-text">Food-grade citric acid is one of the safer acids you'll work with. Concentrated dry powder can irritate eyes and skin — wear gloves for extended sessions. Do NOT combine with bleach. Rinse metal thoroughly after treatment to stop the acid reaction and prevent flash rust.</div>
+      </div>
+      <div class="safety-list">
+        <div class="safety-row"><span class="safety-icon">🧤</span><span>Gloves recommended for extended soak work</span></div>
+        <div class="safety-row"><span class="safety-icon">👁️</span><span>Keep powder away from eyes — rinse with water if contact occurs</span></div>
+        <div class="safety-row"><span class="safety-icon">⚠️</span><span class="safety-warn">Never mix with bleach — produces toxic chlorine gas</span></div>
+        <div class="safety-row"><span class="safety-icon">💧</span><span>Rinse metal immediately after treatment to prevent flash rust</span></div>
+      </div>
+    </div>
+    <div class="card-section" style="font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;">
+      <span>HIL CLEAN · RECIPE #001 · CITRIC ACID RUST</span>
+      <span style="color:var(--green)">ENV RATING: LOW IMPACT</span>
+    </div>
+  </div>
+</section>
+
+<!-- SKU MATH -->
+<section id="sku">
+  <div class="section-eyebrow">The Math</div>
+  <h2 class="section-title">Fewer SKUs.<br><em>Better system.</em></h2>
+  <p class="section-body">The fewer items you own, the more powerful your inventory becomes. HIL Clean reduces what you own to a small number of high-competence raw ingredients. The HL System gives each one a permanent address.</p>
+  <div class="sku-comparison">
+    <div class="sku-col">
+      <div class="sku-col-header sku-bad-header">× The Consumer Model — Under Your Sink Now</div>
+      <div class="sku-items">
+        <div class="sku-item sku-bad">Bathroom cleaner spray</div>
+        <div class="sku-item sku-bad">Kitchen degreaser spray</div>
+        <div class="sku-item sku-bad">Glass cleaner</div>
+        <div class="sku-item sku-bad">Tub and tile cleaner</div>
+        <div class="sku-item sku-bad">Toilet bowl cleaner</div>
+        <div class="sku-item sku-bad">Mold and mildew spray</div>
+        <div class="sku-item sku-bad">Carpet stain remover</div>
+        <div class="sku-item sku-bad">Fabric stain remover</div>
+        <div class="sku-item sku-bad">Pet stain remover</div>
+        <div class="sku-item sku-bad">Rust remover</div>
+        <div class="sku-item sku-bad">Drain cleaner</div>
+        <div class="sku-item sku-note">...and 6 more half-empty bottles</div>
+      </div>
+      <div class="sku-total sku-total-bad">~17 SKUs · ~$180/year · High friction · High mental load</div>
+    </div>
+    <div class="sku-col">
+      <div class="sku-col-header sku-good-header">✓ The HIL Clean Alternative</div>
+      <div class="sku-items">
+        <div class="sku-item sku-good">Citric acid (bag)</div>
+        <div class="sku-item sku-good">Oxalic acid (bag)</div>
+        <div class="sku-item sku-good">White vinegar (jug)</div>
+        <div class="sku-item sku-good">Hydrogen peroxide (bottle)</div>
+        <div class="sku-item sku-good">Dish soap (bottle)</div>
+        <div class="sku-item sku-good">Baking soda (bag)</div>
+        <div class="sku-item sku-good">Isopropyl alcohol (bottle)</div>
+        <div class="sku-item sku-good">Enzyme cleaner (bottle)</div>
+        <div class="sku-item sku-note">+ this free tool to know what to use when</div>
+      </div>
+      <div class="sku-total sku-total-good">8 SKUs · ~$30/year · Zero mental load</div>
+    </div>
+  </div>
+
+  <div class="connect-block">
+    <div class="connect-title">THE FULL LOOP</div>
+    <div class="connect-body">HIL Clean reduces what you own to 8 high-competence raw ingredients organized into kits. The HL System gives each kit a permanent address. You don't inventory 17 products. You inventory <strong>8 kits.</strong> The kit implies the contents. The address tells you where it lives.<br><br><strong>Nothing new. Everything restored.</strong></div>
+    <a href="/" class="btn-primary" style="font-size:13px;padding:11px 20px;">← Back to HIL System</a>
+  </div>
+</section>
+
+<footer>
+  <div style="font-family:var(--serif);font-style:italic;font-size:14px;color:#4a5a50;margin-bottom:12px;">"Act from principles, not from recipes alone."</div>
+  HIL CLEAN · PART OF <a href="/">HILSYSTEM.COM</a> · FREE FOREVER<br>
+  IN HONOR OF ELLEN SWALLOW RICHARDS · MIT 1873 · DOMESTIC SCIENCE · 1882<br><br>
+  <span style="color:#3a4a40;">If this saved you money — <a href="https://ko-fi.com/hilsystem">buy Dan a coffee ↗</a></span>
+</footer>
+
+</body>
+</html>
