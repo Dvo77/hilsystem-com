@@ -891,29 +891,108 @@
 <!-- HOW IT WORKS -->
 <section class="section" id="how">
   <p class="section-label">— THE PROCESS —</p>
-  <h2 class="section-title">Three Steps.<br>No Install. No Account.</h2>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div class="step-icon">📷</div>
-      <h3>Pick a spot.<br>Take a photo.</h3>
-      <p>Any shelf. Any room. Messy is fine. Annotate with your pencil if something is hidden behind something else.</p>
-      <span class="step-tag">IPAD + PENCIL WORKS GREAT</span>
+  <h2 class="section-title">Four Steps.<br>No Install. No Account.</h2>
+
+  <div class="steps-4">
+
+    <div class="step-card-exp">
+      <div class="step-top">
+        <div class="step-num-exp">1</div>
+        <div class="step-icon-exp">📷</div>
+        <h3>Pick a spot.<br>Take a photo.</h3>
+      </div>
+      <div class="step-body">
+        <p>Any shelf. Any room. <strong>Messy is fine.</strong> Point your phone or tablet at whatever you want to catalog. If something is hidden behind something else, circle or label it first — any phone's markup tool, your finger, or a stylus all work.</p>
+      </div>
+      <div class="step-expand" id="exp-1">
+        <div class="step-expand-inner">
+          <div class="expand-label-exp">How it works</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px;">You don't need to clean up first. The AI reads the photo as-is and identifies everything it can see. <strong style="color:var(--text)">Any phone works.</strong> iPad + Apple Pencil is a great option for annotating an item that's hidden behind something else — but your finger, a stylus, or your phone's built-in markup/text tool work just as well.</p>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;">No special app needed. And if a spot doesn't fit the standard address format exactly — that's fine. The grammar is built to flex. A small local adaptation never breaks the system.</p>
+        </div>
+      </div>
+      <div class="step-bottom">
+        <button class="expand-toggle-exp" onclick="toggleStep(1,this)">Learn more <span class="arrow-exp">→</span></button>
+        <span class="step-tag-exp">ANY PHONE WORKS</span>
+      </div>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div class="step-icon">🤖</div>
-      <h3>Drop it into<br>any AI.</h3>
-      <p>Claude, ChatGPT, or Gemini. Paste the HL prompt. The AI reads your photo and assigns addresses to everything it sees.</p>
-      <span class="step-tag">NO NEW ACCOUNT NEEDED</span>
+
+    <div class="step-card-exp">
+      <div class="step-top">
+        <div class="step-num-exp">2</div>
+        <div class="step-icon-exp">🤖</div>
+        <h3>Drop it into<br>any AI.</h3>
+      </div>
+      <div class="step-body">
+        <p>Claude, ChatGPT, or Gemini. <strong>Paste the HL prompt.</strong> The AI reads your photo and assigns addresses to everything it sees. A piece of tape and a marker is all you need to start.</p>
+      </div>
+      <div class="step-expand" id="exp-2">
+        <div class="step-expand-inner">
+          <div class="expand-label-exp">HIL Starter Prompt</div>
+          <div class="prompt-box-exp">
+            <div class="prompt-text-exp">"Hey. Before we do anything else — one question: Is there a space in your life where you can never find what you're looking for? A garage. A workshop. A storage room. A junk drawer that ate your house. Tell me about it. Even one sentence. Because I'm about to show you something that might actually fix it — and it starts with one piece of tape and a marker."</div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px;">That's the opening line. The full prompt turns any AI into a guide that walks you through your first address — you'll have a shelf fully mapped before you realize that's what happened.</p>
+          <button class="copy-btn-exp" id="copy-btn-exp-2" onclick="copyOnboardingPrompt()">Copy Full Prompt →</button>
+          <a class="ghub-link-exp" href="https://github.com/Dvo77/spatial-vector-grammar/blob/main/prompts/HL_Prompt_Onboarding_v1.md" target="_blank">View on GitHub →</a>
+        </div>
+      </div>
+      <div class="step-bottom">
+        <button class="expand-toggle-exp" onclick="toggleStep(2,this)">Get the prompt <span class="arrow-exp">→</span></button>
+        <span class="step-tag-exp">NO NEW ACCOUNT</span>
+      </div>
     </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div class="step-icon">📍</div>
-      <h3>You own a<br>record. Forever.</h3>
-      <p>Your inventory lives in your vault. Search it. Ask any AI where something is. Export it anytime. It's yours.</p>
-      <span class="step-tag">YOUR DATA. YOUR FILE.</span>
+
+    <div class="step-card-exp">
+      <div class="step-top">
+        <div class="step-num-exp">3</div>
+        <div class="step-icon-exp">📍</div>
+        <h3>You own a<br>record. Forever.</h3>
+      </div>
+      <div class="step-body">
+        <p>Your inventory lives in your vault. <strong>Search it. Ask any AI where something is. Export it anytime.</strong> It's yours — not locked to any app or platform.</p>
+      </div>
+      <div class="step-expand" id="exp-3">
+        <div class="step-expand-inner">
+          <div class="expand-label-exp">What you get</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:8px;">Every HIL address you generate is <strong style="color:var(--text)">yours to keep.</strong> Export as CSV, JSON, or plain text. Feed it back into any AI to ask questions about your own space: "Where did I put the router bits?"</p>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;">Optional: connect tools for live search, eBay pricing, and insurance export. The base system always works without an account.</p>
+        </div>
+      </div>
+      <div class="step-bottom">
+        <button class="expand-toggle-exp" onclick="toggleStep(3,this)">Learn more <span class="arrow-exp">→</span></button>
+        <span class="step-tag-exp">YOUR DATA. YOUR FILE.</span>
+      </div>
     </div>
+
+    <div class="step-card-exp bridge">
+      <div class="step-top">
+        <div class="step-num-exp">4</div>
+        <div class="step-icon-exp">⇄</div>
+        <h3>Already have<br>your data?</h3>
+      </div>
+      <div class="step-body">
+        <p>Drop a CSV from your existing inventory app. <strong>Every item gets an HIL address instantly.</strong> Works both directions.</p>
+        <div class="bridge-mini-grid">
+          <div class="bridge-mini">📦 HomeBox <span class="tag-live">LIVE</span></div>
+          <div class="bridge-mini cs">📋 Sortly <span class="tag-soon">SOON</span></div>
+          <div class="bridge-mini cs">🛒 Grocy <span class="tag-soon">SOON</span></div>
+          <div class="bridge-mini cs">🏷️ Snipe-IT <span class="tag-soon">SOON</span></div>
+        </div>
+      </div>
+      <div class="step-expand" id="exp-4">
+        <div class="step-expand-inner">
+          <div class="expand-label-exp">How the Bridge works</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px;">Export your inventory from any supported app as a CSV. Drop it into HL Bridge — no account, no install. Every row gets an HIL address based on its location data. <strong style="color:var(--text)">Works both directions</strong> — bring HIL addresses into your existing app too.</p>
+          <a class="bridge-open-link" href="hl-bridge.html">Open HL Bridge →</a>
+        </div>
+      </div>
+      <div class="step-bottom">
+        <button class="expand-toggle-exp" onclick="toggleStep(4,this)">See adapters <span class="arrow-exp">→</span></button>
+        <span class="step-tag-exp">NO ACCOUNT NEEDED</span>
+      </div>
+    </div>
+
   </div>
 </section>
 
