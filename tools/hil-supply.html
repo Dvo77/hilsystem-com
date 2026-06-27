@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Supply — Intentional Ownership</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:     #00cc66;
+  --green-dim: #008844;
+  --teal:      #00c9b1;
+  --teal-dim:  #007a6a;
+  --amber:     #cc8800;
+  --blue:      #4a9eed;
+  --yellow:    #ffd84c;
+  --red:       #cc3333;
+  --bg:        #0a0a0a;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --surface3:  #222222;
+  --border:    #2a2a2a;
+  --border2:   #333333;
+  --text:      #e8e8e8;
+  --text-dim:  #888888;
+  --text-mute: #555555;
+  --hil-shell-h: 56px;
+  --hil-nav-h:   40px;
+  --font-display:'Orbitron', monospace;
+  --font-mono:   'Space Mono', monospace;
+  --font-ui:     'Barlow Condensed', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-ui); min-height: 100vh; overflow-x: hidden; }
+
+/* ── SHELL ──────────────────────────────────── */
+#hil-shell-mount { position: fixed; top: 0; left: 0; right: 0; height: calc(var(--hil-shell-h) + var(--hil-nav-h)); z-index: 1000; background: #050505; border-bottom: 1px solid var(--border); }
+.shell-fallback { display: flex; align-items: center; height: var(--hil-shell-h); padding: 0 20px; gap: 12px; }
+.shell-fallback .brand { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--green); letter-spacing: 0.12em; }
+.shell-fallback .sep { color: var(--text-mute); }
+.shell-fallback .page-title { font-family: var(--font-display); font-size: 12px; color: var(--text-dim); letter-spacing: 0.08em; }
+.shell-nav { display: flex; align-items: center; height: var(--hil-nav-h); padding: 0 20px; gap: 6px; border-top: 1px solid var(--border); overflow-x: auto; }
+.shell-nav a { font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; padding: 4px 10px; border-radius: 3px; white-space: nowrap; transition: color 0.15s, background 0.15s; }
+.shell-nav a:hover { color: var(--green); background: rgba(0,204,102,0.08); }
+.shell-nav a.active { color: var(--amber); border-bottom: 2px solid var(--amber); }
+
+/* ── LAYOUT ─────────────────────────────────── */
+.main-content { padding-top: calc(var(--hil-shell-h) + var(--hil-nav-h) + 32px); padding-bottom: 80px; max-width: 960px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+/* ── HERO ────────────────────────────────────── */
+.hero { padding: 48px 0 56px; border-bottom: 1px solid var(--border); margin-bottom: 56px; }
+.hero-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.25em; color: var(--teal); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.hero-eyebrow::before { content: ''; width: 28px; height: 1px; background: var(--teal); opacity: 0.5; }
+.hero h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(40px, 7vw, 72px); line-height: 0.95; color: var(--text); letter-spacing: 0.04em; margin-bottom: 24px; }
+.hero h1 .accent { color: var(--teal); }
+.hero-sub { font-size: 17px; line-height: 1.65; color: var(--text-dim); max-width: 520px; margin-bottom: 36px; }
+.hero-sub strong { color: var(--text); font-weight: 500; }
+.hero-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 4px; }
+.stat-num { font-family: var(--font-display); font-weight: 700; font-size: 28px; color: var(--teal); line-height: 1; }
+.stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-mute); text-transform: uppercase; }
+
+/* ── SECTIONS ────────────────────────────────── */
+.section { margin-bottom: 56px; }
+.section-eyebrow { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.25em; color: var(--teal-dim); opacity: 0.8; text-transform: uppercase; margin-bottom: 12px; }
+.section h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 4vw, 32px); color: var(--text); letter-spacing: 0.04em; margin-bottom: 14px; }
+.section p { font-size: 14px; line-height: 1.7; color: var(--text-dim); max-width: 620px; margin-bottom: 14px; }
+.section p strong { color: var(--text); font-weight: 500; }
+hr.section-rule { border: none; border-top: 1px solid var(--border); margin: 56px 0; }
+
+/* ── ACQUISITION GRID ────────────────────────── */
+.acq-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px; background: var(--border); border: 1px solid var(--border); margin-top: 28px; }
+.acq-card { background: var(--surface); padding: 20px 16px; }
+.acq-tier { font-family: var(--font-mono); font-size: 9px; color: var(--teal); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 7px; }
+.acq-budget { font-family: var(--font-display); font-weight: 700; font-size: 20px; color: var(--text); margin-bottom: 6px; letter-spacing: 0.04em; }
+.acq-source { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
+.acq-note { font-family: var(--font-mono); font-size: 9px; color: var(--green-dim); margin-top: 8px; letter-spacing: 0.04em; }
+
+/* ── QUALITY TABLE ───────────────────────────── */
+.quality-table { width: 100%; border-collapse: collapse; margin-top: 28px; }
+.quality-table th { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-mute); text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.quality-table td { font-size: 13px; color: var(--text-dim); padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.quality-table tr:hover td { background: var(--surface2); }
+.q-badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 7px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 2px; }
+.q-badge.best  { background: rgba(0,204,102,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+.q-badge.good  { background: rgba(255,216,76,0.08); color: var(--yellow); border: 1px solid #5a5a1a; }
+.q-badge.ok    { background: rgba(74,158,237,0.08); color: var(--blue); border: 1px solid #1a1a5a; }
+.q-badge.skip  { background: rgba(204,51,51,0.08); color: var(--red); border: 1px solid #5a1a1a; }
+
+/* ── DECISION GRID ───────────────────────────── */
+.decision-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px; background: var(--border); border: 1px solid var(--border); margin-top: 28px; }
+.decision-col { background: var(--surface); padding: 18px; }
+.decision-header { font-family: var(--font-ui); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.decision-header.diy   { color: var(--green); }
+.decision-header.maybe { color: var(--yellow); }
+.decision-header.hire  { color: var(--red); }
+.decision-item { font-size: 12px; color: var(--text-dim); padding: 5px 0; border-bottom: 1px solid var(--border); line-height: 1.4; }
+.decision-item:last-child { border-bottom: none; }
+
+/* ── COMING SOON ─────────────────────────────── */
+.coming-soon-wrap { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--teal); border-radius: 4px; padding: 36px 32px; margin-bottom: 56px; }
+.cs-badge { display: inline-block; font-family: var(--font-mono); font-size: 9px; color: var(--teal); border: 1px solid var(--teal); padding: 3px 10px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 16px; opacity: 0.8; border-radius: 2px; }
+.cs-title { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--text); margin-bottom: 10px; letter-spacing: 0.04em; }
+.cs-desc { font-size: 14px; color: var(--text-dim); line-height: 1.7; max-width: 520px; margin-bottom: 28px; }
+.cs-desc strong { color: var(--text); font-weight: 500; }
+.cs-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px; background: var(--border); border: 1px solid var(--border); }
+.cs-feature { background: var(--bg); padding: 16px 18px; }
+.cs-feature-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-mute); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 5px; }
+.cs-feature-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+@media (max-width: 640px) {
+  .main-content { padding-left: 14px; padding-right: 14px; }
+  .decision-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="hil-shell-mount">
+  <div class="shell-fallback">
+    <span class="brand">HIL</span>
+    <span class="sep">◆</span>
+    <span class="page-title">SUPPLY — INTENTIONAL OWNERSHIP</span>
+  </div>
+  <nav class="shell-nav">
+    <a href="hl-vault-cloud.html">Vault</a>
+    <a href="hil-hub.html">Hub</a>
+    <a href="hil-field-tool.html">Field Tool</a>
+    <a href="hil-label-studio.html">Labels &amp; Signs</a>
+    <a href="hil-museum.html">History Wall</a>
+    <a href="hil-family-ledger.html">Family Ledger</a>
+    <a href="hil-exchange.html">Exchange</a>
+    <a href="hil-library-hub.html" class="active">Library</a>
+  </nav>
+</div>
+
+<div class="main-content">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Library 04 — Intentional Ownership</div>
+    <h1>HIL<br><span class="accent">Supply.</span></h1>
+    <p class="hero-sub">Own less. Own better. Know the difference. <strong>What to buy, where to find it, what it should cost, and when it makes more sense to just hire someone.</strong></p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">$100</div><div class="stat-label">Full homeowner toolkit</div></div>
+      <div class="stat"><div class="stat-num">Pre-1970</div><div class="stat-label">Sweet spot for used tools</div></div>
+      <div class="stat"><div class="stat-num">5</div><div class="stat-label">Questions before every purchase</div></div>
+    </div>
+  </div>
+
+  <!-- PHILOSOPHY -->
+  <div class="section">
+    <div class="section-eyebrow">The Philosophy</div>
+    <h2>You need less than they're selling you.</h2>
+    <p>The home improvement industry is built on making you feel under-equipped. The truth is a <strong>$100 investment in the right tools covers 80% of what any homeowner will ever need.</strong> The other 20% is usually cheaper to hire out than to tool up for.</p>
+    <p>HIL Supply is about making intentional decisions — not impulse buys at the hardware store, not a garage full of things you used once. Know what you need before you need it. Know where to find it cheaply. Know when to stop.</p>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- ACQUISITION GUIDE -->
+  <div class="section">
+    <div class="section-eyebrow">Acquisition Guide</div>
+    <h2>Where to get tools without overpaying.</h2>
+    <p>There is a right order to look. Start at the top. Only move down when the top tier doesn't have what you need.</p>
+    <div class="acq-grid">
+      <div class="acq-card">
+        <div class="acq-tier">Tier 1 — Best Value</div>
+        <div class="acq-budget">Estate Sales</div>
+        <div class="acq-source">Pre-1980 American-made tools at pennies on the dollar. The original owner took care of them. Decades of proven reliability.</div>
+        <div class="acq-note">Best finds: Craftsman, Stanley, Disston, Plumb, Estwing</div>
+      </div>
+      <div class="acq-card">
+        <div class="acq-tier">Tier 2 — Reliable</div>
+        <div class="acq-budget">Goodwill / Thrift</div>
+        <div class="acq-source">Full basic kits — hammer, pliers, screwdrivers, handsaw — often under $15 for the lot. Hit or miss but the hits are excellent.</div>
+        <div class="acq-note">Budget: $5–20 for a complete basic kit</div>
+      </div>
+      <div class="acq-card">
+        <div class="acq-tier">Tier 3 — Reliable</div>
+        <div class="acq-budget">FB Marketplace</div>
+        <div class="acq-source">Entire toolboxes when someone moves or downsizes. Inspect before buying. Negotiate. Pick up locally.</div>
+        <div class="acq-note">Budget: $20–60 for a full toolbox</div>
+      </div>
+      <div class="acq-card">
+        <div class="acq-tier">Tier 4 — Budget New</div>
+        <div class="acq-budget">Harbor Freight</div>
+        <div class="acq-source">Adequate for homeowner use. Not lifetime tools but they work. Good for items you'll use rarely or might lose.</div>
+        <div class="acq-note">Avoid: Cheap socket sets. Buy: Clamps, layout tools, consumables</div>
+      </div>
+      <div class="acq-card">
+        <div class="acq-tier">Tier 5 — Convenient New</div>
+        <div class="acq-budget">Big Box Kits</div>
+        <div class="acq-source">Home Depot / Lowe's starter kits are complete and consistent. You pay more but get everything in one trip.</div>
+        <div class="acq-note">Budget: $40–80 for a complete basic kit</div>
+      </div>
+      <div class="acq-card">
+        <div class="acq-tier">Tier 6 — Worth It For</div>
+        <div class="acq-budget">Snap-On Used</div>
+        <div class="acq-source">If you're doing trade-level work and need tools that won't fail mid-job. Buy used, save 60%.</div>
+        <div class="acq-note">eBay: search "Snap-on used" + specific tool</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- PRE-1970 RULE -->
+  <div class="section">
+    <div class="section-eyebrow">The Pre-1970 Rule</div>
+    <h2>Old tools are better. Here's why.</h2>
+    <p>American tool manufacturing peaked in quality roughly between 1940 and 1975. Chrome vanadium steel, thicker walls, tighter tolerances, lifetime warranties that meant something. <strong>A restored pre-1970 Craftsman socket set will outlast most new import sets at twice the price.</strong></p>
+    <p>Post-1990 offshoring changed the steel composition on most mass-market tools. The handle looks the same. The steel isn't.</p>
+    <table class="quality-table">
+      <thead>
+        <tr><th>Era / Brand</th><th>Rating</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pre-1975 Craftsman (USA)</td><td><span class="q-badge best">Best</span></td><td>Buy every piece you find. Restore and keep forever.</td></tr>
+        <tr><td>Snap-On (any era)</td><td><span class="q-badge best">Best</span></td><td>Still trade-grade. Buy used to save 50–60%.</td></tr>
+        <tr><td>Stanley / Proto (pre-1985)</td><td><span class="q-badge best">Best</span></td><td>Especially hand planes, chisels, layout tools.</td></tr>
+        <tr><td>Estwing (any era)</td><td><span class="q-badge best">Best</span></td><td>Made in USA, still excellent. Hammers and hatchets.</td></tr>
+        <tr><td>DeWalt / Milwaukee (current)</td><td><span class="q-badge good">Good</span></td><td>Power tools only. Hand tools not worth the premium.</td></tr>
+        <tr><td>Harbor Freight (current)</td><td><span class="q-badge ok">OK</span></td><td>Occasional use only. Fine for homeowner tasks.</td></tr>
+        <tr><td>Post-2000 big box hand tools</td><td><span class="q-badge skip">Avoid</span></td><td>Soft steel, loose tolerances. Pay more for less.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- DIY VS HIRE -->
+  <div class="section">
+    <div class="section-eyebrow">DIY vs Hire Decision Guide</div>
+    <h2>Know when to stop.</h2>
+    <p><strong>The honest calculation is: time + learning cost + risk cost vs. what a pro charges.</strong> Sometimes hiring is the smarter move, even if you could technically do it yourself.</p>
+    <div class="decision-grid">
+      <div class="decision-col">
+        <div class="decision-header diy">Always DIY</div>
+        <div class="decision-item">Picture hanging</div>
+        <div class="decision-item">Painting walls</div>
+        <div class="decision-item">Drain clearing</div>
+        <div class="decision-item">Filter replacement</div>
+        <div class="decision-item">Caulking</div>
+        <div class="decision-item">Pest spray (basic)</div>
+        <div class="decision-item">Gutter cleaning</div>
+        <div class="decision-item">Weatherstripping</div>
+        <div class="decision-item">Furniture assembly</div>
+        <div class="decision-item">Drywall patching</div>
+      </div>
+      <div class="decision-col">
+        <div class="decision-header maybe">Depends on You</div>
+        <div class="decision-item">Toilet repair</div>
+        <div class="decision-item">Tile work</div>
+        <div class="decision-item">Fence repair</div>
+        <div class="decision-item">Deck refinishing</div>
+        <div class="decision-item">Appliance repair</div>
+        <div class="decision-item">Flooring install</div>
+        <div class="decision-item">Door hanging</div>
+        <div class="decision-item">Basic plumbing</div>
+        <div class="decision-item">Roof inspection</div>
+        <div class="decision-item">Light fixture swap</div>
+      </div>
+      <div class="decision-col">
+        <div class="decision-header hire">Hire It Out</div>
+        <div class="decision-item">Electrical panel work</div>
+        <div class="decision-item">Gas line anything</div>
+        <div class="decision-item">Foundation issues</div>
+        <div class="decision-item">Roof replacement</div>
+        <div class="decision-item">HVAC installation</div>
+        <div class="decision-item">Structural changes</div>
+        <div class="decision-item">Permit-required work</div>
+        <div class="decision-item">Mold remediation</div>
+        <div class="decision-item">Asbestos / lead</div>
+        <div class="decision-item">Anything over your head</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- COMING SOON -->
+  <div class="coming-soon-wrap">
+    <div class="cs-badge">Coming Soon</div>
+    <div class="cs-title">HIL Supply Tool</div>
+    <p class="cs-desc">Tell us what you're trying to accomplish and your budget. We'll tell you exactly what to buy, where to find it, and whether it's worth your time to DIY at all. <strong>Intentional acquisition, not impulse buying.</strong></p>
+    <div class="cs-features">
+      <div class="cs-feature">
+        <div class="cs-feature-label">Kit Gap Finder</div>
+        <div class="cs-feature-text">Compare what you have in HIL Organize to what you need — shows exactly the gap</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">Acquisition Advisor</div>
+        <div class="cs-feature-text">Given your budget and task, tells you where to look and what to pay</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">DIY Calculator</div>
+        <div class="cs-feature-text">Time + tools + learning curve vs. pro quote — honest math</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">Quality Guide</div>
+        <div class="cs-feature-text">Era and brand guidance for used tool buying — know what's worth keeping</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+if (typeof window.hilShellInit === 'function') {
+  window.hilShellInit({ toolId: 'supply', requireAuth: false });
+} else {
+  const s = document.createElement('script'); s.src = 'hil-shell.js';
+  s.onload = () => { if (typeof window.hilShellInit === 'function') window.hilShellInit({ toolId: 'supply', requireAuth: false }); };
+  document.head.appendChild(s);
+}
+</script>
+</body>
+</html>
