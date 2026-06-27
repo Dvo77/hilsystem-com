@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Clean — Stain Lookup</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f0e;
+    --surface: #141816;
+    --surface2: #1c201e;
+    --border: #2a302c;
+    --accent: #00cc66;
+    --accent2: #00c9ff;
+    --yellow: #ffd84c;
+    --red: #ff5c5c;
+    --orange: #ff8c00;
+    --text: #dde8e2;
+    --muted: #6b7d72;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    padding-bottom: 60px;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--head);
+    font-weight: 900;
+    font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  header h1 {
+    font-family: var(--head);
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  header p {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .honesty-banner {
+    background: #0a120d;
+    border-bottom: 1px solid #1a3a1f;
+    padding: 12px 20px;
+    font-size: 12px;
+    color: #6a9978;
+    font-family: var(--mono);
+    line-height: 1.6;
+  }
+
+  .honesty-banner strong {
+    color: var(--accent);
+  }
+
+  .selector-area {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .selector-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .chip.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  .chip.surface-active {
+    background: var(--accent2);
+    color: #000;
+    border-color: var(--accent2);
+    font-weight: 700;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 20px;
+  }
+
+  .result-area {
+    padding: 20px;
+  }
+
+  .result-empty {
+    text-align: center;
+    padding: 40px 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+  }
+
+  .result-empty .big {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+
+  .result-card {
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    display: none;
+  }
+
+  .result-card.visible { display: block; }
+
+  .rc-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .rc-breadcrumb {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .rc-title {
+    font-family: var(--head);
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: #fff;
+    line-height: 1;
+  }
+
+  .rc-odds {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .odds-high { background: #0a2614; color: var(--accent); border: 1px solid #1a5c2a; }
+  .odds-med  { background: #3a2f00; color: var(--yellow); border: 1px solid #6a5500; }
+  .odds-low  { background: #3a0f0f; color: var(--red);    border: 1px solid #6a1a1a; }
+
+  .rc-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rc-stat {
+    padding: 12px 14px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .rc-stat:last-child { border-right: none; }
+
+  .rc-stat-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .rc-stat-val {
+    font-family: var(--head);
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: var(--accent);
+  }
+
+  .rc-section {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .rc-section:last-child { border-bottom: none; }
+
+  .rc-section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .dwell-rows { display: flex; flex-direction: column; gap: 6px; }
+
+  .dwell-row {
+    display: grid;
+    grid-template-columns: 55px 1fr 28px;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .dwell-t { color: var(--yellow); font-weight: 700; }
+
+  .eg-track {
+    height: 7px;
+    background: var(--surface2);
+    position: relative;
+  }
+
+  .eg-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+
+  .eg-n { color: var(--accent); font-weight: 700; text-align: right; }
+
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+
+  .step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-size: 13px;
+  }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+    min-width: 22px;
+    margin-top: 1px;
+  }
+
+  .step-text { color: var(--text); line-height: 1.5; }
+  .step-text em { color: var(--yellow); font-style: normal; font-weight: 600; }
+
+  .warnings { display: flex; flex-direction: column; gap: 7px; }
+
+  .warn-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  .warn-icon { flex-shrink: 0; }
+  .warn-text { color: var(--text); line-height: 1.4; }
+  .warn-text.danger { color: var(--red); }
+  .warn-text.caution { color: var(--orange); }
+
+  .surface-note {
+    background: var(--surface2);
+    padding: 10px 14px;
+    border-left: 3px solid var(--accent2);
+    font-size: 12px;
+    font-family: var(--mono);
+    color: #aaa;
+    line-height: 1.6;
+  }
+
+  .surface-note strong { color: var(--accent2); }
+
+  .ing-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .ing-row {
+    display: flex;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    align-items: baseline;
+  }
+
+  .ing-name { color: var(--text); min-width: 130px; }
+  .ing-amt { color: var(--yellow); }
+  .ing-note { color: var(--muted); font-size: 10px; }
+
+  .alt-list { display: flex; flex-direction: column; gap: 6px; }
+
+  .alt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 10px;
+    background: var(--surface2);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .alt-name { color: var(--text); }
+  .alt-why { color: var(--muted); font-size: 10px; }
+
+  .rc-footer {
+    padding: 10px 18px;
+    background: #0a0c0b;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .patience-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .p-dots { display: flex; gap: 3px; }
+  .p-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+  .p-dot.on { background: var(--yellow); }
+
+  .warranty-block {
+    background: #1a1200;
+    border: 1px solid #3a2800;
+    border-left: 4px solid var(--yellow);
+    padding: 14px 16px;
+  }
+
+  .warranty-title {
+    font-family: var(--head);
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    color: var(--yellow);
+    margin-bottom: 8px;
+  }
+
+  .warranty-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .warranty-step {
+    display: flex;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #ccaa55;
+    line-height: 1.5;
+    align-items: flex-start;
+  }
+
+  .warranty-step-num {
+    color: var(--yellow);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .warranty-footer-note {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #3a2800;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #7a6020;
+    font-style: italic;
+  }
+
+  .mat-spec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mat-spec-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 7px 10px;
+    background: var(--surface2);
+    border-left: 2px solid var(--accent2);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .mat-spec-name {
+    color: var(--accent2);
+    min-width: 130px;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .mat-spec-note {
+    color: #aaa;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">HL</div>
+  <div>
+    <h1>HIL CLEAN — STAIN LOOKUP</h1>
+    <p>DOMESTIC SCIENCE LIBRARY · FREE FOREVER · NO MIRACLE PRODUCTS</p>
+  </div>
+</header>
+
+<div class="honesty-banner">
+  <strong>HONEST DISCLAIMER:</strong> A stain is a chemical event. Some are reversible. Some are not. Speed is your biggest advantage — the faster you act, the better your odds. The wrong first move can close the window permanently. No product guarantees removal of every stain. We give you the best known method and an honest assessment of your odds.
+</div>
+
+<div class="selector-area">
+  <div>
+    <div class="selector-label">Step 1 — What type of stain?</div>
+    <div class="chip-grid" id="stain-chips">
+      <div class="chip" data-stain="protein" onclick="selectStain(this)">Protein</div>
+      <div class="chip" data-stain="oil" onclick="selectStain(this)">Oil / Grease</div>
+      <div class="chip" data-stain="tannin" onclick="selectStain(this)">Tannin</div>
+      <div class="chip" data-stain="dye" onclick="selectStain(this)">Dye / Pigment</div>
+      <div class="chip" data-stain="rust" onclick="selectStain(this)">Rust / Mineral</div>
+      <div class="chip" data-stain="solvent" onclick="selectStain(this)">Solvent-based</div>
+      <div class="chip" data-stain="water" onclick="selectStain(this)">Water-based</div>
+      <div class="chip" data-stain="mold" onclick="selectStain(this)">Mold / Mildew</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="selector-label">Step 2 — What surface?</div>
+    <div class="chip-grid" id="surface-chips">
+      <div class="chip" data-surface="fabric" onclick="selectSurface(this)">Fabric / Clothing</div>
+      <div class="chip" data-surface="carpet" onclick="selectSurface(this)">Carpet / Rug</div>
+      <div class="chip" data-surface="hardfloor" onclick="selectSurface(this)">Hard Floor</div>
+      <div class="chip" data-surface="grout" onclick="selectSurface(this)">Grout / Tile</div>
+      <div class="chip" data-surface="wood" onclick="selectSurface(this)">Wood</div>
+      <div class="chip" data-surface="paint" onclick="selectSurface(this)">Painted Surface</div>
+      <div class="chip" data-surface="stone" onclick="selectSurface(this)">Stone / Concrete</div>
+      <div class="chip" data-surface="metal" onclick="selectSurface(this)">Metal</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="result-area">
+  <div class="result-empty" id="result-empty">
+    <div class="big">🧪</div>
+    SELECT STAIN TYPE AND SURFACE TO GET YOUR RECIPE
+  </div>
+
+  <div class="result-card" id="result-card">
+    <div class="rc-header">
+      <div class="rc-breadcrumb" id="rc-breadcrumb">STAIN → SURFACE</div>
+      <div class="rc-title" id="rc-title">RESULT</div>
+      <div class="rc-odds" id="rc-odds">ODDS: —</div>
+    </div>
+
+    <div class="rc-stats">
+      <div class="rc-stat">
+        <div class="rc-stat-label">Chemistry</div>
+        <div class="rc-stat-val" id="stat-chem" style="font-size:14px;margin-top:2px;">—</div>
+      </div>
+      <div class="rc-stat">
+        <div class="rc-stat-label">Min Dwell</div>
+        <div class="rc-stat-val" id="stat-dwell">—</div>
+      </div>
+      <div class="rc-stat">
+        <div class="rc-stat-label">Patience</div>
+        <div class="rc-stat-val" id="stat-patience" style="font-size:13px;">—</div>
+      </div>
+    </div>
+
+    <div class="rc-section">
+      <div class="warranty-block">
+        <div class="warranty-title">⚠ CHECK MANUFACTURER FIRST</div>
+        <div class="warranty-steps">
+          <div class="warranty-step">
+            <span class="warranty-step-num">1.</span>
+            <span>Check your product's care label or owner's manual before anything else.</span>
+          </div>
+          <div class="warranty-step">
+            <span class="warranty-step-num">2.</span>
+            <span>If the item is <strong style="color:var(--yellow)">under warranty</strong> — contact the manufacturer before attempting any cleaning method. Using an unapproved method may void your coverage.</span>
+          </div>
+          <div class="warranty-step">
+            <span class="warranty-step-num">3.</span>
+            <span>The manufacturer's recommended method always takes priority over this guide.</span>
+          </div>
+          <div class="warranty-step">
+            <span class="warranty-step-num">4.</span>
+            <span>When in doubt — ask before you act. Sometimes they just send you a new one.</span>
+          </div>
+        </div>
+        <div class="warranty-footer-note">
+          This guide exists for when the manufacturer option is gone, the warranty is expired, or they've already told you you're on your own. HIL Clean is not responsible for damage to warranted products.
+        </div>
+      </div>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">Why It Works</div>
+      <p style="font-size:13px;color:#bbb;line-height:1.7;" id="rc-why"></p>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">Dwell Curve — Time vs Elbow Grease</div>
+      <div class="dwell-rows" id="rc-dwell"></div>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">Procedure</div>
+      <div class="steps" id="rc-steps"></div>
+    </div>
+
+    <div class="rc-section" id="surface-note-section">
+      <div class="rc-section-title">Surface Note</div>
+      <div class="surface-note" id="rc-surface-note"></div>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">What You Need</div>
+      <div class="ing-list" id="rc-ingredients"></div>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">⚠ Do Not</div>
+      <div class="warnings" id="rc-warnings"></div>
+    </div>
+
+    <div class="rc-section">
+      <div class="rc-section-title">Proven Commercial Alternatives</div>
+      <div class="alt-list" id="rc-alts"></div>
+    </div>
+
+    <div class="rc-section" id="mat-spec-section">
+      <div class="rc-section-title">Material / Manufacturer Specs</div>
+      <div class="mat-spec-list" id="rc-mat-specs"></div>
+    </div>
+
+    <div class="rc-footer">
+      <span id="rc-footer-id">HIL CLEAN</span>
+      <span id="rc-env">ENV: —</span>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const STAIN_LABELS = {
+  protein:  "PROTEIN",
+  oil:      "OIL / GREASE",
+  tannin:   "TANNIN",
+  dye:      "DYE / PIGMENT",
+  rust:     "RUST / MINERAL",
+  solvent:  "SOLVENT-BASED",
+  water:    "WATER-BASED",
+  mold:     "MOLD / MILDEW"
+};
+
+const SURFACE_LABELS = {
+  fabric:    "FABRIC / CLOTHING",
+  carpet:    "CARPET / RUG",
+  hardfloor: "HARD FLOOR",
+  grout:     "GROUT / TILE",
+  wood:      "WOOD",
+  paint:     "PAINTED SURFACE",
+  stone:     "STONE / CONCRETE",
+  metal:     "METAL"
+};
+
+const RECIPES = {
+
+  // ── PROTEIN ─────────────────────────────────────────────────────────────
+
+  "protein:fabric": {
+    title: "PROTEIN STAIN ON FABRIC",
+    odds: "high",
+    chemistry: "ENZYME / COLD WATER",
+    dwell: "5 min",
+    patience: 3,
+    why: "Protein stains (blood, egg, dairy, sweat, meat) are organic molecules that bond to fabric fibers. Cold water plus an enzyme agent breaks those bonds. Heat cooks protein permanently into fiber — the same way cooking an egg sets it. Cold is non-negotiable.",
+    dwell_curve: [
+      {t:"0 min",  eg:8, note:"Blot only, no chemistry yet"},
+      {t:"5 min",  eg:4, note:"Enzyme working, gentle agitation"},
+      {t:"15 min", eg:2, note:"Rinse and assess"},
+      {t:"30 min", eg:1, note:"Heavy set stains, repeat cycle"}
+    ],
+    steps: [
+      "Blot — do <em>not</em> rub. Rubbing drives stain deeper into fiber.",
+      "Rinse with <em>cold water only</em> from the back of the fabric to push stain out.",
+      "Apply enzyme treatment (meat tenderizer paste, enzyme detergent, or dish soap).",
+      "Let dwell <em>minimum 5 minutes</em>. Longer for set stains.",
+      "Gentle agitation. Rinse cold. Assess.",
+      "<em>Do not put in dryer</em> until stain is fully out — heat sets permanently."
+    ],
+    surfaceNote: "Always treat from the back of the fabric when possible — push the stain out the way it came in, not deeper through the weave.",
+    ingredients: [
+      {name:"Cold water",        amt:"generous",    note:"always cold — never warm"},
+      {name:"Meat tenderizer",   amt:"paste",       note:"papain enzyme — works on protein"},
+      {name:"Dish soap",         amt:"few drops",   note:"alternative enzyme source"},
+      {name:"White cloth",       amt:"for blotting", note:""}
+    ],
+    warnings: [
+      {icon:"🔥", text:"NEVER USE HOT WATER — cooks protein into fiber, permanent", level:"danger"},
+      {icon:"🚫", text:"Never rub — always blot", level:"caution"},
+      {icon:"♨️", text:"Never put in dryer until stain confirmed gone", level:"danger"},
+      {icon:"🧂", text:"Salt can help absorb fresh blood but concentrates dried stains — use carefully", level:"caution"}
+    ],
+    alts: [
+      {name:"Zout",          why:"Proven enzyme formula, decades of results"},
+      {name:"Fels-Naptha bar", why:"Old school, honest soap — rub directly on wet stain"}
+    ],
+    material_specs: [
+      {material:"Wool / Cashmere",     note:"No enzymes — breaks down wool fiber. Use pH-neutral cold water only. No agitation. Lay flat to dry."},
+      {material:"Gore-Tex / Technical", note:"Cold water only. No fabric softener or enzyme — clogs DWR coating. Re-treat DWR after cleaning."},
+      {material:"Silk",                note:"Dry clean recommended. Cold water blot only as emergency measure. No rubbing, no enzyme."},
+      {material:"Down / Fill",         note:"Check care label. Most require professional cleaning for stain treatment to preserve loft."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  "protein:carpet": {
+    title: "PROTEIN STAIN ON CARPET",
+    odds: "high",
+    chemistry: "ENZYME / COLD WATER",
+    dwell: "10 min",
+    patience: 4,
+    why: "Same chemistry as fabric — cold water, enzyme, patience. The difference is you cannot rinse from behind. Work from outside the stain inward. Blot, never scrub. Scrubbing splays carpet fibers and spreads the stain.",
+    dwell_curve: [
+      {t:"0 min",  eg:7, note:"Blot up as much as possible first"},
+      {t:"10 min", eg:3, note:"Enzyme working in fiber"},
+      {t:"20 min", eg:2, note:"Blot, cold rinse, repeat"}
+    ],
+    steps: [
+      "Blot up excess immediately. Work <em>outside in</em> — never scrub toward center.",
+      "Apply cold water. Blot again.",
+      "Apply enzyme treatment. Cover with damp cloth.",
+      "Dwell <em>10+ minutes</em>.",
+      "Blot — do not scrub. Repeat until clear.",
+      "Finish with clean cold water blot to remove residue."
+    ],
+    surfaceNote: "Residue left in carpet backing will re-attract dirt and create a shadow stain. Rinse thoroughly — the cleaning agent coming back up is as important as the stain going down.",
+    ingredients: [
+      {name:"Cold water",      amt:"generous",   note:""},
+      {name:"Enzyme cleaner",  amt:"per label",  note:"or meat tenderizer paste"},
+      {name:"White terry cloths", amt:"several", note:"color-safe blotting"}
+    ],
+    warnings: [
+      {icon:"🔥", text:"No hot water, no steam cleaner heat on fresh protein stain", level:"danger"},
+      {icon:"🚫", text:"Never scrub carpet — always blot with downward pressure", level:"caution"},
+      {icon:"💧", text:"Rinse residue fully — leftover cleaner re-attracts soil", level:"caution"}
+    ],
+    alts: [
+      {name:"Bissell Pet Stain", why:"Enzyme formula, works on carpet backing"},
+      {name:"Nature's Miracle",  why:"Enzyme + odor neutralizer, honest product"}
+    ],
+    material_specs: [
+      {material:"Wool carpet / Oriental rug", note:"No enzyme — damages wool. Cold water blot only. Professional cleaning recommended for set stains."},
+      {material:"Sisal / Jute / Natural fiber", note:"Minimal water — these materials shrink and distort when wet. Blot only, dry immediately with fan."},
+      {material:"Warranty / Installed carpet", note:"Check installer warranty. Many require manufacturer-approved cleaner only or warranty is void."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  // ── OIL / GREASE ─────────────────────────────────────────────────────────
+
+  "oil:fabric": {
+    title: "OIL / GREASE ON FABRIC",
+    odds: "high",
+    chemistry: "LIKE DISSOLVES LIKE",
+    dwell: "5 min",
+    patience: 3,
+    why: "Oil does not dissolve in water. It dissolves in other oils and in surfactants (soap). The principle: like dissolves like. Dry-absorb first to pull oil out of fiber, then use dish soap (a degreasing surfactant) to emulsify what remains so water can carry it away.",
+    dwell_curve: [
+      {t:"0 min",  eg:9, note:"Absorb first — do not wet yet"},
+      {t:"5 min",  eg:4, note:"Dish soap applied, working"},
+      {t:"10 min", eg:2, note:"Agitate gently, rinse"}
+    ],
+    steps: [
+      "<em>Do not add water first</em> — water sets grease into fiber.",
+      "Cover stain with dry cornstarch, baking soda, or talc. Let sit 5 minutes to absorb.",
+      "Brush off powder. Apply <em>dish soap directly</em> to stain — dish soap is a degreaser.",
+      "Work in gently with fingers. Dwell 5–10 minutes.",
+      "Rinse with warm water (warm is fine now — grease is already emulsified).",
+      "Assess. Repeat if needed before drying."
+    ],
+    surfaceNote: "Check the back of the fabric — if oil has soaked through, treat from both sides. Oil stains that have been through the dryer are very difficult. The heat bonds the oil.",
+    ingredients: [
+      {name:"Cornstarch or baking soda", amt:"generous cover",    note:"dry absorb first"},
+      {name:"Dish soap (blue Dawn)",      amt:"direct application", note:"degreasing surfactant"},
+      {name:"Warm water",                 amt:"for rinse",          note:"after soap is applied"}
+    ],
+    warnings: [
+      {icon:"💧", text:"Do not wet with water before absorbing — spreads and sets oil", level:"danger"},
+      {icon:"♨️", text:"Do not dry until stain is confirmed gone — heat bonds oil", level:"danger"},
+      {icon:"🚫", text:"Avoid bar soap — can leave residue that attracts more oil", level:"caution"}
+    ],
+    alts: [
+      {name:"Lestoil", why:"Proven heavy-duty degreaser, decades of results on grease"},
+      {name:"Zout",    why:"Works on oil-based stains in fabric"}
+    ],
+    material_specs: [
+      {material:"Dry-clean only",   note:"Do not attempt at home. Solvent-based professional cleaning required."},
+      {material:"Wool / Cashmere",  note:"Cornstarch absorb only. No dish soap — strips natural lanolin. Professional clean for set grease."},
+      {material:"Leather",          note:"Cornstarch absorb. Leather-specific conditioner after. No dish soap — dries and cracks leather."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  "oil:wood": {
+    title: "OIL / GREASE ON WOOD",
+    odds: "high",
+    chemistry: "ABSORPTION / DEGREASING",
+    dwell: "15 min",
+    patience: 3,
+    why: "Wood is porous. Oil penetrates the grain. You must draw it out, not push it in. Heat can actually help pull oil from wood grain, but chemical absorption is safer for finishes. The key is patience — let the absorber do the work before introducing any solvent.",
+    dwell_curve: [
+      {t:"0 min",  eg:9, note:"Apply absorber, do not rub in"},
+      {t:"15 min", eg:5, note:"Gentle heat with hair dryer to pull oil up"},
+      {t:"30 min", eg:2, note:"Brush off, wipe clean"}
+    ],
+    steps: [
+      "Apply cornstarch or baking soda liberally over the entire spot.",
+      "<em>Do not rub in</em> — let the powder sit and pull oil out of the grain.",
+      "Optional: gently warm the powder with a <em>hair dryer on low</em> to accelerate oil migration.",
+      "After 15 minutes, brush away powder.",
+      "If a shadow remains, wipe with a cloth dampened with <em>mineral spirits</em>.",
+      "Wipe clean. Re-apply furniture oil, wax, or finish as appropriate."
+    ],
+    surfaceNote: "Oil on unfinished wood is easier — the grain is open. On finished wood the finish traps the oil in the top layer. If the finish itself is stained, mineral spirits is your friend. If oil penetrated through a crack in the finish, the finish may need to be repaired.",
+    ingredients: [
+      {name:"Cornstarch",      amt:"generous",     note:"primary absorber"},
+      {name:"Baking soda",     amt:"alternative",  note:"absorber if cornstarch unavailable"},
+      {name:"Hair dryer",      amt:"low heat",     note:"optional — to pull oil up"},
+      {name:"Mineral spirits", amt:"small amount", note:"for stubborn residue only"},
+      {name:"Clean soft cloth", amt:"",            note:"for final wipe"}
+    ],
+    warnings: [
+      {icon:"🔥", text:"Low heat only on hair dryer — excess heat blisters or whitens finish", level:"danger"},
+      {icon:"🚫", text:"Do not use water on raw wood — raises grain and causes swelling", level:"caution"},
+      {icon:"🧪", text:"Test mineral spirits on underside first — can strip some finishes", level:"caution"},
+      {icon:"🔥", text:"Mineral spirits rags can self-combust — lay flat to dry outdoors", level:"danger"}
+    ],
+    alts: [
+      {name:"Murphy's Oil Soap", why:"Gentle degreaser safe for finished wood"},
+      {name:"Goo Gone",          why:"Works on grease/oil on finished surfaces"}
+    ],
+    material_specs: [
+      {material:"Unfinished / Raw wood",   note:"Most receptive to cornstarch treatment. Oil penetrates deeply — multiple absorb cycles may be needed."},
+      {material:"Hardwax oil finish",      note:"Mineral spirits safe. Re-apply hardwax oil after treatment to restore protection."},
+      {material:"Polyurethane finish",     note:"Oil sits on or under finish, not in wood. Mineral spirits on cloth, then re-wax or buff."},
+      {material:"Antique / Waxed surface", note:"Cornstarch and soft cloth only. No solvents — strips wax patina. Re-wax after."},
+      {material:"Warranted hardwood floor", note:"Check flooring warranty before any solvent use. Many specify approved products only."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  // ── TANNIN ───────────────────────────────────────────────────────────────
+
+  "tannin:fabric": {
+    title: "TANNIN STAIN ON FABRIC",
+    odds: "high",
+    chemistry: "ALKALINE / COLD WATER",
+    dwell: "5 min",
+    patience: 2,
+    why: "Tannins (coffee, tea, red wine, fruit juice, beer) are plant-based compounds that bond to fabric. They respond to alkaline conditions — baking soda or washing soda raises pH and breaks the tannin bond. Act fast. Tannins oxidize and darken over time, becoming progressively harder to remove.",
+    dwell_curve: [
+      {t:"0 min",  eg:6, note:"Blot immediately, cold water flush"},
+      {t:"5 min",  eg:3, note:"Alkaline agent applied"},
+      {t:"15 min", eg:1, note:"Rinse and assess"}
+    ],
+    steps: [
+      "Blot immediately. Cold water flush from back of fabric.",
+      "Apply <em>alkaline agent</em> — baking soda paste, washing soda solution, or white wine on red wine.",
+      "Dwell 5–15 minutes.",
+      "Rinse cold. Assess.",
+      "For set stains: hydrogen peroxide (test colorfastness first)."
+    ],
+    surfaceNote: "White wine on red wine is not a myth — it works by dilution and mild alkalinity. Club soda works similarly. These are emergency measures when nothing else is available.",
+    ingredients: [
+      {name:"Cold water",            amt:"generous",        note:""},
+      {name:"Baking soda",           amt:"paste",           note:"alkaline agent"},
+      {name:"Hydrogen peroxide 3%",  amt:"for set stains",  note:"test colorfastness first"},
+      {name:"White wine or club soda", amt:"emergency use", note:"dilution method"}
+    ],
+    warnings: [
+      {icon:"🔥", text:"No heat until stain is out — heat oxidizes tannins permanently", level:"danger"},
+      {icon:"🧪", text:"Test hydrogen peroxide on hidden area first — can bleach some fabrics", level:"caution"},
+      {icon:"⏱️", text:"Speed matters more here than any other stain type — oxidation is the enemy", level:"caution"}
+    ],
+    alts: [
+      {name:"Wine Away",  why:"Specifically formulated for tannin stains, honest product"},
+      {name:"OxiClean",   why:"Oxygen bleach — works on tannins, color-safe version available"}
+    ],
+    material_specs: [
+      {material:"Wool / Cashmere",         note:"Cold water blot only. No hydrogen peroxide — bleaches wool. No hot water. Lay flat dry."},
+      {material:"Silk",                    note:"Cold water emergency blot only. Dry clean for best results. Peroxide will damage."},
+      {material:"Upholstery (warranted)",  note:"Check furniture manufacturer warranty. Many require certified cleaning only to maintain coverage."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  // ── DYE / PIGMENT ────────────────────────────────────────────────────────
+
+  "dye:paint": {
+    title: "DYE / MARKER ON PAINTED SURFACE",
+    odds: "med",
+    chemistry: "MILD SOLVENT",
+    dwell: "1 min",
+    patience: 2,
+    why: "Marker dyes are solvent-carried pigments. You need a mild solvent (isopropyl alcohol) to re-liquefy the dye before it fully cures into the paint binder. Act fast — once the dye cross-links with the paint it becomes very difficult to remove without damaging the finish underneath.",
+    dwell_curve: [
+      {t:"0 min", eg:8, note:"Apply IPA to cloth — not to wall"},
+      {t:"1 min", eg:3, note:"Wipe gently, assess"},
+      {t:"3 min", eg:2, note:"Rinse with clean water"}
+    ],
+    steps: [
+      "Apply rubbing alcohol (70% IPA) to a <em>clean cloth</em> — not directly to the wall.",
+      "Dab gently onto the mark. Do not scrub — start light.",
+      "Do not saturate — excess solvent can soften or lift the wall paint underneath.",
+      "Wipe with a clean cloth dampened with water to remove IPA residue.",
+      "Assess. Repeat with light pressure if mark remains."
+    ],
+    surfaceNote: "Latex paint is durable but microscopically porous. Act within the first few minutes for best results. Flat/matte paint is more porous and more vulnerable to scrubbing damage — the IPA may lift paint fibers if over-applied.",
+    ingredients: [
+      {name:"Rubbing alcohol",  amt:"damp cloth",  note:"70% IPA — do not use 91%+ first"},
+      {name:"Clean water",      amt:"for rinse",   note:"removes IPA residue"},
+      {name:"Soft white cloth", amt:"",            note:"microfiber preferred"}
+    ],
+    warnings: [
+      {icon:"🚫", text:"Too much scrubbing removes wall paint — especially flat/matte finishes", level:"danger"},
+      {icon:"💧", text:"Do not apply alcohol directly to wall — dilutes control", level:"caution"},
+      {icon:"🧪", text:"91%+ IPA can dissolve latex paint — use 70% only", level:"caution"}
+    ],
+    alts: [
+      {name:"Magic Eraser",    why:"Micro-abrasive, effective on marker on eggshell or semi-gloss"},
+      {name:"Goo Gone Spray",  why:"Gentle solvent, less aggressive than IPA"}
+    ],
+    material_specs: [
+      {material:"Flat / Matte paint",      note:"Most vulnerable — IPA bleeds paint. Single light dab only. Accept partial result rather than risk stripping finish."},
+      {material:"Eggshell / Satin paint",  note:"Good candidate for IPA treatment. Most common residential finish."},
+      {material:"Semi-gloss / Gloss paint", note:"Most durable — IPA effective. Magic Eraser also safe on these finishes."},
+      {material:"Chalk paint",             note:"No solvents — chalk paint is extremely porous and unsealed versions will dissolve. Water only, extremely gently."}
+    ],
+    env: "LOW IMPACT"
+  },
+
+  // ── RUST / MINERAL ───────────────────────────────────────────────────────
+
+  "rust:metal": {
+    title: "RUST ON METAL",
+    odds: "high",
+    chemistry: "CITRIC ACID CHELATION",
+    dwell: "15 min",
+    patience: 5,
+    why: "Citric acid is a chelating agent — it binds to iron oxide molecules and pulls them off the metal surface without attacking the base metal. Given enough dwell time this requires almost no mechanical effort. The same principle behind expensive commercial rust removers at a fraction of the cost.",
+    dwell_curve: [
+      {t:"0 min",  eg:9, note:"Chemistry not started"},
+      {t:"15 min", eg:4, note:"Light scrub, rinse, assess"},
+      {t:"30 min", eg:2, note:"Wipe and rinse"},
+      {t:"60 min", eg:1, note:"Rinse only for light rust"}
+    ],
+    steps: [
+      "Mix citric acid powder in warm water — 1–2 tbsp per cup.",
+      "<em>Submerge or saturate</em> the rusted surface completely.",
+      "Wait. Patience is the active ingredient.",
+      "Light agitation with steel wool (0000 grade) if needed.",
+      "<em>Rinse immediately and thoroughly</em> — acid reaction must stop.",
+      "Dry completely. Apply oil or wax to prevent flash rust."
+    ],
+    surfaceNote: "Safe on cast iron, carbon steel, antique tools. Avoid on aluminum (acid attacks base metal), chrome plating, and galvanized surfaces. Rinse is critical — acid left on metal causes flash rust within minutes.",
+    ingredients: [
+      {name:"Citric acid powder", amt:"1–2 tbsp/cup", note:"food grade, hardware store"},
+      {name:"Warm water",         amt:"to submerge",  note:""},
+      {name:"Steel wool 0000",    amt:"optional",     note:"only if dwell time short"},
+      {name:"Oil or paste wax",   amt:"thin coat",    note:"after treatment, prevent re-rust"}
+    ],
+    warnings: [
+      {icon:"⚡", text:"Rinse immediately after treatment — acid left on metal causes flash rust", level:"danger"},
+      {icon:"🚫", text:"Do not use on aluminum, chrome, or galvanized — acid attacks base material", level:"danger"},
+      {icon:"🧤", text:"Gloves for extended soak work — citric acid irritates skin over time", level:"caution"},
+      {icon:"🚯", text:"Dispose by evaporation — spread spent solution, let dry, dispose as solid waste", level:"caution"}
+    ],
+    alts: [
+      {name:"Evapo-Rust",   why:"Same chelation chemistry, safer handling, more expensive"},
+      {name:"Naval Jelly",  why:"Phosphoric acid — converts rust, works on irregular surfaces"}
+    ],
+    material_specs: [
+      {material:"Antique / Collectible tools", note:"Consult collector community before treating. Some patina has value. Aggressive cleaning can reduce worth."},
+      {material:"Chrome plating",              note:"Do not use acid — attacks base plating. Use chrome-specific polish only."},
+      {material:"Galvanized steel",            note:"Acid removes zinc coating permanently. Mechanical removal only or professional refinishing."},
+      {material:"Cast iron cookware",          note:"Check manufacturer. Lodge and others have specific seasoning/cleaning protocols. Acid strips seasoning."}
+    ],
+    env: "LOW IMPACT — evaporate to solid for disposal"
+  },
+
+  "rust:stone": {
+    title: "RUST STAIN ON STONE / CONCRETE",
+    odds: "med",
+    chemistry: "OXALIC ACID",
+    dwell: "10 min",
+    patience: 4,
+    why: "Rust stains on porous surfaces like concrete or stone are iron oxide that has soaked into the surface. Oxalic acid (the active ingredient in Bar Keepers Friend) chelates the iron and pulls it out. Porous surfaces hold stain deeper — multiple treatments may be needed.",
+    dwell_curve: [
+      {t:"5 min",  eg:7, note:"Scrub in, rewet, let work"},
+      {t:"10 min", eg:4, note:"Agitate, rinse, assess"},
+      {t:"20 min", eg:2, note:"Deep-set stains, second application"}
+    ],
+    steps: [
+      "Wet the surface with water first.",
+      "Apply oxalic acid solution or paste directly to stain.",
+      "Work into surface with stiff brush.",
+      "Let dwell — rewet if surface dries out.",
+      "Scrub and rinse. <em>Multiple passes</em> better than one heavy scrub.",
+      "Deep stains may need 2–3 treatment cycles."
+    ],
+    surfaceNote: "Test on an inconspicuous area first — some stone (especially marble and limestone) reacts with acid. For those surfaces use a pH-neutral approach only. Concrete and most granite are safe.",
+    ingredients: [
+      {name:"Oxalic acid powder", amt:"paste consistency", note:"hardware store"},
+      {name:"Water",              amt:"to wet surface",   note:""},
+      {name:"Stiff brush",        amt:"",                 note:"not wire on stone"}
+    ],
+    warnings: [
+      {icon:"🪨", text:"Test first on marble, limestone, travertine — acid will etch these surfaces", level:"danger"},
+      {icon:"🧤", text:"Gloves required — oxalic acid is stronger than citric", level:"caution"},
+      {icon:"💨", text:"Work in ventilated area", level:"caution"}
+    ],
+    alts: [
+      {name:"Bar Keepers Friend", why:"Oxalic acid in powder form — honest proven product"},
+      {name:"Iron Out",           why:"Sodium hydrosulfite — works on concrete rust stains"}
+    ],
+    material_specs: [
+      {material:"Marble / Limestone / Travertine", note:"NO ACID — ever. These are calcium carbonate. Acid etches permanently. pH-neutral only. Contact stone fabricator."},
+      {material:"Sealed natural stone",            note:"Check sealer manufacturer spec. Many sealers require pH-neutral cleaners to avoid stripping."},
+      {material:"Polished concrete (warranted)",   note:"Check installer warranty. Some polished concrete coatings are acid-sensitive."}
+    ],
+    env: "MEDIUM — neutralize and dilute before drain disposal"
+  },
+
+  // ── SOLVENT-BASED ────────────────────────────────────────────────────────
+
+  "solvent:fabric": {
+    title: "SOLVENT STAIN ON FABRIC",
+    odds: "med",
+    chemistry: "SURFACTANT / EMULSIFY",
+    dwell: "5 min",
+    patience: 3,
+    why: "Solvent-based stains (latex paint, adhesive, some inks) are already partially dissolved when they land on fabric. The goal is to emulsify the binder before it fully cures. Dish soap is the first tool — it's a surfactant that bridges water and solvent so both can be rinsed out together. Speed is critical: once a solvent stain dries it often bonds permanently.",
+    dwell_curve: [
+      {t:"0 min",  eg:8, note:"Keep wet — do not let it dry"},
+      {t:"5 min",  eg:4, note:"Dish soap applied, gentle work"},
+      {t:"10 min", eg:2, note:"Rinse warm, assess"}
+    ],
+    steps: [
+      "If still wet: do <em>not</em> blot with dry cloth — you will spread it. Scrape off any solid excess.",
+      "Keep the stain wet. Apply concentrated <em>dish soap</em> directly.",
+      "Work in gently from the outside edge inward.",
+      "Rinse with warm water — warm helps emulsify the remaining binder.",
+      "Assess. Repeat before any heat exposure.",
+      "Wash as normal once stain is gone. Do not dry until confirmed clear."
+    ],
+    surfaceNote: "Solvent stains are often permanent if allowed to dry and cure. The entire strategy is keeping them wet and moving until removed. If you find a dried solvent stain, try rewetting with IPA or acetone before dish soap — this re-softens the cured binder.",
+    ingredients: [
+      {name:"Dish soap",    amt:"concentrated, direct", note:"emulsifier / degreaser"},
+      {name:"Warm water",   amt:"generous",             note:"rinse after emulsifying"},
+      {name:"Soft brush",   amt:"optional",             note:"for working into weave"}
+    ],
+    warnings: [
+      {icon:"🔥", text:"Do not use hot water initially — accelerates curing of some resins", level:"caution"},
+      {icon:"♨️", text:"Never put in dryer until confirmed clear — heat permanently bonds binder", level:"danger"},
+      {icon:"🧪", text:"For dried paint: test acetone on hidden area — effective but can dissolve synthetics", level:"caution"},
+      {icon:"⏱️", text:"Speed is everything — every minute of drying narrows your window", level:"danger"}
+    ],
+    alts: [
+      {name:"Goo Gone Fabric",   why:"Specifically formulated for fabric — adhesive and paint-safe"},
+      {name:"Amodex Ink Remover", why:"Solvent-based ink and paint on fabric — honest niche product"}
+    ],
+    material_specs: [
+      {material:"Synthetics (polyester, nylon)", note:"Test acetone first — many synthetics dissolve. Dish soap is safe. Check care label."},
+      {material:"Acetate / Triacetate",          note:"No acetone ever — destroys fiber. Dish soap and warm water only."},
+      {material:"Cotton / Linen",                note:"Most tolerant. Dish soap effective. IPA or acetone safe if dish soap insufficient."},
+      {material:"Wool",                          note:"No solvents — dish soap and cold water only. Professional clean for set paint."}
+    ],
+    env: "MEDIUM"
+  },
+
+  // ── WATER-BASED ──────────────────────────────────────────────────────────
+
+  "water:hardfloor": {
+    title: "WATER-BASED STAIN ON HARD FLOOR",
+    odds: "high",
+    chemistry: "WATER + TIME",
+    dwell: "3 min",
+    patience: 2,
+    why: "Water-based stains — dried juice, candy, food spills, most everyday marks — are water-soluble. They dissolved once, they will dissolve again. Water and patience is almost always sufficient. Most commercial floor cleaners on these stains are unnecessary.",
+    dwell_curve: [
+      {t:"0 min", eg:7, note:"Dry sweep first if solid"},
+      {t:"3 min", eg:2, note:"Water doing the work"},
+      {t:"5 min", eg:1, note:"Wipe off, done"}
+    ],
+    steps: [
+      "If solid (dried candy, food): scrape gently, dry sweep.",
+      "Apply warm water to stain. <em>Let it sit 3–5 minutes.</em>",
+      "Single wipe. Assess what lifted.",
+      "Repeat light passes rather than scrubbing hard once.",
+      "Finish with dry cloth."
+    ],
+    surfaceNote: "Hard candy, dried juice, most food spills are water-soluble. They do not need chemical intervention. Patience replaces product. The biggest mistake is scrubbing immediately — let water do the dissolving first.",
+    ingredients: [
+      {name:"Warm water",       amt:"generous", note:"the underrated cleaner"},
+      {name:"Microfiber cloth", amt:"",         note:"or any clean cloth"},
+      {name:"Dish soap",        amt:"few drops", note:"only if water alone insufficient"}
+    ],
+    warnings: [
+      {icon:"💧", text:"Do not use excess water on wood or laminate floors — causes swelling", level:"caution"},
+      {icon:"🚫", text:"Avoid commercial floor cleaners on simple water-based stains — unnecessary and leaves residue", level:"caution"}
+    ],
+    alts: [
+      {name:"Water",                why:"Seriously. Try water first. Always."},
+      {name:"Method Floor Cleaner", why:"If something beyond water is needed — minimal residue"}
+    ],
+    material_specs: [
+      {material:"Hardwood (warranted)",     note:"Check flooring warranty — most void with excessive water or unapproved cleaners. Bona is commonly approved."},
+      {material:"Luxury Vinyl Plank",       note:"Most LVP is water-resistant but check manufacturer. Avoid abrasives. pH-neutral cleaner recommended."},
+      {material:"Laminate",                 note:"Minimal water only — core swells permanently. Check manufacturer spec. Most prohibit wet mopping entirely."}
+    ],
+    env: "ZERO IMPACT"
+  },
+
+  // ── MOLD / MILDEW ────────────────────────────────────────────────────────
+
+  "mold:grout": {
+    title: "MOLD / MILDEW ON GROUT",
+    odds: "med",
+    chemistry: "HYDROGEN PEROXIDE / OXYGEN",
+    dwell: "15 min",
+    patience: 4,
+    why: "Mold on grout is a living organism embedded in a porous surface. Hydrogen peroxide releases oxygen which kills mold cells and bleaches pigment. It is safer than bleach for most surfaces and does not produce toxic fumes. Bleach kills surface mold but does not penetrate grout — mold returns faster. Peroxide penetrates.",
+    dwell_curve: [
+      {t:"5 min",  eg:7, note:"Scrub in, let penetrate"},
+      {t:"15 min", eg:4, note:"Peroxide working in pores"},
+      {t:"30 min", eg:2, note:"Heavy mold, second application"}
+    ],
+    steps: [
+      "Apply hydrogen peroxide (3%) directly to grout. Do not dilute.",
+      "Let dwell <em>minimum 15 minutes</em> — penetration takes time.",
+      "Scrub with <em>stiff grout brush</em>.",
+      "Rinse. Assess. Repeat if needed.",
+      "For prevention: keep surface dry, improve ventilation."
+    ],
+    surfaceNote: "Grout is porous — surface treatment alone will not prevent recurrence. The mold lives in the pores. Multiple treatments over several days are more effective than one heavy treatment. Address the moisture source or it returns.",
+    ingredients: [
+      {name:"Hydrogen peroxide 3%", amt:"undiluted",           note:"drugstore, cheap"},
+      {name:"Baking soda",          amt:"paste with peroxide", note:"mild abrasive boost"},
+      {name:"Stiff grout brush",    amt:"",                    note:"not wire"}
+    ],
+    warnings: [
+      {icon:"🚫", text:"Do not mix hydrogen peroxide with bleach or vinegar — produces harmful compounds", level:"danger"},
+      {icon:"💨", text:"Ventilate the space — mold spores become airborne when disturbed", level:"caution"},
+      {icon:"😷", text:"Consider a mask when scrubbing heavy mold growth", level:"caution"}
+    ],
+    alts: [
+      {name:"Tilex Mold & Mildew", why:"Bleach-based, works fast on surface, less penetration"},
+      {name:"RMR-86",              why:"Heavy-duty, for severe cases — respect the chemistry"}
+    ],
+    material_specs: [
+      {material:"Colored / Epoxy grout",   note:"Test hydrogen peroxide on hidden area first — can lighten colored grout. Check installer spec."},
+      {material:"Natural stone tile",      note:"No bleach, no acid. pH-neutral antifungal only. Stone fabricator or installer for severe mold."},
+      {material:"Warranted tile install",  note:"Some tile warranties specify approved cleaners. Check documentation before proceeding."}
+    ],
+    env: "LOW IMPACT"
+  }
+
+};
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+
+let selectedStain = null;
+let selectedSurface = null;
+
+function selectStain(el) {
+  document.querySelectorAll('#stain-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  selectedStain = el.dataset.stain;
+  render();
+}
+
+function selectSurface(el) {
+  document.querySelectorAll('#surface-chips .chip').forEach(c => c.classList.remove('surface-active'));
+  el.classList.add('surface-active');
+  selectedSurface = el.dataset.surface;
+  render();
+}
+
+function render() {
+  if (!selectedStain || !selectedSurface) return;
+
+  const key = `${selectedStain}:${selectedSurface}`;
+  const recipe = RECIPES[key];
+
+  const empty = document.getElementById('result-empty');
+  const card  = document.getElementById('result-card');
+
+  if (!recipe) {
+    empty.style.display = 'block';
+    empty.innerHTML = `<div class="big">🔬</div>
+      RECIPE FOR ${STAIN_LABELS[selectedStain]} ON ${SURFACE_LABELS[selectedSurface]}<br><br>
+      <span style="color:var(--accent)">This combination is being added to the library.</span><br>
+      General rule: identify the stain chemistry first,<br>then adjust method for the surface.`;
+    card.classList.remove('visible');
+    return;
+  }
+
+  empty.style.display = 'none';
+  card.classList.add('visible');
+
+  // Header
+  document.getElementById('rc-breadcrumb').textContent =
+    `${STAIN_LABELS[selectedStain]} → ${SURFACE_LABELS[selectedSurface]}`;
+  document.getElementById('rc-title').textContent = recipe.title;
+
+  const oddsEl  = document.getElementById('rc-odds');
+  const oddsMap = {
+    high: {label:'REMOVAL ODDS: HIGH',                    cls:'odds-high'},
+    med:  {label:'REMOVAL ODDS: MODERATE',                cls:'odds-med'},
+    low:  {label:'REMOVAL ODDS: LOW — MANAGE EXPECTATIONS', cls:'odds-low'}
+  };
+  const od = oddsMap[recipe.odds];
+  oddsEl.textContent  = od.label;
+  oddsEl.className    = `rc-odds ${od.cls}`;
+
+  // Stats
+  document.getElementById('stat-chem').textContent  = recipe.chemistry;
+  document.getElementById('stat-dwell').textContent = recipe.dwell;
+
+  const dots = Array.from({length:5}, (_,i) =>
+    `<div class="p-dot${i < recipe.patience ? ' on' : ''}"></div>`).join('');
+  document.getElementById('stat-patience').innerHTML =
+    `<div class="patience-row"><div class="p-dots">${dots}</div></div>`;
+
+  // Why
+  document.getElementById('rc-why').textContent = recipe.why;
+
+  // Dwell curve
+  document.getElementById('rc-dwell').innerHTML = recipe.dwell_curve.map(d => `
+    <div class="dwell-row">
+      <span class="dwell-t">${d.t}</span>
+      <div class="eg-track"><div class="eg-fill" style="width:${d.eg*10}%"></div></div>
+      <span class="eg-n">${d.eg}</span>
+    </div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding-left:63px;margin-top:-4px;margin-bottom:2px;">${d.note}</div>
+  `).join('');
+
+  // Steps
+  document.getElementById('rc-steps').innerHTML = recipe.steps.map((s,i) => `
+    <div class="step">
+      <span class="step-num">${String(i+1).padStart(2,'0')}.</span>
+      <span class="step-text">${s}</span>
+    </div>
+  `).join('');
+
+  // Surface note
+  document.getElementById('rc-surface-note').innerHTML =
+    `<strong>Surface: ${SURFACE_LABELS[selectedSurface]}</strong><br>${recipe.surfaceNote}`;
+
+  // Ingredients
+  document.getElementById('rc-ingredients').innerHTML = recipe.ingredients.map(ing => `
+    <div class="ing-row">
+      <span class="ing-name">${ing.name}</span>
+      <span class="ing-amt">${ing.amt}</span>
+      <span class="ing-note">${ing.note}</span>
+    </div>
+  `).join('');
+
+  // Warnings
+  document.getElementById('rc-warnings').innerHTML = recipe.warnings.map(w => `
+    <div class="warn-row">
+      <span class="warn-icon">${w.icon}</span>
+      <span class="warn-text ${w.level}">${w.text}</span>
+    </div>
+  `).join('');
+
+  // Alts
+  document.getElementById('rc-alts').innerHTML = recipe.alts.map(a => `
+    <div class="alt-row">
+      <span class="alt-name">${a.name}</span>
+      <span class="alt-why">${a.why}</span>
+    </div>
+  `).join('');
+
+  // Material specs
+  const matSection = document.getElementById('mat-spec-section');
+  if (recipe.material_specs && recipe.material_specs.length) {
+    matSection.style.display = 'block';
+    document.getElementById('rc-mat-specs').innerHTML = recipe.material_specs.map(m => `
+      <div class="mat-spec-row">
+        <span class="mat-spec-name">${m.material}</span>
+        <span class="mat-spec-note">${m.note}</span>
+      </div>
+    `).join('');
+  } else {
+    matSection.style.display = 'none';
+  }
+
+  // Footer
+  document.getElementById('rc-footer-id').textContent =
+    `HIL CLEAN · ${selectedStain.toUpperCase()} ON ${selectedSurface.toUpperCase()}`;
+  document.getElementById('rc-env').textContent = `ENV: ${recipe.env}`;
+}
+
+</script>
+</body>
+</html>
