@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL System — Know Where Everything Is. Always.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS ─────────────────────────────────── */
+:root {
+  --green:      #00cc66;
+  --green-dim:  #008844;
+  --green-glow: rgba(0,204,102,0.12);
+  --amber:      #cc8800;
+  --amber-dim:  #885500;
+  --blue:       #4a9eed;
+  --purple:     #8b5cf6;
+  --cyan:       #06b6d4;
+  --red:        #cc3333;
+  --bg:         #080c0a;
+  --bg2:        #0d1210;
+  --bg3:        #111a14;
+  --surface:    #111111;
+  --surface2:   #1a1a1a;
+  --border:     #1e3028;
+  --border2:    #2a2a2a;
+  --text:       #e5ede8;
+  --text-dim:   #6b8a72;
+  --text-mute:  #3a4a3e;
+  --hil-shell-h: 56px;
+  --hil-nav-h:   40px;
+  --font-display:'Orbitron', monospace;
+  --font-mono:   'Space Mono', monospace;
+  --font-ui:     'Barlow Condensed', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ui); font-weight: 300; overflow-x: hidden; }
+
+/* ── GRID TEXTURE ────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,204,102,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,204,102,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ── CORNER MARKS ────────────────────────────── */
+.corner { position: fixed; width: 22px; height: 22px; border-color: var(--green); border-style: solid; opacity: 0.3; z-index: 10; pointer-events: none; }
+.corner-tl { top: 14px; left: 14px; border-width: 2px 0 0 2px; }
+.corner-tr { top: 14px; right: 14px; border-width: 2px 2px 0 0; }
+.corner-bl { bottom: 14px; left: 14px; border-width: 0 0 2px 2px; }
+.corner-br { bottom: 14px; right: 14px; border-width: 0 2px 2px 0; }
+
+/* ── SHELL / NAV ─────────────────────────────── */
+#hil-shell-mount {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: calc(var(--hil-shell-h) + var(--hil-nav-h));
+  z-index: 1000; background: rgba(8,12,10,0.96);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+.shell-top {
+  display: flex; align-items: center; justify-content: space-between;
+  height: var(--hil-shell-h); padding: 0 28px;
+}
+/* Logo mark */
+.hil-logo {
+  display: flex; align-items: center; gap: 14px; text-decoration: none;
+}
+.hil-logomark {
+  width: 40px; height: 40px;
+  border: 2px solid var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 900; font-size: 15px;
+  color: var(--green); letter-spacing: 0.08em;
+  box-shadow: 0 0 16px rgba(0,204,102,0.25), inset 0 0 12px rgba(0,204,102,0.05);
+  position: relative;
+}
+.hil-logomark::before {
+  content: '';
+  position: absolute; inset: 3px;
+  border: 1px solid rgba(0,204,102,0.15);
+}
+.hil-wordmark {
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  color: var(--text); letter-spacing: 0.12em; line-height: 1;
+}
+.hil-wordmark .sub {
+  display: block; font-family: var(--font-mono); font-size: 8px;
+  color: var(--text-dim); letter-spacing: 0.2em; font-weight: 400;
+  margin-top: 2px; text-transform: uppercase;
+}
+.shell-nav-links {
+  display: flex; align-items: center; gap: 4px; list-style: none;
+}
+.shell-nav-links a {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  text-decoration: none; letter-spacing: 0.1em; padding: 5px 12px;
+  border-radius: 3px; transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.shell-nav-links a:hover { color: var(--green); background: var(--green-glow); }
+.shell-nav-links a.cta {
+  border: 1px solid var(--green); color: var(--green);
+  font-family: var(--font-ui); font-weight: 600; font-size: 12px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.shell-nav-links a.cta:hover { background: var(--green-glow); box-shadow: 0 0 12px rgba(0,204,102,0.2); }
+.sub-nav {
+  display: flex; align-items: center; height: var(--hil-nav-h);
+  padding: 0 28px; gap: 4px; border-top: 1px solid var(--border);
+  overflow-x: auto;
+}
+.sub-nav a {
+  font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
+  text-decoration: none; padding: 4px 10px; border-radius: 3px;
+  white-space: nowrap; transition: color 0.15s, background 0.15s;
+}
+.sub-nav a:hover { color: var(--green); background: rgba(0,204,102,0.08); }
+.sub-nav a.active { color: var(--green); border-bottom: 2px solid var(--green); }
+.sub-nav a.lib { }
+.sub-nav a.lib:hover { color: var(--amber); background: rgba(204,136,0,0.08); }
+.sub-nav-sep {
+  width: 1px; height: 18px; background: var(--border2); margin: 0 4px; flex-shrink: 0;
+}
+@media (max-width: 768px) { .shell-nav-links { display: none; } }
+
+/* ── MAIN ────────────────────────────────────── */
+.main {
+  padding-top: calc(var(--hil-shell-h) + var(--hil-nav-h));
+  position: relative; z-index: 1;
+}
+
+/* ── WATERMARKS ──────────────────────────────── */
+.watermarks { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.watermark {
+  position: absolute; font-family: var(--font-mono); font-size: 10px;
+  color: rgba(0,204,102,0.045); white-space: nowrap; letter-spacing: 0.1em;
+}
+
+/* ── HERO ────────────────────────────────────── */
+.hero {
+  min-height: calc(100vh - var(--hil-shell-h) - var(--hil-nav-h));
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 24px 48px;
+  text-align: center;
+  position: relative;
+}
+.hero-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 20px;
+  opacity: 0; animation: fadeUp 0.6s 0.1s forwards;
+}
+.hero-logo-block {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  margin-bottom: 20px;
+  opacity: 0; animation: fadeUp 0.6s 0.2s forwards;
+}
+.hero-logomark {
+  width: 72px; height: 72px;
+  border: 2px solid var(--green);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 900; font-size: 26px;
+  color: var(--green); letter-spacing: 0.1em;
+  box-shadow: 0 0 40px rgba(0,204,102,0.3), inset 0 0 20px rgba(0,204,102,0.06);
+  position: relative; flex-shrink: 0;
+}
+.hero-logomark::before {
+  content: ''; position: absolute; inset: 5px;
+  border: 1px solid rgba(0,204,102,0.2);
+}
+.hero-title {
+  font-family: var(--font-display); font-weight: 900;
+  font-size: clamp(48px, 9vw, 96px);
+  line-height: 0.9; letter-spacing: -0.02em; color: #fff;
+  opacity: 0; animation: fadeUp 0.6s 0.3s forwards;
+}
+.hero-title .accent { color: var(--green); text-shadow: 0 0 40px rgba(0,204,102,0.4); }
+.hero-tagline {
+  font-family: var(--font-mono); font-size: clamp(11px, 1.8vw, 16px);
+  color: var(--green); letter-spacing: 0.2em; text-transform: uppercase;
+  margin-top: 16px; margin-bottom: 16px;
+  opacity: 0; animation: fadeUp 0.6s 0.4s forwards;
+}
+.hero-sub {
+  font-size: 16px; line-height: 1.7; color: rgba(229,237,232,0.65);
+  max-width: 520px; margin: 0 auto 40px;
+  opacity: 0; animation: fadeUp 0.6s 0.5s forwards;
+}
+.hero-sub strong { color: var(--text); font-weight: 500; }
+
+/* ── HERO BUTTONS ────────────────────────────── */
+.hero-btns {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  margin-bottom: 56px;
+  opacity: 0; animation: fadeUp 0.6s 0.6s forwards;
+}
+.btn-hero-primary {
+  background: var(--green); color: #000;
+  font-family: var(--font-ui); font-weight: 700; font-size: 16px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 14px 32px; border: none; cursor: pointer;
+  text-decoration: none; display: inline-block;
+  transition: all 0.2s;
+}
+.btn-hero-primary:hover { background: #fff; box-shadow: 0 0 30px rgba(0,204,102,0.4); transform: translateY(-2px); }
+.btn-hero-secondary {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border2);
+  font-family: var(--font-ui); font-weight: 600; font-size: 16px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 14px 32px; cursor: pointer;
+  text-decoration: none; display: inline-block;
+  transition: all 0.2s;
+}
+.btn-hero-secondary:hover { border-color: var(--green); color: var(--green); transform: translateY(-2px); }
+
+/* ── FOUR-STEP CARDS ─────────────────────────── */
+.steps-grid {
+  max-width: 1160px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 2px;
+  opacity: 0; animation: fadeUp 0.6s 0.7s forwards;
+}
+@media (max-width: 900px)  { .steps-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 540px)  { .steps-grid { grid-template-columns: 1fr; } }
+
+.step-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transition: border-color 0.2s;
+}
+.step-card:hover { border-color: var(--green); }
+.step-card.bridge:hover { border-color: var(--blue); }
+
+.step-top { padding: 28px 22px 0; position: relative; }
+.step-num {
+  font-family: var(--font-display); font-weight: 900; font-size: 52px;
+  color: rgba(0,204,102,0.08); line-height: 1;
+  position: absolute; top: 14px; right: 16px;
+}
+.step-card.bridge .step-num { color: rgba(74,158,237,0.1); }
+.step-icon { font-size: 26px; margin-bottom: 12px; }
+.step-card h3 {
+  font-family: var(--font-ui); font-weight: 700; font-size: 19px;
+  color: #fff; margin-bottom: 10px; letter-spacing: 0.02em; line-height: 1.15;
+}
+.step-body { padding: 0 22px; flex: 1; }
+.step-body p { font-size: 13px; line-height: 1.6; color: var(--text-dim); margin-bottom: 14px; }
+.step-body p strong { color: var(--text); font-weight: 500; }
+
+/* expand panel */
+.step-expand { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.step-expand.open { max-height: 480px; }
+.step-expand-inner {
+  padding: 14px 22px 12px;
+  border-top: 1px solid var(--border); background: var(--bg3);
+}
+.expand-label {
+  font-family: var(--font-mono); font-size: 9px; color: var(--green);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 8px;
+}
+.step-card.bridge .expand-label { color: var(--blue); }
+.prompt-box {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.prompt-text {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--text); line-height: 1.7;
+}
+.copy-prompt-btn {
+  display: block; width: 100%; background: none;
+  border: 1px solid var(--green-dim); color: var(--green);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em;
+  text-transform: uppercase; padding: 8px; cursor: pointer;
+  transition: background 0.15s, color 0.15s; margin-bottom: 6px;
+}
+.copy-prompt-btn:hover, .copy-prompt-btn.copied { background: var(--green); color: #000; }
+.gh-link {
+  display: block; text-align: center; background: none;
+  border: 1px solid var(--border2); color: var(--text-dim);
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em;
+  text-transform: uppercase; padding: 7px; text-decoration: none;
+  transition: border-color 0.15s, color 0.15s; margin-bottom: 10px;
+}
+.gh-link:hover { border-color: var(--green); color: var(--green); }
+.bridge-adapters { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+.adapter {
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 7px 9px; font-size: 11px; color: var(--text);
+  display: flex; align-items: center; gap: 5px;
+}
+.adapter.dim { opacity: 0.4; }
+.adapter .tag {
+  margin-left: auto; font-family: var(--font-mono); font-size: 8px;
+  letter-spacing: 0.08em;
+}
+.adapter .tag.live { color: var(--blue); }
+.adapter .tag.soon { color: var(--text-dim); }
+.step-bottom {
+  padding: 12px 22px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: auto;
+}
+.expand-toggle {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+}
+.step-card.bridge .expand-toggle { color: var(--blue); }
+.expand-arrow { transition: transform 0.25s; display: inline-block; }
+.expand-toggle.open .expand-arrow { transform: rotate(90deg); }
+.step-tag {
+  font-family: var(--font-mono); font-size: 9px; color: var(--green);
+  border: 1px solid var(--green-dim); padding: 2px 6px;
+  letter-spacing: 0.08em; white-space: nowrap;
+}
+.step-card.bridge .step-tag { color: var(--blue); border-color: rgba(74,158,237,0.4); }
+
+/* ── SECTION DIVIDER ─────────────────────────── */
+.section-divider {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--border);
+}
+
+/* ── ACCESS SECTION ──────────────────────────── */
+.access-section {
+  position: relative; z-index: 1;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 72px 24px;
+}
+.section-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  letter-spacing: 0.28em; text-align: center; margin-bottom: 12px;
+}
+.section-title {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(28px, 5vw, 46px); color: #fff;
+  text-align: center; margin-bottom: 48px; line-height: 1.05; letter-spacing: 0.04em;
+}
+.section-title span { color: var(--green); }
+
+/* Three-panel access grid */
+.access-grid {
+  max-width: 1000px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 2px;
+}
+@media (max-width: 720px) { .access-grid { grid-template-columns: 1fr; } }
+
+.access-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  padding: 32px 28px; text-decoration: none; display: block;
+  position: relative; overflow: hidden; transition: all 0.2s;
+}
+.access-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-accent, var(--green));
+  transform: scaleX(0); transform-origin: left; transition: transform 0.3s;
+}
+.access-card:hover::before { transform: scaleX(1); }
+.access-card:hover { border-color: var(--card-accent, var(--green)); transform: translateY(-2px); }
+.access-icon { font-size: 28px; margin-bottom: 14px; }
+.access-label {
+  font-family: var(--font-mono); font-size: 9px;
+  color: var(--card-accent, var(--green)); letter-spacing: 0.2em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.access-card h3 {
+  font-family: var(--font-display); font-weight: 700; font-size: 18px;
+  color: #fff; margin-bottom: 10px; letter-spacing: 0.06em; line-height: 1.15;
+}
+.access-card p { font-size: 13px; line-height: 1.6; color: var(--text-dim); margin-bottom: 20px; }
+.access-card p strong { color: var(--text); font-weight: 500; }
+.access-list {
+  list-style: none; display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px;
+}
+.access-list li {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  display: flex; align-items: center; gap: 7px;
+}
+.access-list .check { color: var(--card-accent, var(--green)); }
+.access-link {
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--card-accent, var(--green)); letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── DATA PATHS (Your Data section) ──────────── */
+.data-section {
+  position: relative; z-index: 1;
+  padding: 72px 24px;
+}
+.path-cards {
+  max-width: 860px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 2px;
+}
+@media (max-width: 680px) { .path-cards { grid-template-columns: 1fr; } }
+.path-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 26px 22px 20px; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.path-card:hover, .path-card.active { border-color: var(--green); background: var(--bg3); }
+.path-eyebrow {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);
+  letter-spacing: 0.2em; margin-bottom: 12px; transition: color 0.2s;
+}
+.path-card.active .path-eyebrow { color: var(--green); }
+.path-card h3 { font-family: var(--font-ui); font-weight: 700; font-size: 20px; color: #fff; margin-bottom: 7px; }
+.path-card p { font-size: 12px; line-height: 1.55; color: var(--text-dim); }
+.path-foot {
+  margin-top: 14px; font-family: var(--font-mono); font-size: 9px;
+  color: var(--text-mute); letter-spacing: 0.15em;
+  display: flex; justify-content: space-between; transition: color 0.2s;
+}
+.path-card.active .path-foot { color: var(--green); }
+.path-arrow { transition: transform 0.25s; display: inline-block; }
+
+.path-panel {
+  display: none; max-width: 860px; margin: 2px auto 0;
+  background: var(--bg3); border: 1px solid var(--green);
+  border-top: none; padding: 28px 28px 24px;
+  animation: fadeUp 0.2s ease;
+}
+.path-panel.open { display: block; }
+.path-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+@media (max-width: 560px) { .path-inner { grid-template-columns: 1fr; } }
+.path-panel-eyebrow {
+  font-family: var(--font-mono); font-size: 9px; color: var(--green);
+  letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px;
+}
+.path-panel p { font-size: 13px; line-height: 1.7; color: var(--text-dim); margin-bottom: 10px; }
+.path-panel p strong { color: var(--text); font-weight: 500; }
+.path-promise {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  border-left: 2px solid var(--green-dim); padding-left: 10px;
+  line-height: 2; margin-top: 14px;
+}
+.feat-list { list-style: none; display: flex; flex-direction: column; gap: 0; }
+.feat-list li {
+  display: flex; gap: 8px; padding: 8px 0;
+  border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text);
+}
+.feat-list li:last-child { border-bottom: none; }
+.feat-check { color: var(--green); }
+.path-cta { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-path {
+  font-family: var(--font-ui); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 9px 22px; cursor: pointer; text-decoration: none;
+  display: inline-block; transition: all 0.15s;
+}
+.btn-path.primary { background: var(--green); color: #000; border: none; }
+.btn-path.primary:hover { background: #fff; }
+.btn-path.secondary {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-path.secondary:hover { border-color: var(--green); color: var(--green); }
+.conv-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; }
+.conv-chip {
+  font-family: var(--font-mono); font-size: 10px;
+  padding: 6px 8px; text-align: center; letter-spacing: 0.06em;
+}
+.conv-chip.live { color: var(--green); border: 1px solid var(--green-dim); }
+.conv-chip.soon { color: var(--text-dim); border: 1px solid var(--border); opacity: 0.5; }
+.offline-list { display: flex; flex-direction: column; gap: 5px; }
+.offline-item {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 8px 10px; border: 1px solid var(--border); color: var(--text);
+}
+.offline-tag { font-size: 9px; color: var(--green); }
+.offline-note {
+  margin-top: 10px; padding: 10px 12px;
+  border: 1px solid var(--border); font-size: 11px;
+  color: var(--text-dim); line-height: 1.55;
+}
+
+/* ── STORY STRIP ─────────────────────────────── */
+.story-strip {
+  position: relative; z-index: 1;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 60px 24px;
+}
+.story-inner {
+  max-width: 860px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+}
+@media (max-width: 680px) { .story-inner { grid-template-columns: 1fr; } }
+.story-text h2 {
+  font-family: var(--font-display); font-weight: 700; font-size: 30px;
+  color: #fff; margin-bottom: 14px; line-height: 1.1; letter-spacing: 0.04em;
+}
+.story-text h2 em { color: var(--amber); font-style: normal; }
+.story-text p { font-size: 15px; line-height: 1.75; color: rgba(229,237,232,0.65); margin-bottom: 10px; }
+.story-text p strong { color: var(--text); font-weight: 500; }
+.ogd-badge {
+  background: var(--bg3); border: 1px solid var(--amber);
+  padding: 20px 22px; font-family: var(--font-mono);
+}
+.ogd-label { font-size: 9px; color: var(--amber); letter-spacing: 0.2em; margin-bottom: 8px; }
+.ogd-name { font-size: 20px; color: #fff; margin-bottom: 4px; }
+.ogd-addr { font-size: 12px; color: var(--amber); margin-bottom: 10px; }
+.ogd-desc { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
+
+/* ── COMMUNITY STRIP ─────────────────────────── */
+.community-strip {
+  position: relative; z-index: 1;
+  padding: 72px 24px 64px;
+}
+.community-grid {
+  max-width: 860px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+}
+@media (max-width: 600px) { .community-grid { grid-template-columns: 1fr; } }
+.community-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 30px 26px; text-decoration: none; display: block; transition: all 0.2s;
+}
+.community-card:hover { border-color: var(--green); transform: translateY(-2px); }
+.community-platform {
+  font-family: var(--font-mono); font-size: 9px; color: var(--text-dim);
+  letter-spacing: 0.2em; margin-bottom: 10px; text-transform: uppercase;
+}
+.community-card h3 {
+  font-family: var(--font-ui); font-weight: 700; font-size: 22px; color: #fff; margin-bottom: 8px;
+}
+.community-card p { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+
+/* ── NEWSLETTER STRIP ────────────────────────── */
+.newsletter-strip {
+  position: relative; z-index: 1;
+  background: var(--bg2); border-top: 1px solid var(--border);
+  padding: 52px 24px; text-align: center;
+}
+.newsletter-eyebrow {
+  font-family: var(--font-mono); font-size: 10px; color: var(--green);
+  letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 12px;
+}
+.newsletter-strip h3 {
+  font-family: var(--font-display); font-weight: 700; font-size: 26px;
+  color: #fff; margin-bottom: 8px; letter-spacing: 0.06em;
+}
+.newsletter-strip p { font-size: 14px; color: var(--text-dim); margin-bottom: 22px; max-width: 440px; margin-left: auto; margin-right: auto; }
+.btn-newsletter {
+  background: var(--green); color: #000;
+  font-family: var(--font-ui); font-weight: 700; font-size: 15px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 12px 32px; border: none; cursor: pointer;
+  text-decoration: none; display: inline-block; transition: all 0.2s;
+}
+.btn-newsletter:hover { background: #fff; }
+
+/* ── FOOTER ──────────────────────────────────── */
+footer {
+  position: relative; z-index: 1;
+  padding: 36px 28px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+}
+.footer-tagline {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--green); letter-spacing: 0.15em;
+}
+.footer-links { display: flex; gap: 22px; }
+.footer-links a {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+  text-decoration: none; letter-spacing: 0.1em; transition: color 0.15s;
+}
+.footer-links a:hover { color: var(--green); }
+
+/* ── ANIMATIONS ──────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+
+<div class="watermarks">
+  <span class="watermark" style="top:8%;left:4%">MH-LR-C-01-1</span>
+  <span class="watermark" style="top:14%;left:58%">TOOL-DRILL-CORDLESS-18V</span>
+  <span class="watermark" style="top:31%;left:78%">GR-WS-S-02-1</span>
+  <span class="watermark" style="top:47%;left:10%">FASTENER-SCREW-WOOD-2IN</span>
+  <span class="watermark" style="top:61%;left:68%">MH-KT-N-03-2</span>
+  <span class="watermark" style="top:74%;left:28%">TOOL-MEASURE-TAPE-25FT</span>
+  <span class="watermark" style="top:86%;left:52%">MH-GR-S-01-1</span>
+  <span class="watermark" style="top:22%;left:38%">KETCHUP-HEINZ-14OZ</span>
+</div>
+
+<!-- ── SHELL ──────────────────────────────────── -->
+<div id="hil-shell-mount">
+  <div class="shell-top">
+    <a class="hil-logo" href="#">
+      <div class="hil-logomark">HIL</div>
+      <div class="hil-wordmark">
+        HIL SYSTEM
+        <span class="sub">Home Inventory Locator</span>
+      </div>
+    </a>
+    <ul class="shell-nav-links">
+      <li><a href="#how">How It Works</a></li>
+      <li><a href="#access">Tools</a></li>
+      <li><a href="#data">Your Data</a></li>
+      <li><a href="#community">Community</a></li>
+      <li><a href="https://hlsystem.org" target="_blank">Open Source</a></li>
+      <li><a href="#access" class="cta">Sign In →</a></li>
+    </ul>
+  </div>
+  <nav class="sub-nav">
+    <a href="hl-vault-cloud.html">Vault</a>
+    <a href="hil-hub.html">Hub</a>
+    <a href="hil-field-tool.html">Field Tool</a>
+    <a href="hil-label-studio.html">Labels &amp; Signs</a>
+    <a href="hil-museum.html">History Wall</a>
+    <a href="hil-family-ledger.html">Family Ledger</a>
+    <a href="hil-exchange.html">Exchange</a>
+    <a href="hil-import-export.html">Import / Export</a>
+    <div class="sub-nav-sep"></div>
+    <a href="hil-library-hub.html" class="lib">Library</a>
+  </nav>
+</div>
+
+<div class="main">
+
+  <!-- ── HERO ──────────────────────────────────── -->
+  <section class="hero" id="top">
+    <p class="hero-eyebrow">Home Inventory Locator System</p>
+    <div class="hero-logo-block">
+      <div class="hero-logomark">HIL</div>
+    </div>
+    <h1 class="hero-title">KNOW WHERE<br><span class="accent">EVERYTHING</span><br>IS. ALWAYS.</h1>
+    <p class="hero-tagline">Nothing is lost. Everything is logic.</p>
+    <p class="hero-sub">
+      Your garage has <strong>23 tape measures</strong>. Your kitchen has <strong>11 bottles of ketchup</strong>. Your signed David Bowie album is <em>somewhere</em>.<br><br>
+      HIL gives every shelf, drawer, and object a permanent address — readable by any AI, printable as a label, searchable forever.
+    </p>
+    <div class="hero-btns">
+      <a href="#how" class="btn-hero-primary">See How It Works →</a>
+      <a href="#access" class="btn-hero-secondary">Open the Tools</a>
+    </div>
+
+    <!-- FOUR STEPS INLINE IN HERO -->
+    <div class="steps-grid" id="how">
+      <!-- STEP 1 -->
+      <div class="step-card">
+        <div class="step-top">
+          <div class="step-num">1</div>
+          <div class="step-icon">📷</div>
+          <h3>Pick a spot.<br>Take a photo.</h3>
+        </div>
+        <div class="step-body">
+          <p>Any shelf. Any room. <strong>Messy is fine.</strong> Point your phone at whatever you want to catalog. Circle hidden items — any markup tool works.</p>
+        </div>
+        <div class="step-expand" id="exp-1">
+          <div class="step-expand-inner">
+            <div class="expand-label">How it works</div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:8px;">You don't need to clean up first. The AI reads the photo as-is. <strong style="color:var(--text)">Any phone works.</strong> iPad + Apple Pencil is great for hidden items — but your finger or markup tool works just as well.</p>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.7;">If a spot doesn't fit the standard format exactly — that's fine. The grammar is built to flex.</p>
+          </div>
+        </div>
+        <div class="step-bottom">
+          <button class="expand-toggle" onclick="toggleStep(1,this)">Learn more <span class="expand-arrow">→</span></button>
+          <span class="step-tag">Any phone</span>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-card">
+        <div class="step-top">
+          <div class="step-num">2</div>
+          <div class="step-icon">🤖</div>
+          <h3>Drop it into<br>any AI.</h3>
+        </div>
+        <div class="step-body">
+          <p>Claude, ChatGPT, or Gemini. <strong>Paste the HIL prompt.</strong> The AI reads your photo and assigns addresses to everything it sees.</p>
+        </div>
+        <div class="step-expand" id="exp-2">
+          <div class="step-expand-inner">
+            <div class="expand-label">HIL Starter Prompt</div>
+            <div class="prompt-box">
+              <div class="prompt-text">"Hey. Before we do anything else — one question: Is there a space in your life where you can never find what you're looking for? A garage. A workshop. A storage room. A junk drawer that ate your house. Tell me about it. Because I'm about to show you something that might actually fix it."</div>
+            </div>
+            <button class="copy-prompt-btn" id="copy-prompt-btn" onclick="copyPrompt()">Copy Full Prompt →</button>
+            <a class="gh-link" href="https://github.com/Dvo77/spatial-vector-grammar/blob/main/prompts/HL_Prompt_Onboarding_v1.md" target="_blank">View on GitHub →</a>
+          </div>
+        </div>
+        <div class="step-bottom">
+          <button class="expand-toggle" onclick="toggleStep(2,this)">Get the prompt <span class="expand-arrow">→</span></button>
+          <span class="step-tag">No new account</span>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-card">
+        <div class="step-top">
+          <div class="step-num">3</div>
+          <div class="step-icon">📍</div>
+          <h3>You own a<br>record. Forever.</h3>
+        </div>
+        <div class="step-body">
+          <p>Your inventory lives in your vault. <strong>Search it. Ask any AI where something is. Export it anytime.</strong> It's yours — not locked to any platform.</p>
+        </div>
+        <div class="step-expand" id="exp-3">
+          <div class="step-expand-inner">
+            <div class="expand-label">What you get</div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:8px;">Every HIL address you generate is <strong style="color:var(--text)">yours to keep.</strong> Export as CSV, JSON, or plain text. Feed it to any AI: "Where did I put the router bits?"</p>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.7;">Connect tools for live search, pricing, and insurance export.</p>
+          </div>
+        </div>
+        <div class="step-bottom">
+          <button class="expand-toggle" onclick="toggleStep(3,this)">Learn more <span class="expand-arrow">→</span></button>
+          <span class="step-tag">Your data</span>
+        </div>
+      </div>
+
+      <!-- STEP 4 — BRIDGE -->
+      <div class="step-card bridge">
+        <div class="step-top">
+          <div class="step-num">4</div>
+          <div class="step-icon">⇄</div>
+          <h3>Already have<br>your data?</h3>
+        </div>
+        <div class="step-body">
+          <p>Drop a CSV from your existing inventory app. <strong>Every item gets an HIL address instantly.</strong> Works both directions.</p>
+          <div class="bridge-adapters">
+            <div class="adapter">📦 HomeBox <span class="tag live">LIVE</span></div>
+            <div class="adapter dim">📋 Sortly <span class="tag soon">SOON</span></div>
+            <div class="adapter dim">🛒 Grocy <span class="tag soon">SOON</span></div>
+            <div class="adapter dim">🏷 Snipe-IT <span class="tag soon">SOON</span></div>
+          </div>
+        </div>
+        <div class="step-expand" id="exp-4">
+          <div class="step-expand-inner">
+            <div class="expand-label">How the Bridge works</div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.7;margin-bottom:10px;">Export your inventory from any supported app as CSV. Drop it into Import/Export — every row gets an HIL address. <strong style="color:var(--text)">Works both directions.</strong></p>
+            <a class="gh-link" href="hil-import-export.html" style="border-color:rgba(74,158,237,0.4);color:var(--blue)">Open Import / Export →</a>
+          </div>
+        </div>
+        <div class="step-bottom">
+          <button class="expand-toggle" onclick="toggleStep(4,this)">See adapters <span class="expand-arrow">→</span></button>
+          <span class="step-tag">No account needed</span>
+        </div>
+      </div>
+    </div><!-- /steps-grid -->
+  </section>
+
+  <!-- ── ACCESS SECTION ─────────────────────────── -->
+  <section class="access-section" id="access">
+    <p class="section-eyebrow">— Access —</p>
+    <h2 class="section-title">Tools. Library.<br><span>One System.</span></h2>
+    <div class="access-grid">
+
+      <!-- TOOL BELT -->
+      <a class="access-card" href="hil-hub.html" style="--card-accent:var(--green)">
+        <div class="access-icon">⚙️</div>
+        <div class="access-label">Tool Belt — 8 Tools</div>
+        <h3>The Tools</h3>
+        <p>Everything you need to catalog, label, track, trade, and preserve your physical world.</p>
+        <ul class="access-list">
+          <li><span class="check">→</span> Vault — your permanent inventory</li>
+          <li><span class="check">→</span> Address Hub — build HIL addresses</li>
+          <li><span class="check">→</span> Field Tool — on your feet, on your phone</li>
+          <li><span class="check">→</span> Labels &amp; Signs — print your space</li>
+          <li><span class="check">→</span> History Wall — provenance records</li>
+          <li><span class="check">→</span> Family Ledger — kids + financial layer</li>
+          <li><span class="check">→</span> Exchange — trade, donate, sell</li>
+          <li><span class="check">→</span> Import / Export — move your data</li>
+        </ul>
+        <div class="access-link">Open Tools →</div>
+      </a>
+
+      <!-- LIBRARY -->
+      <a class="access-card" href="hil-library-hub.html" style="--card-accent:var(--amber)">
+        <div class="access-icon">📚</div>
+        <div class="access-label">Library — 6 Knowledge Bases</div>
+        <h3>The Library</h3>
+        <p>The principles behind the system. In 1882 Ellen Swallow Richards argued a household runs on principles, not products. The Library finishes her argument.</p>
+        <ul class="access-list">
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Clean — 10 ingredients, 40 products</li>
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Organize — 28 standard kits</li>
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Restore — stop replacing, start restoring</li>
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Supply — own less, own better</li>
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Build — capability analyzer</li>
+          <li><span class="check" style="color:var(--amber)">→</span> HIL Maintain — scheduled care</li>
+        </ul>
+        <div class="access-link" style="color:var(--amber)">Open Library →</div>
+      </a>
+
+      <!-- OPEN SOURCE -->
+      <a class="access-card" href="https://hlsystem.org" target="_blank" style="--card-accent:var(--blue)">
+        <div class="access-icon">⬡</div>
+        <div class="access-label">Open Source — hlsystem.org</div>
+        <h3>The Grammar</h3>
+        <p>HIL is built on the HL System — an open spatial grammar anyone can implement. The spec, the developer docs, the AI prompts. Free forever.</p>
+        <ul class="access-list">
+          <li><span class="check" style="color:var(--blue)">→</span> Full grammar specification</li>
+          <li><span class="check" style="color:var(--blue)">→</span> AI onboarding prompts</li>
+          <li><span class="check" style="color:var(--blue)">→</span> Developer documentation</li>
+          <li><span class="check" style="color:var(--blue)">→</span> GitHub repository</li>
+          <li><span class="check" style="color:var(--blue)">→</span> Community contributions</li>
+        </ul>
+        <div class="access-link" style="color:var(--blue)">Visit hlsystem.org →</div>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ── STORY ───────────────────────────────────── -->
+  <div class="section-divider"></div>
+  <section class="story-strip">
+    <div class="story-inner">
+      <div class="story-text">
+        <h2>It started with<br><em>Dr. Piper.</em></h2>
+        <p>At 17, he stood up at graduation in Sharon, Wisconsin and said men should never sell their influence to the highest bidder. Then he spent his life as a country vet who took chickens and handshakes instead of money.</p>
+        <p>He collected everything. Benjamin Franklin stoves. Spool beds. A lifetime of things that mattered.</p>
+        <p>When he died, the family held an auction. They walked away with $1,200.</p>
+        <p>The things didn't have stories attached. So they sold for nothing.</p>
+        <p><strong>HIL exists so that doesn't happen to your family's stuff.</strong></p>
+      </div>
+      <div class="ogd-badge">
+        <div class="ogd-label">Provenance Record — Active</div>
+        <div class="ogd-name">Old Granddad Cabinet</div>
+        <div class="ogd-addr">OLG-1 — Shop / North Wall / Cabinet 1</div>
+        <div class="ogd-desc">Army-green metal hardware cabinet. Dr. Harry Benjamin Piper, veterinarian, Sharon WI. A man who took food instead of fees. A lifetime of collected things. Passed to family. Status: preserved.<br><br><span style="color:var(--green)">// This object has a story. Now it has an address.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── YOUR DATA ───────────────────────────────── -->
+  <section class="data-section" id="data">
+    <p class="section-eyebrow">— Your Data —</p>
+    <h2 class="section-title">Your Data.<br><span>Your Rules.</span></h2>
+    <p style="text-align:center;color:var(--text-dim);font-size:15px;margin-bottom:40px;max-width:480px;margin-left:auto;margin-right:auto;">We will never sell your data. No ads. No scanning. Pick how you want to work.</p>
+
+    <div class="path-cards">
+      <div class="path-card" id="pc-1" onclick="selectPath(1)">
+        <div class="path-eyebrow">Path 01 — In</div>
+        <h3>We Host It</h3>
+        <p>Sign in with email, Google, or GitHub. Full platform. Export whenever you want.</p>
+        <div class="path-foot"><span>Learn More</span><span class="path-arrow" id="pa-1">→</span></div>
+      </div>
+      <div class="path-card" id="pc-2" onclick="selectPath(2)">
+        <div class="path-eyebrow">Path 02 — Out</div>
+        <h3>You Export It</h3>
+        <p>Take everything. Convert to any format. Walk out clean.</p>
+        <div class="path-foot"><span>Learn More</span><span class="path-arrow" id="pa-2">→</span></div>
+      </div>
+      <div class="path-card" id="pc-3" onclick="selectPath(3)">
+        <div class="path-eyebrow">Path 03 — Ghost</div>
+        <h3>We Never Knew</h3>
+        <p>Use the tools locally. Your data never touches our servers.</p>
+        <div class="path-foot"><span>Learn More</span><span class="path-arrow" id="pa-3">→</span></div>
+      </div>
+    </div>
+
+    <!-- PATH 1 -->
+    <div class="path-panel" id="pp-1">
+      <div class="path-inner">
+        <div>
+          <div class="path-panel-eyebrow">// Come in. Everything's here.</div>
+          <p>Sign in with email, Google, or GitHub. Your inventory syncs across devices. Export your entire dataset anytime — one button, no friction.</p>
+          <div class="path-promise">✦ We will never sell your data<br>✦ We will never scan it for ads<br>✦ Export anytime, no lock-in</div>
+          <div class="path-cta">
+            <a href="hl-vault-cloud.html" class="btn-path primary">Open Vault →</a>
+          </div>
+        </div>
+        <div>
+          <div class="path-panel-eyebrow">// Included with account</div>
+          <ul class="feat-list">
+            <li><span class="feat-check">✓</span> HL Vault — full cloud inventory</li>
+            <li><span class="feat-check">✓</span> HIL Exchange — barter, trade, sell</li>
+            <li><span class="feat-check">✓</span> History Wall — provenance tracking</li>
+            <li><span class="feat-check">✓</span> Family Ledger</li>
+            <li><span class="feat-check">✓</span> All label + sign tools</li>
+            <li><span class="feat-check">✓</span> Import / Export</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATH 2 -->
+    <div class="path-panel" id="pp-2">
+      <div class="path-inner">
+        <div>
+          <div class="path-panel-eyebrow">// Take everything. Leave nothing behind.</div>
+          <p>Your HIL inventory belongs to you. Move to your own server, NAS, or another platform — we package your entire dataset and hand it over.</p>
+          <p>No vendor lock-in. No hostage data. Ever.</p>
+          <div class="path-cta">
+            <a href="hil-import-export.html" class="btn-path primary">Import / Export Tool →</a>
+            <a href="https://reddit.com/r/hilsystem" target="_blank" class="btn-path secondary">Self-Host Guide →</a>
+          </div>
+        </div>
+        <div>
+          <div class="path-panel-eyebrow">// Available converters</div>
+          <div class="conv-grid">
+            <div class="conv-chip live">JSON</div>
+            <div class="conv-chip live">CSV</div>
+            <div class="conv-chip live">SQL</div>
+            <div class="conv-chip live">XLSX</div>
+            <div class="conv-chip soon">Sortly</div>
+            <div class="conv-chip soon">Notion</div>
+          </div>
+          <p style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:10px;letter-spacing:0.08em;">More converters added as platform grows.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATH 3 -->
+    <div class="path-panel" id="pp-3">
+      <div class="path-inner">
+        <div>
+          <div class="path-panel-eyebrow">// Use everything. Leave no trace.</div>
+          <p>Several tools run entirely in your browser with no server connection. Open a tool, do the work, save locally. We never knew you were here.</p>
+          <div class="path-promise">✦ No account required for some tools<br>✦ Nothing sent to our servers<br>✦ Save locally in your format</div>
+          <div class="path-cta">
+            <a href="hil-label-studio.html" class="btn-path primary">Open Labels &amp; Signs →</a>
+          </div>
+        </div>
+        <div>
+          <div class="path-panel-eyebrow">// Works without an account</div>
+          <div class="offline-list">
+            <div class="offline-item">Labels &amp; Signs <span class="offline-tag">LOCAL</span></div>
+            <div class="offline-item">Address Hub <span class="offline-tag">LOCAL</span></div>
+            <div class="offline-item">Room Code Generator <span class="offline-tag">LOCAL</span></div>
+            <div class="offline-item">HL Vault <span style="font-size:9px;color:var(--text-dim)">LOCAL SAVE</span></div>
+          </div>
+          <div class="offline-note">Exchange, History Wall, and Family Ledger require sign-in — those features depend on shared identity and records.</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:28px;font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:0.15em;">SELF-HOST CONTEST — <span style="color:var(--amber)">COMING SOON</span> — <a href="https://reddit.com/r/hilsystem" style="color:var(--green)">FOLLOW ON REDDIT →</a></p>
+  </section>
+
+  <!-- ── COMMUNITY ───────────────────────────────── -->
+  <div class="section-divider"></div>
+  <section class="community-strip" id="community">
+    <p class="section-eyebrow">— Community —</p>
+    <h2 class="section-title" style="margin-bottom:36px;">Show Your Setup.<br><span>Share What Works.</span></h2>
+    <div class="community-grid">
+      <a class="community-card" href="https://reddit.com/r/hilsystem" target="_blank">
+        <div class="community-platform">Reddit</div>
+        <h3>r/hilsystem</h3>
+        <p>Post your organized spaces. Share workflow tips. Ask questions. The community that improves the system.</p>
+      </a>
+      <a class="community-card" href="https://hlsystem.org" target="_blank">
+        <div class="community-platform">Open Source</div>
+        <h3>hlsystem.org</h3>
+        <p>The grammar spec. The developer docs. The open standard HIL is built on.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- ── NEWSLETTER ──────────────────────────────── -->
+  <div class="newsletter-strip">
+    <div class="newsletter-eyebrow">— The Index —</div>
+    <h3>The HIL Newsletter.</h3>
+    <p>"Everything has a place. Everything can be found. Everything can be learned."</p>
+    <a href="https://newsletter.hilsystem.com/subscribe" target="_blank" class="btn-newsletter">Subscribe Free →</a>
+  </div>
+
+  <!-- ── FOOTER ──────────────────────────────────── -->
+  <footer>
+    <div class="footer-tagline">NOTHING IS LOST. EVERYTHING IS LOGIC.</div>
+    <div class="footer-links">
+      <a href="https://hlsystem.org" target="_blank">Open Source</a>
+      <a href="https://reddit.com/r/hilsystem" target="_blank">Reddit</a>
+      <a href="https://github.com/Dvo77/spatial-vector-grammar" target="_blank">GitHub</a>
+      <a href="mailto:dvo77@hilsystem.com">Contact</a>
+    </div>
+  </footer>
+
+</div><!-- /main -->
+
+<script>
+/* ── ONBOARDING PROMPT ───────────────────────── */
+const HIL_PROMPT = `You are an onboarding guide for the HL System — a free, open-source spatial grammar that helps people organize any physical space so that humans and AI can both understand it.
+
+HOW TO START — begin with this, word for word:
+"Hey. Before we do anything else — one question: Is there a space in your life where you can never find what you're looking for? A garage. A workshop. A storage room. A junk drawer that ate your house. Tell me about it. Even one sentence. Because I'm about to show you something that might actually fix it — and it starts with one piece of tape and a marker."
+
+Then wait. Let them answer. React to what they say specifically. Make it theirs.
+
+THE GRAMMAR: Format: STRUCT-ZONE-WALL-POS-LEVEL
+Example: MH-KT-N-03-2 = Main House, Kitchen, North wall, 3rd unit, mid-level shelf.
+
+ITEM NAMING — NOUN-FIRST: TOOL, FASTENER, MATERIAL, CONSUMABLE, COMPONENT.
+Example: FASTENER-SCREW-WOOD-PHILLIPS-2IN
+
+CORE BELIEF: "Nothing is lost. Everything is logic."`;
+
+function copyPrompt() {
+  navigator.clipboard.writeText(HIL_PROMPT).then(() => {
+    const btn = document.getElementById('copy-prompt-btn');
+    btn.textContent = 'Copied ✓'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy Full Prompt →'; btn.classList.remove('copied'); }, 2500);
+  });
+}
+
+/* ── STEP EXPAND ─────────────────────────────── */
+function toggleStep(n, btn) {
+  const panel = document.getElementById('exp-' + n);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.step-expand').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.expand-toggle').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); btn.classList.add('open'); }
+}
+
+/* ── DATA PATHS ──────────────────────────────── */
+let activePath = null;
+function selectPath(n) {
+  if (activePath === n) {
+    document.getElementById('pp-'+n).classList.remove('open');
+    document.getElementById('pc-'+n).classList.remove('active');
+    document.getElementById('pa-'+n).style.transform = '';
+    activePath = null; return;
+  }
+  [1,2,3].forEach(i => {
+    document.getElementById('pp-'+i).classList.remove('open');
+    document.getElementById('pc-'+i).classList.remove('active');
+    document.getElementById('pa-'+i).style.transform = '';
+  });
+  document.getElementById('pc-'+n).classList.add('active');
+  document.getElementById('pp-'+n).classList.add('open');
+  document.getElementById('pa-'+n).style.transform = 'rotate(90deg)';
+  activePath = n;
+  document.getElementById('pp-'+n).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ── SHELL LOADER ────────────────────────────── */
+if (localStorage && !localStorage.getItem('hl_cloud_api_url')) {
+  localStorage.setItem('hl_cloud_api_url', 'https://hil-vault-00001-dvc.us-central1.run.app');
+}
+if (typeof window.hilShellInit === 'function') {
+  window.hilShellInit({ toolId: 'homepage', requireAuth: false });
+} else {
+  const s = document.createElement('script'); s.src = 'hil-shell.js';
+  s.onload = () => { if (typeof window.hilShellInit === 'function') window.hilShellInit({ toolId: 'homepage', requireAuth: false }); };
+  document.head.appendChild(s);
+}
+</script>
+</body>
+</html>
