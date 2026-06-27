@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Hub — Address Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── DESIGN TOKENS ─────────────────────────────────────── */
+:root {
+  --green:     #00cc66;
+  --green-dim: #008844;
+  --amber:     #cc8800;
+  --amber-dim: #885500;
+  --red:       #cc3333;
+  --bg:        #0a0a0a;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --surface3:  #222222;
+  --border:    #2a2a2a;
+  --border2:   #333333;
+  --text:      #e8e8e8;
+  --text-dim:  #888888;
+  --text-mute: #555555;
+
+  --hil-shell-h: 56px;
+  --hil-nav-h:   40px;
+
+  --font-display: 'Orbitron', monospace;
+  --font-mono:    'Space Mono', monospace;
+  --font-ui:      'Barlow Condensed', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  min-height: 100vh;
+}
+
+/* ── SHELL PLACEHOLDER (replaced by hil-shell.js) ──────── */
+#hil-shell-mount {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: calc(var(--hil-shell-h) + var(--hil-nav-h));
+  z-index: 1000;
+  background: #050505;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Fallback header shown before shell loads */
+.shell-fallback {
+  display: flex;
+  align-items: center;
+  height: var(--hil-shell-h);
+  padding: 0 20px;
+  gap: 12px;
+}
+.shell-fallback .brand {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.12em;
+}
+.shell-fallback .sep { color: var(--text-mute); }
+.shell-fallback .page-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.shell-nav {
+  display: flex;
+  align-items: center;
+  height: var(--hil-nav-h);
+  padding: 0 20px;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  overflow-x: auto;
+}
+.shell-nav a {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+.shell-nav a:hover { color: var(--green); background: rgba(0,204,102,0.08); }
+.shell-nav a.active { color: var(--green); border-bottom: 2px solid var(--green); }
+
+/* ── MAIN LAYOUT ────────────────────────────────────────── */
+.main-content {
+  padding-top: calc(var(--hil-shell-h) + var(--hil-nav-h) + 24px);
+  padding-bottom: 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* ── PAGE HEADER ─────────────────────────────────────────── */
+.page-header {
+  margin-bottom: 32px;
+}
+.page-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--green);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.page-title-main {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
+.page-title-main span { color: var(--green); }
+.page-subtitle {
+  margin-top: 8px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-dim);
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+/* ── GRID LAYOUT ─────────────────────────────────────────── */
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .hub-grid { grid-template-columns: 1fr; }
+}
+
+/* ── PANEL / CARD ────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.panel-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.panel-subtitle {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+}
+.panel-body { padding: 16px; }
+
+/* ── FORM ELEMENTS ───────────────────────────────────────── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.form-row.single { grid-template-columns: 1fr; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.field label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.field label .req { color: var(--green); }
+.field label .opt { color: var(--text-mute); font-weight: 400; }
+
+input[type="text"], input[type="number"], select, textarea {
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(0,204,102,0.12);
+}
+select option { background: var(--surface3); }
+textarea { resize: vertical; min-height: 70px; }
+
+input.code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 14px;
+  font-weight: 700;
+}
+input::placeholder { color: var(--text-mute); }
+
+/* ── ADDRESS PREVIEW ─────────────────────────────────────── */
+.address-display {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.address-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.address-code {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.16em;
+  word-break: break-all;
+  line-height: 1.3;
+}
+.address-code .seg { color: var(--text-dim); font-weight: 400; }
+.address-code.has-value .seg { color: var(--text-mute); }
+.address-parts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.address-part {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.part-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 3px 8px;
+  min-width: 40px;
+  text-align: center;
+}
+.part-value.filled { border-color: var(--green-dim); color: var(--green); }
+.part-value.empty { color: var(--text-mute); }
+.part-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.address-sep {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--text-mute);
+  align-self: center;
+  padding-top: 14px;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.copy-btn:hover { border-color: var(--green); color: var(--green); }
+.copy-btn.copied { border-color: var(--green); color: var(--green); background: rgba(0,204,102,0.1); }
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--green);
+  color: #000;
+}
+.btn-primary:hover { background: #00ff80; }
+.btn-primary:disabled { background: var(--green-dim); color: #333; cursor: not-allowed; opacity: 0.6; }
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text-dim);
+}
+.btn-secondary:hover { border-color: var(--green); color: var(--green); }
+
+.btn-amber {
+  background: var(--amber);
+  color: #000;
+}
+.btn-amber:hover { background: #ffaa00; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+}
+.btn-ghost:hover { background: rgba(0,204,102,0.1); }
+
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.btn-full { width: 100%; }
+
+/* ── ZONE CODE REFERENCE ─────────────────────────────────── */
+.zone-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+.zone-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.zone-chip:hover {
+  border-color: var(--green-dim);
+  background: rgba(0,204,102,0.06);
+}
+.zone-chip.selected {
+  border-color: var(--green);
+  background: rgba(0,204,102,0.12);
+}
+.zone-code {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 2px;
+}
+.zone-name {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* ── HA OUTPUT ───────────────────────────────────────────── */
+.ha-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.ha-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.ha-block-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.ha-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #7dd3fc;
+  padding: 12px;
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.7;
+}
+.ha-code .key   { color: #f472b6; }
+.ha-code .val   { color: #86efac; }
+.ha-code .cmt   { color: #555; }
+.ha-code .addr  { color: var(--green); font-weight: 700; }
+
+/* ── STATUS / TOAST ──────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin-top: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.status-bar.show { opacity: 1; }
+.status-bar.ok   { background: rgba(0,204,102,0.1); border: 1px solid var(--green-dim); color: var(--green); }
+.status-bar.err  { background: rgba(204,51,51,0.1); border: 1px solid var(--red); color: #ff6666; }
+.status-bar.info { background: rgba(204,136,0,0.1); border: 1px solid var(--amber-dim); color: var(--amber); }
+
+/* ── QUICK LINKS ─────────────────────────────────────────── */
+.quick-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.quick-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.quick-link:hover { border-color: var(--green-dim); color: var(--green); background: rgba(0,204,102,0.06); }
+.quick-link .ql-icon { font-size: 18px; }
+.quick-link .ql-arrow { margin-left: auto; color: var(--text-mute); font-size: 12px; }
+.quick-link .ql-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  background: var(--green-dim);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.quick-link .ql-badge.amber { background: var(--amber-dim); }
+
+/* ── GRAMMAR REFERENCE ───────────────────────────────────── */
+.grammar-row {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.grammar-row:last-child { border-bottom: none; }
+.grammar-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--amber);
+  padding: 8px 10px;
+  background: var(--surface2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+}
+.grammar-desc {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.grammar-ex {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* ── VAULT STATUS ────────────────────────────────────────── */
+.vault-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.vault-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  flex-shrink: 0;
+}
+.vault-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.vault-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ── DIVIDER ─────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+/* ── SECTION LABEL ───────────────────────────────────────── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 8px;
+}
+
+/* ── TOOLTIP-STYLE HINT ──────────────────────────────────── */
+.hint {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* ── SCROLLBAR ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+</style>
+</head>
+<body>
+
+<!-- SHELL MOUNT -->
+<div id="hil-shell-mount">
+  <div class="shell-fallback">
+    <span class="brand">HIL</span>
+    <span class="sep">◆</span>
+    <span class="page-title">ADDRESS HUB</span>
+  </div>
+  <nav class="shell-nav">
+    <a href="hl-vault-cloud.html">Vault</a>
+    <a href="hil-hub.html" class="active">Hub</a>
+    <a href="hil-field-tool.html">Field Tool</a>
+    <a href="hil-label-studio.html">Labels &amp; Signs</a>
+    <a href="hil-museum.html">History Wall</a>
+    <a href="hil-family-ledger.html">Family Ledger</a>
+    <a href="hil-exchange.html">Exchange</a>
+  </nav>
+</div>
+
+<!-- MAIN -->
+<div class="main-content">
+
+  <div class="page-header">
+    <div class="page-eyebrow">HIL System ◆ Tool 02</div>
+    <h1 class="page-title-main">Address <span>Hub</span></h1>
+    <p class="page-subtitle">Build spatial addresses. Generate zone codes. Export to Home Assistant. Save locations to Vault.</p>
+  </div>
+
+  <div class="hub-grid">
+
+    <!-- ══ LEFT COLUMN — BUILDER ══════════════════════════════ -->
+    <div class="left-col">
+
+      <!-- ADDRESS BUILDER -->
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-header">
+          <span class="panel-icon">📍</span>
+          <span class="panel-title">Address Builder</span>
+          <span class="panel-subtitle">HL Grammar v2.1</span>
+        </div>
+        <div class="panel-body">
+
+          <!-- LIVE PREVIEW -->
+          <div class="address-display" id="addr-display">
+            <div class="address-label">Generated Address</div>
+            <div class="address-code" id="addr-full">
+              <span class="seg">??</span>-<span class="seg">??</span>-<span class="seg">?</span>-<span class="seg">??</span>-<span class="seg">?</span>
+            </div>
+            <div class="address-parts">
+              <div class="address-part">
+                <div class="part-value empty" id="part-struct">??</div>
+                <div class="part-label">Structure</div>
+              </div>
+              <div class="address-sep">-</div>
+              <div class="address-part">
+                <div class="part-value empty" id="part-zone">??</div>
+                <div class="part-label">Zone</div>
+              </div>
+              <div class="address-sep">-</div>
+              <div class="address-part">
+                <div class="part-value empty" id="part-wall">?</div>
+                <div class="part-label">Wall</div>
+              </div>
+              <div class="address-sep">-</div>
+              <div class="address-part">
+                <div class="part-value empty" id="part-pos">??</div>
+                <div class="part-label">Position</div>
+              </div>
+              <div class="address-sep">-</div>
+              <div class="address-part">
+                <div class="part-value empty" id="part-level">?</div>
+                <div class="part-label">Level</div>
+              </div>
+            </div>
+            <button class="copy-btn" id="copy-addr-btn" onclick="copyAddress()">COPY</button>
+          </div>
+
+          <!-- STRUCTURE -->
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="field">
+              <label>Structure <span class="req">*</span></label>
+              <select id="f-struct" onchange="updateAddress()">
+                <option value="">— select —</option>
+                <option value="MH">MH — Main House</option>
+                <option value="BR">BR — Barn</option>
+                <option value="SH">SH — Shop</option>
+                <option value="GR">GR — Garage</option>
+                <option value="GS">GS — Guest Structure</option>
+                <option value="SD">SD — Shed</option>
+                <option value="GB">GB — Greenhouse / Barn</option>
+                <option value="HH">HH — Hallowmoon Homestead</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Custom Structure Code <span class="opt">(override)</span></label>
+              <input type="text" id="f-struct-custom" class="code-input" maxlength="4"
+                placeholder="e.g. DC" oninput="updateAddress()">
+            </div>
+          </div>
+
+          <!-- ZONE -->
+          <div class="section-label">Zone</div>
+          <div class="form-row">
+            <div class="field">
+              <label>Zone Code <span class="req">*</span></label>
+              <input type="text" id="f-zone" class="code-input" maxlength="3"
+                placeholder="e.g. KT" oninput="this.value=this.value.toUpperCase();updateAddress()">
+              <div class="hint">2–3 chars · click zone below to fill</div>
+            </div>
+            <div class="field">
+              <label>Zone Name <span class="opt">(label only)</span></label>
+              <input type="text" id="f-zone-name" placeholder="e.g. Kitchen" oninput="updateAddress()">
+            </div>
+          </div>
+
+          <!-- WALL / POSITION / LEVEL -->
+          <div class="form-row triple">
+            <div class="field">
+              <label>Wall <span class="req">*</span></label>
+              <select id="f-wall" onchange="updateAddress()">
+                <option value="">—</option>
+                <option value="N">N — North</option>
+                <option value="S">S — South</option>
+                <option value="E">E — East</option>
+                <option value="W">W — West</option>
+                <option value="C">C — Center/Island</option>
+                <option value="F">F — Floor</option>
+                <option value="L">L — Ceiling</option>
+                <option value="X">X — Exterior</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Position <span class="req">*</span></label>
+              <input type="text" id="f-pos" class="code-input" maxlength="2"
+                placeholder="01" oninput="updateAddress()">
+              <div class="hint">01–99 L-to-R</div>
+            </div>
+            <div class="field">
+              <label>Level <span class="req">*</span></label>
+              <select id="f-level" onchange="updateAddress()">
+                <option value="">—</option>
+                <option value="1">1 — Floor level</option>
+                <option value="2">2 — Mid</option>
+                <option value="3">3 — Upper</option>
+                <option value="4">4 — Top / Attic</option>
+                <option value="0">0 — Sub-floor / Basement</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <!-- ITEM INFO -->
+          <div class="section-label">Item / Location Descriptor <span style="color:var(--text-mute);font-weight:400">(optional — for Vault save)</span></div>
+          <div class="form-row">
+            <div class="field">
+              <label>Location Name</label>
+              <input type="text" id="f-loc-name" placeholder="e.g. Lower shelf, left bay">
+            </div>
+            <div class="field">
+              <label>Item Name</label>
+              <input type="text" id="f-item-name" placeholder="e.g. Cordless drill">
+            </div>
+          </div>
+          <div class="form-row single">
+            <div class="field">
+              <label>Notes <span class="opt">(optional)</span></label>
+              <textarea id="f-notes" placeholder="Additional context, storage tips, quantities…"></textarea>
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
+          <div class="btn-row">
+            <button class="btn btn-primary" id="save-btn" onclick="saveToVault()" disabled>
+              ⬆ Save to Vault
+            </button>
+            <button class="btn btn-ghost" onclick="openLabelStudio()">
+              🏷 Label Studio
+            </button>
+            <button class="btn btn-secondary" onclick="clearForm()">
+              ✕ Clear
+            </button>
+          </div>
+
+          <div class="status-bar" id="status-bar">
+            <span id="status-icon">✓</span>
+            <span id="status-msg">Saved to staged_items</span>
+          </div>
+
+        </div><!-- /panel-body -->
+      </div><!-- /panel -->
+
+      <!-- HOME ASSISTANT OUTPUT -->
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-header">
+          <span class="panel-icon">🏠</span>
+          <span class="panel-title">Home Assistant Export</span>
+          <span class="panel-subtitle">YAML / Entity ID</span>
+        </div>
+        <div class="panel-body">
+          <p class="hint" style="margin-bottom:12px">
+            Paste into your HA <code style="color:var(--green)">input_text</code> or label helper config.
+            Address updates live as you build above.
+          </p>
+          <div class="ha-block">
+            <div class="ha-block-header">
+              <span class="ha-block-title">configuration.yaml snippet</span>
+              <button class="copy-btn" id="copy-ha-btn" onclick="copyHA()">COPY</button>
+            </div>
+            <pre class="ha-code" id="ha-yaml"><!-- populated by JS --></pre>
+          </div>
+          <div class="ha-block" style="margin-top:10px">
+            <div class="ha-block-header">
+              <span class="ha-block-title">Entity ID</span>
+              <button class="copy-btn" id="copy-entity-btn" onclick="copyEntity()">COPY</button>
+            </div>
+            <pre class="ha-code" id="ha-entity"><!-- populated by JS --></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- GRAMMAR QUICK REF -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">📖</span>
+          <span class="panel-title">HL Grammar Reference</span>
+          <span class="panel-subtitle">v2.1</span>
+        </div>
+        <div class="panel-body" style="padding:0">
+          <div class="grammar-row">
+            <div class="grammar-key">STRUCT</div>
+            <div class="grammar-desc">
+              Physical building/structure code
+              <span class="grammar-ex">MH, BR, SH</span>
+            </div>
+          </div>
+          <div class="grammar-row">
+            <div class="grammar-key">ZONE</div>
+            <div class="grammar-desc">
+              Room or functional area
+              <span class="grammar-ex">KT, LR, BD</span>
+            </div>
+          </div>
+          <div class="grammar-row">
+            <div class="grammar-key">WALL</div>
+            <div class="grammar-desc">
+              Surface/orientation (N/S/E/W/C/F/L/X)
+              <span class="grammar-ex">N, C, F</span>
+            </div>
+          </div>
+          <div class="grammar-row">
+            <div class="grammar-key">POS</div>
+            <div class="grammar-desc">
+              Left-to-right position number on wall
+              <span class="grammar-ex">01–99</span>
+            </div>
+          </div>
+          <div class="grammar-row">
+            <div class="grammar-key">LEVEL</div>
+            <div class="grammar-desc">
+              Vertical shelf/tier from floor
+              <span class="grammar-ex">1, 2, 3, 4</span>
+            </div>
+          </div>
+          <div class="grammar-row" style="border-top:1px solid var(--border)">
+            <div class="grammar-key" style="color:var(--amber)">FULL</div>
+            <div class="grammar-desc" style="font-family:var(--font-mono);font-size:12px;color:var(--amber)">
+              STRUCT-ZONE-W-POS-L
+              <span class="grammar-ex" style="color:var(--text-mute)">MH-KT-N-03-2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left-col -->
+
+    <!-- ══ RIGHT COLUMN — ZONE CODES + LINKS ═════════════════ -->
+    <div class="right-col">
+
+      <!-- VAULT STATUS -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header">
+          <span class="panel-icon">🗄</span>
+          <span class="panel-title">Vault Connection</span>
+        </div>
+        <div class="panel-body" style="padding:12px 16px">
+          <div class="vault-status">
+            <div class="vault-dot" id="vault-dot"></div>
+            <span class="vault-text" id="vault-text">Checking Firestore…</span>
+          </div>
+          <div class="btn-row" style="margin-top:8px">
+            <a href="hl-vault-cloud.html" class="btn btn-secondary" style="flex:1;font-size:11px">Open Vault</a>
+            <button class="btn btn-secondary" style="flex:1;font-size:11px" onclick="checkVault()">Reconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMMON ZONE CODES -->
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-header">
+          <span class="panel-icon">🗂</span>
+          <span class="panel-title">Zone Code Library</span>
+          <span class="panel-subtitle">Click to fill</span>
+        </div>
+        <div class="panel-body">
+          <div class="section-label" style="margin-bottom:8px">Interior — Living</div>
+          <div class="zone-grid" id="zone-grid-living"></div>
+          <hr class="divider">
+          <div class="section-label" style="margin-bottom:8px">Interior — Utility</div>
+          <div class="zone-grid" id="zone-grid-utility"></div>
+          <hr class="divider">
+          <div class="section-label" style="margin-bottom:8px">Outbuildings / Exterior</div>
+          <div class="zone-grid" id="zone-grid-exterior"></div>
+          <hr class="divider">
+          <div class="section-label" style="margin-bottom:8px">Hallowmoon Homestead</div>
+          <div class="zone-grid" id="zone-grid-hh"></div>
+          <hr class="divider">
+          <div class="field" style="margin-top:4px">
+            <label>Custom Zone <span class="opt">(type to add)</span></label>
+            <input type="text" id="custom-zone-input" class="code-input" maxlength="3"
+              placeholder="ABC" oninput="this.value=this.value.toUpperCase()">
+            <div class="hint">Press Enter to use</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK LINKS -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🔗</span>
+          <span class="panel-title">Tool Links</span>
+        </div>
+        <div class="panel-body">
+          <div class="quick-links">
+            <a href="hil-label-studio.html" class="quick-link">
+              <span class="ql-icon">🏷</span>
+              Labels &amp; Signs
+              <span class="ql-badge">Studio</span>
+            </a>
+            <a href="hil-exchange.html" class="quick-link">
+              <span class="ql-icon">🔄</span>
+              HIL Exchange
+              <span class="ql-badge amber">Beta</span>
+            </a>
+            <a href="hl-vault-cloud.html" class="quick-link">
+              <span class="ql-icon">🗄</span>
+              Vault
+              <span class="ql-arrow">→</span>
+            </a>
+            <a href="hil-field-tool.html" class="quick-link">
+              <span class="ql-icon">📱</span>
+              Field Tool
+              <span class="ql-arrow">→</span>
+            </a>
+            <a href="hil-museum.html" class="quick-link">
+              <span class="ql-icon">🏛</span>
+              History Wall
+              <span class="ql-arrow">→</span>
+            </a>
+            <a href="hil-family-ledger.html" class="quick-link">
+              <span class="ql-icon">👨‍👩‍👧</span>
+              Family Ledger
+              <span class="ql-arrow">→</span>
+            </a>
+            <a href="hl-room-code-generator.html" class="quick-link">
+              <span class="ql-icon">🏷</span>
+              Room Code Gen
+              <span class="ql-arrow">→</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-col -->
+
+  </div><!-- /hub-grid -->
+</div><!-- /main-content -->
+
+<!-- ── FIREBASE + LOGIC ─────────────────────────────────── -->
+<script type="module">
+import { initializeApp }       from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, serverTimestamp, doc, getDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, signInAnonymously, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+/* ── CONFIG ─────────────────────────────────── */
+const FB_CONFIG = {
+  apiKey:            "AIzaSyARjQ3kD8iz9rD-2Fl1zNASnlVDmvDeVb4",
+  authDomain:        "project-97444efa-3b6f-493b-b96.firebaseapp.com",
+  projectId:         "project-97444efa-3b6f-493b-b96",
+  storageBucket:     "project-97444efa-3b6f-493b-b96.appspot.com",
+  messagingSenderId: "placeholder",
+  appId:             "placeholder"
+};
+
+const app  = initializeApp(FB_CONFIG);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+let currentUser = null;
+let vaultOnline = false;
+
+/* ── AUTH ────────────────────────────────────── */
+onAuthStateChanged(auth, user => {
+  if (user) {
+    currentUser = user;
+    setVaultStatus(true, `UID: ${user.uid.slice(0,8)}…`);
+    vaultOnline = true;
+  } else {
+    signInAnonymously(auth).catch(e => {
+      setVaultStatus(false, 'Auth failed — offline mode');
+    });
+  }
+});
+
+function setVaultStatus(online, msg) {
+  const dot  = document.getElementById('vault-dot');
+  const text = document.getElementById('vault-text');
+  if (dot)  dot.className = 'vault-dot' + (online ? ' online' : '');
+  if (text) text.textContent = msg;
+}
+
+/* ── ZONE DATA ───────────────────────────────── */
+const ZONES = {
+  living: [
+    { code: 'LR', name: 'Living Room' },
+    { code: 'KT', name: 'Kitchen'     },
+    { code: 'DR', name: 'Dining Room' },
+    { code: 'BD', name: 'Bedroom'     },
+    { code: 'BR', name: 'Bedroom 2'   },
+    { code: 'BA', name: 'Bathroom'    },
+    { code: 'MB', name: 'Master Bath' },
+    { code: 'OF', name: 'Office'      },
+    { code: 'LB', name: 'Library'     },
+    { code: 'DEN', name: 'Den'        },
+    { code: 'MR', name: 'Mud Room'    },
+    { code: 'EN', name: 'Entry'       },
+  ],
+  utility: [
+    { code: 'LN', name: 'Laundry'    },
+    { code: 'UT', name: 'Utility'    },
+    { code: 'MH', name: 'Mech Room'  },
+    { code: 'AT', name: 'Attic'      },
+    { code: 'BS', name: 'Basement'   },
+    { code: 'CL', name: 'Closet'     },
+    { code: 'PT', name: 'Pantry'     },
+    { code: 'CR', name: 'Crawlspace' },
+    { code: 'EL', name: 'Electrical' },
+    { code: 'PB', name: 'Pump/Boiler'},
+    { code: 'ST', name: 'Storage'    },
+    { code: 'WS', name: 'Workshop'   },
+  ],
+  exterior: [
+    { code: 'GR', name: 'Garage'     },
+    { code: 'SH', name: 'Shop'       },
+    { code: 'BN', name: 'Barn'       },
+    { code: 'GS', name: 'Guest Str.' },
+    { code: 'SD', name: 'Shed'       },
+    { code: 'GH', name: 'Greenhouse' },
+    { code: 'YD', name: 'Yard'       },
+    { code: 'DK', name: 'Deck'       },
+    { code: 'FN', name: 'Fence Line' },
+    { code: 'DW', name: 'Driveway'   },
+  ],
+  hh: [
+    { code: 'HB', name: 'HH Botanicals' },
+    { code: 'HA', name: 'HH Academy'    },
+    { code: 'HF', name: 'HH Farm'       },
+    { code: 'HP', name: 'HH Pasture'    },
+    { code: 'HG', name: 'HH Garden'     },
+    { code: 'HW', name: 'HH Workshop'   },
+  ]
+};
+
+/* ── BUILD ZONE GRIDS ────────────────────────── */
+function buildZoneGrid(domId, list) {
+  const el = document.getElementById(domId);
+  if (!el) return;
+  el.innerHTML = '';
+  list.forEach(z => {
+    const chip = document.createElement('div');
+    chip.className = 'zone-chip';
+    chip.dataset.code = z.code;
+    chip.dataset.name = z.name;
+    chip.innerHTML = `<div class="zone-code">${z.code}</div><div class="zone-name">${z.name}</div>`;
+    chip.addEventListener('click', () => selectZone(z.code, z.name, chip));
+    el.appendChild(chip);
+  });
+}
+
+function selectZone(code, name, chip) {
+  // Deselect all
+  document.querySelectorAll('.zone-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  document.getElementById('f-zone').value      = code;
+  document.getElementById('f-zone-name').value = name;
+  updateAddress();
+}
+
+buildZoneGrid('zone-grid-living',   ZONES.living);
+buildZoneGrid('zone-grid-utility',  ZONES.utility);
+buildZoneGrid('zone-grid-exterior', ZONES.exterior);
+buildZoneGrid('zone-grid-hh',       ZONES.hh);
+
+/* Custom zone enter key */
+document.getElementById('custom-zone-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const val = e.target.value.trim().toUpperCase();
+    if (val.length >= 2) {
+      document.getElementById('f-zone').value = val;
+      updateAddress();
+    }
+  }
+});
+
+/* ── ADDRESS COMPUTATION ─────────────────────── */
+function getFields() {
+  const structSel    = document.getElementById('f-struct').value;
+  const structCustom = document.getElementById('f-struct-custom').value.toUpperCase().trim();
+  return {
+    struct: structCustom || structSel || '',
+    zone:   document.getElementById('f-zone').value.toUpperCase().trim(),
+    wall:   document.getElementById('f-wall').value,
+    pos:    document.getElementById('f-pos').value.padStart(2,'0') || '',
+    level:  document.getElementById('f-level').value,
+  };
+}
+
+function buildAddressString(f) {
+  const parts = [f.struct || '??', f.zone || '??', f.wall || '?', f.pos || '??', f.level || '?'];
+  return parts.join('-');
+}
+
+function isComplete(f) {
+  return f.struct && f.zone && f.wall && f.pos && f.level;
+}
+
+window.updateAddress = function() {
+  const f    = getFields();
+  const addr = buildAddressString(f);
+
+  /* Full address code */
+  const addrEl = document.getElementById('addr-full');
+  if (isComplete(f)) {
+    addrEl.textContent = addr;
+    addrEl.style.color = 'var(--green)';
+  } else {
+    addrEl.innerHTML = `<span class="seg">${f.struct||'??'}</span>-<span class="seg">${f.zone||'??'}</span>-<span class="seg">${f.wall||'?'}</span>-<span class="seg">${f.pos||'??'}</span>-<span class="seg">${f.level||'?'}</span>`;
+    addrEl.style.color = '';
+  }
+
+  /* Parts */
+  const setPart = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = val || el.textContent;
+    el.className = 'part-value ' + (val ? 'filled' : 'empty');
+    el.textContent = val || el.textContent.replace(/[^?]/g,'?');
+  };
+  document.getElementById('part-struct').textContent = f.struct || '??';
+  document.getElementById('part-struct').className   = 'part-value ' + (f.struct ? 'filled' : 'empty');
+  document.getElementById('part-zone').textContent   = f.zone   || '??';
+  document.getElementById('part-zone').className     = 'part-value ' + (f.zone   ? 'filled' : 'empty');
+  document.getElementById('part-wall').textContent   = f.wall   || '?';
+  document.getElementById('part-wall').className     = 'part-value ' + (f.wall   ? 'filled' : 'empty');
+  document.getElementById('part-pos').textContent    = f.pos    || '??';
+  document.getElementById('part-pos').className      = 'part-value ' + (f.pos    ? 'filled' : 'empty');
+  document.getElementById('part-level').textContent  = f.level  || '?';
+  document.getElementById('part-level').className    = 'part-value ' + (f.level  ? 'filled' : 'empty');
+
+  /* Save button */
+  document.getElementById('save-btn').disabled = !isComplete(f);
+
+  /* HA output */
+  updateHA(f, addr);
+};
+
+/* ── HA OUTPUT ───────────────────────────────── */
+function updateHA(f, addr) {
+  const zoneName  = document.getElementById('f-zone-name').value || f.zone;
+  const locName   = document.getElementById('f-loc-name').value   || addr;
+  const safe_addr = addr.toLowerCase().replace(/-/g,'_');
+  const entity_id = `input_text.hil_${safe_addr}`;
+
+  const yaml = isComplete(f) ? [
+    `# HIL Address: ${addr}`,
+    `input_text:`,
+    `  hil_${safe_addr}:`,
+    `    name: "${locName}"`,
+    `    initial: "${addr}"`,
+    `    icon: mdi:map-marker`,
+    ``,
+    `# Label for area (optional)`,
+    `# Zone: ${f.zone} — ${zoneName}`,
+    `# Wall: ${wallName(f.wall)} | Position: ${f.pos} | Level: ${f.level}`,
+  ].join('\n') : `# — build an address above to generate YAML —`;
+
+  const haYaml = document.getElementById('ha-yaml');
+  const haEnt  = document.getElementById('ha-entity');
+  if (haYaml)  haYaml.textContent  = yaml;
+  if (haEnt)   haEnt.textContent   = isComplete(f) ? entity_id : '# — address incomplete —';
+}
+
+function wallName(code) {
+  const map = {N:'North',S:'South',E:'East',W:'West',C:'Center/Island',F:'Floor',L:'Ceiling',X:'Exterior'};
+  return map[code] || code;
+}
+
+/* ── SAVE TO VAULT ───────────────────────────── */
+window.saveToVault = async function() {
+  const f        = getFields();
+  const addr     = buildAddressString(f);
+  const locName  = document.getElementById('f-loc-name').value.trim();
+  const itemName = document.getElementById('f-item-name').value.trim();
+  const notes    = document.getElementById('f-notes').value.trim();
+  const zoneName = document.getElementById('f-zone-name').value.trim();
+
+  if (!isComplete(f)) { showStatus('err','Complete all required fields first.'); return; }
+
+  const staged = {
+    address:       addr,
+    struct:        f.struct,
+    zone_code:     f.zone,
+    zone_name:     zoneName,
+    wall:          f.wall,
+    position:      parseInt(f.pos,10),
+    level:         parseInt(f.level,10),
+    location_name: locName || addr,
+    item_name:     itemName || '',
+    notes:         notes,
+    source:        'hil-hub',
+    status:        'staged',
+    created_at:    serverTimestamp(),
+    uid:           currentUser ? currentUser.uid : 'anon',
+  };
+
+  try {
+    showStatus('info','Saving…');
+    const ref = await addDoc(collection(db, 'staged_items'), staged);
+    showStatus('ok', `✓ Staged — ID: ${ref.id.slice(0,8)}… → commitStagedItem() pending`);
+  } catch(e) {
+    console.error(e);
+    showStatus('err', `Save failed: ${e.message}`);
+  }
+};
+
+/* ── STATUS ──────────────────────────────────── */
+function showStatus(type, msg) {
+  const bar  = document.getElementById('status-bar');
+  const icon = document.getElementById('status-icon');
+  const text = document.getElementById('status-msg');
+  bar.className  = `status-bar show ${type}`;
+  icon.textContent = type === 'ok' ? '✓' : type === 'err' ? '✕' : 'ℹ';
+  text.textContent  = msg;
+  if (type === 'ok') setTimeout(() => bar.classList.remove('show'), 5000);
+}
+
+/* ── COPY HELPERS ────────────────────────────── */
+window.copyAddress = function() {
+  const f = getFields();
+  if (!isComplete(f)) return;
+  navigator.clipboard.writeText(buildAddressString(f));
+  const btn = document.getElementById('copy-addr-btn');
+  btn.textContent = '✓ COPIED';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1800);
+};
+
+window.copyHA = function() {
+  const txt = document.getElementById('ha-yaml').textContent;
+  navigator.clipboard.writeText(txt);
+  const btn = document.getElementById('copy-ha-btn');
+  btn.textContent = '✓'; setTimeout(() => btn.textContent = 'COPY', 1800);
+};
+
+window.copyEntity = function() {
+  const txt = document.getElementById('ha-entity').textContent;
+  navigator.clipboard.writeText(txt);
+  const btn = document.getElementById('copy-entity-btn');
+  btn.textContent = '✓'; setTimeout(() => btn.textContent = 'COPY', 1800);
+};
+
+/* ── CLEAR ───────────────────────────────────── */
+window.clearForm = function() {
+  ['f-struct','f-wall','f-level'].forEach(id => document.getElementById(id).value = '');
+  ['f-struct-custom','f-zone','f-zone-name','f-pos','f-loc-name','f-item-name','f-notes']
+    .forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('.zone-chip').forEach(c => c.classList.remove('selected'));
+  updateAddress();
+  document.getElementById('status-bar').classList.remove('show');
+};
+
+/* ── VAULT CHECK ─────────────────────────────── */
+window.checkVault = function() {
+  setVaultStatus(false, 'Reconnecting…');
+  signInAnonymously(auth)
+    .then(() => setVaultStatus(true, 'Connected'))
+    .catch(() => setVaultStatus(false, 'Offline — check connection'));
+};
+
+/* ── OPEN LABEL STUDIO ───────────────────────── */
+window.openLabelStudio = function() {
+  const f = getFields();
+  const addr = isComplete(f) ? buildAddressString(f) : '';
+  const url  = `hil-label-studio.html${addr ? '?addr='+encodeURIComponent(addr) : ''}`;
+  window.open(url, '_blank');
+};
+
+/* ── INIT ────────────────────────────────────── */
+updateAddress();
+
+/* ── SHELL LOADER ────────────────────────────── */
+if (typeof window.hilShellInit === 'function') {
+  window.hilShellInit({ toolId: 'hub', requireAuth: false });
+} else {
+  const s = document.createElement('script');
+  s.src = 'hil-shell.js';
+  s.onload = () => {
+    if (typeof window.hilShellInit === 'function')
+      window.hilShellInit({ toolId: 'hub', requireAuth: false });
+  };
+  document.head.appendChild(s);
+}
+
+</script>
+</body>
+</html>
