@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Restore — Restoration System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:     #00cc66;
+  --green-dim: #008844;
+  --green-glow:rgba(0,204,102,0.10);
+  --amber:     #cc8800;
+  --amber-dim: #885500;
+  --blue:      #4a9eed;
+  --red:       #cc3333;
+  --bg:        #0a0a0a;
+  --surface:   #111111;
+  --surface2:  #1a1a1a;
+  --surface3:  #222222;
+  --border:    #2a2a2a;
+  --border2:   #333333;
+  --text:      #e8e8e8;
+  --text-dim:  #888888;
+  --text-mute: #555555;
+  --hil-shell-h: 56px;
+  --hil-nav-h:   40px;
+  --font-display:'Orbitron', monospace;
+  --font-mono:   'Space Mono', monospace;
+  --font-ui:     'Barlow Condensed', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-ui); min-height: 100vh; overflow-x: hidden; }
+
+/* ── SHELL ──────────────────────────────────── */
+#hil-shell-mount { position: fixed; top: 0; left: 0; right: 0; height: calc(var(--hil-shell-h) + var(--hil-nav-h)); z-index: 1000; background: #050505; border-bottom: 1px solid var(--border); }
+.shell-fallback { display: flex; align-items: center; height: var(--hil-shell-h); padding: 0 20px; gap: 12px; }
+.shell-fallback .brand { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--green); letter-spacing: 0.12em; }
+.shell-fallback .sep { color: var(--text-mute); }
+.shell-fallback .page-title { font-family: var(--font-display); font-size: 12px; color: var(--text-dim); letter-spacing: 0.08em; }
+.shell-nav { display: flex; align-items: center; height: var(--hil-nav-h); padding: 0 20px; gap: 6px; border-top: 1px solid var(--border); overflow-x: auto; }
+.shell-nav a { font-family: var(--font-ui); font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); text-decoration: none; padding: 4px 10px; border-radius: 3px; white-space: nowrap; transition: color 0.15s, background 0.15s; }
+.shell-nav a:hover { color: var(--green); background: rgba(0,204,102,0.08); }
+.shell-nav a.active { color: var(--amber); border-bottom: 2px solid var(--amber); }
+
+/* ── LAYOUT ─────────────────────────────────── */
+.main-content { padding-top: calc(var(--hil-shell-h) + var(--hil-nav-h) + 32px); padding-bottom: 80px; max-width: 960px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+/* ── HERO ────────────────────────────────────── */
+.hero { padding: 48px 0 56px; border-bottom: 1px solid var(--border); margin-bottom: 56px; }
+.hero-eyebrow { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.25em; color: var(--amber); text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+.hero-eyebrow::before { content: ''; width: 28px; height: 1px; background: var(--amber); opacity: 0.5; }
+.hero h1 { font-family: var(--font-display); font-weight: 900; font-size: clamp(40px, 7vw, 72px); line-height: 0.95; color: var(--text); letter-spacing: 0.04em; margin-bottom: 24px; }
+.hero h1 .accent { color: var(--amber); }
+.hero-sub { font-size: 17px; line-height: 1.65; color: var(--text-dim); max-width: 520px; margin-bottom: 36px; }
+.hero-sub strong { color: var(--text); font-weight: 500; }
+.hero-stats { display: flex; gap: 40px; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; gap: 4px; }
+.stat-num { font-family: var(--font-display); font-weight: 700; font-size: 32px; color: var(--amber); line-height: 1; }
+.stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.15em; color: var(--text-mute); text-transform: uppercase; }
+
+/* ── SECTIONS ────────────────────────────────── */
+.section { margin-bottom: 56px; }
+.section-eyebrow { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.25em; color: var(--amber-dim); opacity: 0.8; text-transform: uppercase; margin-bottom: 12px; }
+.section h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(22px, 4vw, 32px); color: var(--text); letter-spacing: 0.04em; margin-bottom: 14px; }
+.section p { font-size: 14px; line-height: 1.7; color: var(--text-dim); max-width: 620px; margin-bottom: 14px; }
+.section p strong { color: var(--text); font-weight: 500; }
+hr.section-rule { border: none; border-top: 1px solid var(--border); margin: 56px 0; }
+
+/* ── PRINCIPLE GRID ──────────────────────────── */
+.principle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2px; background: var(--border); border: 1px solid var(--border); margin-top: 32px; }
+.principle-card { background: var(--surface); padding: 22px 18px; display: flex; flex-direction: column; gap: 8px; }
+.principle-num { font-family: var(--font-mono); font-size: 9px; color: var(--amber); letter-spacing: 0.2em; opacity: 0.7; }
+.principle-title { font-family: var(--font-ui); font-weight: 700; font-size: 16px; color: var(--text); }
+.principle-body { font-size: 12px; color: var(--text-dim); line-height: 1.55; }
+
+/* ── INGREDIENT LIST ─────────────────────────── */
+.ingredient-list { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px; background: var(--border); border: 1px solid var(--border); }
+.ingredient { background: var(--surface); padding: 16px 16px; }
+.ingredient-name { font-family: var(--font-ui); font-weight: 700; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+.ingredient-use { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.ingredient-replaces { font-family: var(--font-mono); font-size: 9px; color: var(--amber); margin-top: 6px; letter-spacing: 0.06em; }
+
+/* ── TECHNIQUE CARDS ─────────────────────────── */
+.technique-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 10px; margin-top: 28px; }
+.technique-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--amber); padding: 18px; }
+.technique-tag { font-family: var(--font-mono); font-size: 9px; color: var(--amber); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 7px; }
+.technique-title { font-family: var(--font-ui); font-weight: 700; font-size: 18px; color: var(--text); margin-bottom: 7px; }
+.technique-body { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+.technique-saves { font-family: var(--font-mono); font-size: 9px; color: var(--green); margin-top: 10px; letter-spacing: 0.06em; }
+
+/* ── COMING SOON ─────────────────────────────── */
+.coming-soon-wrap { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--amber); border-radius: 4px; padding: 36px 32px; margin-bottom: 56px; }
+.cs-badge { display: inline-block; font-family: var(--font-mono); font-size: 9px; color: var(--amber); border: 1px solid var(--amber); padding: 3px 10px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 16px; opacity: 0.8; border-radius: 2px; }
+.cs-title { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--text); margin-bottom: 10px; letter-spacing: 0.04em; }
+.cs-desc { font-size: 14px; color: var(--text-dim); line-height: 1.7; max-width: 520px; margin-bottom: 28px; }
+.cs-desc strong { color: var(--text); font-weight: 500; }
+.cs-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 2px; background: var(--border); border: 1px solid var(--border); }
+.cs-feature { background: var(--bg); padding: 16px 18px; }
+.cs-feature-label { font-family: var(--font-mono); font-size: 9px; color: var(--text-mute); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 5px; }
+.cs-feature-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+@media (max-width: 640px) { .main-content { padding-left: 14px; padding-right: 14px; } }
+</style>
+</head>
+<body>
+
+<div id="hil-shell-mount">
+  <div class="shell-fallback">
+    <span class="brand">HIL</span>
+    <span class="sep">◆</span>
+    <span class="page-title">RESTORE — PRESERVATION</span>
+  </div>
+  <nav class="shell-nav">
+    <a href="hl-vault-cloud.html">Vault</a>
+    <a href="hil-hub.html">Hub</a>
+    <a href="hil-field-tool.html">Field Tool</a>
+    <a href="hil-label-studio.html">Labels &amp; Signs</a>
+    <a href="hil-museum.html">History Wall</a>
+    <a href="hil-family-ledger.html">Family Ledger</a>
+    <a href="hil-exchange.html">Exchange</a>
+    <a href="hil-library-hub.html" class="active">Library</a>
+  </nav>
+</div>
+
+<div class="main-content">
+
+  <div class="hero">
+    <div class="hero-eyebrow">Library 03 — Preservation</div>
+    <h1>HIL<br><span class="accent">Restore.</span></h1>
+    <p class="hero-sub">The best tool you'll ever own is the one you already have. <strong>Stop replacing. Start restoring.</strong> Most things that look dead just need the right treatment and ten minutes of attention.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Cost to restore vs replace</div></div>
+      <div class="stat"><div class="stat-num">5</div><div class="stat-label">Base ingredients, most jobs</div></div>
+      <div class="stat"><div class="stat-num">∞</div><div class="stat-label">Lifespan of a pre-1970 tool</div></div>
+    </div>
+  </div>
+
+  <!-- PHILOSOPHY -->
+  <div class="section">
+    <div class="section-eyebrow">The Philosophy</div>
+    <h2>SKU reduction is the goal.</h2>
+    <p>Walk into any hardware store and you'll find 40 different products for cleaning, preserving, and restoring surfaces. Most of them are the same five base ingredients in different bottles with different labels. <strong>HIL Restore teaches the ingredients, not the recipes.</strong> Know what beeswax does and you'll never buy a specialty wood conditioner again.</p>
+    <p>This isn't about being cheap. It's about being capable. A person who understands the base materials can adapt to any situation.</p>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="principle-num">01 — PRINCIPLE</div>
+        <div class="principle-title">Restore Before Replace</div>
+        <div class="principle-body">Before you buy a new one, spend 10 minutes on the one you have. Most things that look broken are just dirty, dry, or loose.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">02 — PRINCIPLE</div>
+        <div class="principle-title">Learn the Base Ingredients</div>
+        <div class="principle-body">Beeswax, mineral oil, linseed oil, white vinegar, baking soda. These five handle 80% of all restoration jobs.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">03 — PRINCIPLE</div>
+        <div class="principle-title">Old Tools Are Better</div>
+        <div class="principle-body">A pre-1970 Craftsman tool restored with steel wool and oil will outperform a new import at three times the price.</div>
+      </div>
+      <div class="principle-card">
+        <div class="principle-num">04 — PRINCIPLE</div>
+        <div class="principle-title">Time Is the Real Cost</div>
+        <div class="principle-body">Calculate honestly. If it takes 2 hours to restore something worth $15, buy new. If it takes 20 minutes to restore something worth $200, restore it.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- BASE INGREDIENTS -->
+  <div class="section">
+    <div class="section-eyebrow">Base Ingredient Library</div>
+    <h2>Five ingredients. Hundreds of uses.</h2>
+    <p>Learn what each one does and you can formulate almost any restoration product yourself.</p>
+    <div class="ingredient-list">
+      <div class="ingredient">
+        <div class="ingredient-name">Beeswax</div>
+        <div class="ingredient-use">Wood conditioning, tool handle preservation, drawer lubrication, rust prevention on cast iron, leather waterproofing</div>
+        <div class="ingredient-replaces">Replaces: Howard Feed-N-Wax, Briwax, most paste waxes</div>
+      </div>
+      <div class="ingredient">
+        <div class="ingredient-name">Mineral Oil</div>
+        <div class="ingredient-use">Cutting board conditioning, tool handle hydration, food-safe wood finishing, knife handle maintenance</div>
+        <div class="ingredient-replaces">Replaces: Mystery Oil, most cutting board oils</div>
+      </div>
+      <div class="ingredient">
+        <div class="ingredient-name">Linseed / Tung Oil</div>
+        <div class="ingredient-use">Wood grain penetration, tool handle restoration, outdoor wood sealing, antique furniture conditioning</div>
+        <div class="ingredient-replaces">Replaces: Most penetrating oil finishes</div>
+      </div>
+      <div class="ingredient">
+        <div class="ingredient-name">White Vinegar</div>
+        <div class="ingredient-use">Light rust removal, mineral deposit removal, metal brightening, general surface prep before finishing</div>
+        <div class="ingredient-replaces">Replaces: CLR, most rust removers for light surface rust</div>
+      </div>
+      <div class="ingredient">
+        <div class="ingredient-name">Baking Soda</div>
+        <div class="ingredient-use">Mild abrasive cleaning, odor neutralization, combined with vinegar for drain clearing and surface prep</div>
+        <div class="ingredient-replaces">Replaces: Most mild abrasive cleaners</div>
+      </div>
+      <div class="ingredient">
+        <div class="ingredient-name">Bar Keepers Friend</div>
+        <div class="ingredient-use">Stainless steel restoration, cast iron surface prep, porcelain and enamel cleaning, rust stain removal</div>
+        <div class="ingredient-replaces">Replaces: Specialty metal cleaners, most stainless polishes</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- TECHNIQUES -->
+  <div class="section">
+    <div class="section-eyebrow">Restoration Techniques</div>
+    <h2>Common jobs. Real methods.</h2>
+    <div class="technique-grid">
+      <div class="technique-card">
+        <div class="technique-tag">Tools · Metal</div>
+        <div class="technique-title">Surface Rust Removal</div>
+        <div class="technique-body">White vinegar soak (1–24 hrs) → steel wool or wire brush → dry completely → coat with mineral oil or beeswax immediately. Works on hand tools, cast iron, hardware.</div>
+        <div class="technique-saves">Saves: $20–200 on tool replacement</div>
+      </div>
+      <div class="technique-card">
+        <div class="technique-tag">Wood · Handles</div>
+        <div class="technique-title">Dry Tool Handle Revival</div>
+        <div class="technique-body">Sand lightly with 220 grit to open grain → apply boiled linseed oil thin, wipe off excess → let cure 24 hrs → finish with beeswax for grip and protection. Works on axes, hammers, chisels.</div>
+        <div class="technique-saves">Saves: $15–60 on handle replacement</div>
+      </div>
+      <div class="technique-card">
+        <div class="technique-tag">Wood · Furniture</div>
+        <div class="technique-title">Scratched Wood Finish</div>
+        <div class="technique-body">Walnut meat rubbed into scratch (oils match wood tone naturally) → buff with soft cloth → for deeper scratches, mix beeswax and mineral oil into a paste, fill and buff.</div>
+        <div class="technique-saves">Saves: $50–500 on refinishing</div>
+      </div>
+      <div class="technique-card">
+        <div class="technique-tag">Cast Iron · Cookware</div>
+        <div class="technique-title">Cast Iron Re-seasoning</div>
+        <div class="technique-body">Scrub with salt and oil or Bar Keepers Friend → rinse, dry completely on stovetop → apply thin coat of flaxseed or Crisco → bake upside down at 450°F for 1 hour → repeat 2–3 times.</div>
+        <div class="technique-saves">Saves: $30–150 on cookware replacement</div>
+      </div>
+      <div class="technique-card">
+        <div class="technique-tag">Leather · Tools & Gear</div>
+        <div class="technique-title">Dried Leather Revival</div>
+        <div class="technique-body">Clean with damp cloth → apply neatsfoot oil or beeswax-mineral oil mix in thin coats → let absorb fully between coats → finish with beeswax for water resistance.</div>
+        <div class="technique-saves">Saves: $20–100 on leather goods</div>
+      </div>
+      <div class="technique-card">
+        <div class="technique-tag">Lumber · Millwork</div>
+        <div class="technique-title">Make Your Own Trim</div>
+        <div class="technique-body">Rip a 2×6 southern yellow pine into 1/2" strips on a table saw → sand, prime, paint in batch → install as shaker-style casing. A $10 board yields $40–80 worth of trim.</div>
+        <div class="technique-saves">Saves: $3–5 per linear foot vs store-bought</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-rule">
+
+  <!-- COMING SOON -->
+  <div class="coming-soon-wrap">
+    <div class="cs-badge">Coming Soon</div>
+    <div class="cs-title">HIL Restore Tool</div>
+    <p class="cs-desc">Identify your material and condition. Get the right technique, the base ingredients you need, and the honest time-vs-cost calculation. <strong>Restore or replace — we'll help you decide.</strong></p>
+    <div class="cs-features">
+      <div class="cs-feature">
+        <div class="cs-feature-label">Material Identifier</div>
+        <div class="cs-feature-text">Wood, metal, leather, cast iron, ceramic — different materials need different approaches</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">Technique Finder</div>
+        <div class="cs-feature-text">Describe the condition, get the right method and the base ingredients required</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">Restore vs Replace Calculator</div>
+        <div class="cs-feature-text">Time cost + material cost vs replacement cost — honest math, not cheerleading</div>
+      </div>
+      <div class="cs-feature">
+        <div class="cs-feature-label">HIL Kit Linker</div>
+        <div class="cs-feature-text">Maps to your CK and SK kits in HIL Organize — know what you need before you start</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+if (typeof window.hilShellInit === 'function') {
+  window.hilShellInit({ toolId: 'restore', requireAuth: false });
+} else {
+  const s = document.createElement('script'); s.src = 'hil-shell.js';
+  s.onload = () => { if (typeof window.hilShellInit === 'function') window.hilShellInit({ toolId: 'restore', requireAuth: false }); };
+  document.head.appendChild(s);
+}
+</script>
+</body>
+</html>
