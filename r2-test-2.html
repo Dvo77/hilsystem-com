@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R2 Schema Test</title>
+<style>
+  body { background:#0a0c0b; color:#dde8e2; font-family:'Space Mono',monospace; padding:32px; }
+  h1 { color:#00cc66; font-size:16px; letter-spacing:3px; margin-bottom:24px; }
+  .box { background:#141816; border:1px solid #2a302c; border-radius:6px; padding:20px; max-width:560px; margin-bottom:16px; }
+  .label { font-size:9px; color:#6b7d72; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+  select, input[type=text] { width:100%; background:#0a0c0b; border:1px solid #2a302c; color:#dde8e2; font-family:'Space Mono',monospace; font-size:12px; padding:8px 10px; outline:none; border-radius:3px; margin-bottom:10px; }
+  select:focus, input:focus { border-color:#00cc66; }
+  input[type=file] { color:#6b7d72; margin-bottom:10px; display:block; }
+  button { background:#00cc66; color:#000; border:none; padding:10px 20px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; border-radius:3px; letter-spacing:1px; }
+  button:hover { opacity:0.85; }
+  #status { margin-top:16px; font-size:11px; line-height:1.9; }
+  .ok  { color:#00cc66; }
+  .err { color:#cc3333; }
+  .url { color:#cc8800; word-break:break-all; }
+  .key { color:#4a9bc8; }
+  .field { color:#b084e8; }
+  hr { border:none; border-top:1px solid #2a302c; margin:16px 0; }
+</style>
+</head>
+<body>
+<h1>R2 SCHEMA TEST — v2.0</h1>
+
+<div class="box">
+  <div class="label">Upload Context</div>
+  <select id="context" onchange="updateFields()">
+    <option value="item">item — users/{uid}/items/{itemId}/{slot}.ext</option>
+    <option value="collection">collection — users/{uid}/collections/{itemId}/{slot}.ext</option>
+    <option value="history_wall">history_wall — history_wall/{itemId}/{slot}.ext</option>
+    <option value="exchange">exchange — exchange/{itemId}/{slot}.ext</option>
+    <option value="avatar">avatar — users/{uid}/avatar.ext</option>
+  </select>
+
+  <div id="uid-wrap">
+    <div class="label">Firebase UID (paste yours)</div>
+    <input type="text" id="uid" placeholder="KwxzIWwmxxYZ9fmCWq9RyAxWPCy2" value="KwxzIWwmxxYZ9fmCWq9RyAxWPCy2">
+  </div>
+
+  <div id="itemid-wrap">
+    <div class="label">Item / Collection / Record ID</div>
+    <input type="text" id="itemId" placeholder="item-001 or auto-generated UUID" value="test-item-001">
+  </div>
+
+  <div class="label">Slot (hero / photo_01 / photo_02 etc.)</div>
+  <input type="text" id="slot" value="hero">
+
+  <div class="label">Photo</div>
+  <input type="file" id="file-input" accept="image/*,.pdf">
+
+  <button onclick="testUpload()">Upload to R2 →</button>
+
+  <div id="status"></div>
+</div>
+
+<div class="box" id="result-box" style="display:none;">
+  <div class="label">Result</div>
+  <div id="result-content"></div>
+</div>
+
+<script>
+const WORKER = "https://hilsystem-r2-signer.dvo77.workers.dev";
+
+function updateFields() {
+  const ctx = document.getElementById('context').value;
+  document.getElementById('itemid-wrap').style.display = ctx === 'avatar' ? 'none' : 'block';
+}
+
+function log(msg) { document.getElementById('status').innerHTML += msg + '<br>'; }
+function clear() { document.getElementById('status').innerHTML = ''; }
+
+async function testUpload() {
+  clear();
+  const file    = document.getElementById('file-input').files[0];
+  const context = document.getElementById('context').value;
+  const uid     = document.getElementById('uid').value.trim();
+  const itemId  = document.getElementById('itemId').value.trim() || crypto.randomUUID();
+  const slot    = document.getElementById('slot').value.trim() || 'hero';
+
+  if (!file) { log('<span class="err">Pick a file first</span>'); return; }
+  if (!uid && context !== 'history_wall' && context !== 'exchange') {
+    log('<span class="err">UID required for this context</span>'); return;
+  }
+
+  log('⏳ Reading file as base64…');
+  const base64 = await toBase64(file);
+  const data   = base64.split(',')[1];
+
+  log(`⏳ POSTing to Worker — context: <span class="key">${context}</span>`);
+
+  try {
+    const res = await fetch(WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, contentType: file.type, data, context, uid, itemId, slot })
+    });
+
+    const text = await res.text();
+
+    if (!res.ok) {
+      log(`<span class="err">✕ Worker error ${res.status}: ${text}</span>`);
+      return;
+    }
+
+    const json = JSON.parse(text);
+
+    log(`<span class="ok">✓ Upload success!</span>`);
+
+    const box = document.getElementById('result-box');
+    const content = document.getElementById('result-content');
+    box.style.display = 'block';
+    content.innerHTML = `
+      <div style="margin-bottom:8px;"><span style="color:#6b7d72">R2 Key:</span><br><span class="key">${json.key}</span></div>
+      <hr>
+      <div style="margin-bottom:8px;"><span style="color:#6b7d72">Public URL (write to Firestore):</span><br><a href="${json.publicUrl}" target="_blank" class="url">${json.publicUrl}</a></div>
+      <hr>
+      <div style="margin-bottom:8px;"><span style="color:#6b7d72">Firestore field to update:</span><br><span class="field">${json.firestore_field}</span></div>
+      <hr>
+      <div style="color:#6b7d72;font-size:10px;">Context: ${json.context} · Slot: ${json.slot}</div>
+    `;
+
+    log(`<span class="key">Key:</span> ${json.key}`);
+    log(`<span class="field">Firestore field:</span> ${json.firestore_field}`);
+  } catch(err) {
+    log(`<span class="err">✕ Error: ${err.message}</span>`);
+  }
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+</script>
+</body>
+</html>
