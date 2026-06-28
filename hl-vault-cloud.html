@@ -955,15 +955,27 @@ async function uploadPhotoToR2(file, uid, itemId) {
   const photoStatus = document.getElementById('photo-upload-status');
   photoStatus.textContent = '⏳ Uploading photo…';
 
-  // Build a deterministic key: users/{uid}/items/{itemId}/hero.jpg
-  const ext      = file.name.split('.').pop() || 'jpg';
-  const filename = `users/${uid}/items/${itemId || ('new_' + Date.now())}/hero.${ext}`;
+  // Read file as base64
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
-  // Step 1: get presigned URL from Worker
+  // POST to Worker v2 — base64 + schema context
   const res = await fetch(R2_WORKER, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ filename, contentType: file.type }),
+    body: JSON.stringify({
+      filename:    file.name,
+      contentType: file.type,
+      data:        base64,
+      context:     'item',
+      uid:         uid,
+      itemId:      itemId || ('new_' + Date.now()),
+      slot:        'hero',
+    }),
   });
 
   if (!res.ok) {
@@ -971,19 +983,11 @@ async function uploadPhotoToR2(file, uid, itemId) {
     throw new Error(`Signer error ${res.status}: ${txt}`);
   }
 
-  const { uploadUrl, publicUrl } = await res.json();
-
-  // Step 2: PUT direct to R2
-  const upload = await fetch(uploadUrl, {
-    method:  'PUT',
-    headers: { 'Content-Type': file.type },
-    body:    file,
-  });
-
-  if (!upload.ok) throw new Error(`R2 upload failed: ${upload.status}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Upload failed');
 
   photoStatus.innerHTML = '<span style="color:var(--hil-green)">✓ Photo uploaded</span>';
-  return publicUrl;
+  return json.publicUrl;
 }
 
 // Wire photo file input → preview
