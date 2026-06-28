@@ -955,35 +955,38 @@ async function uploadPhotoToR2(file, uid, itemId) {
   const photoStatus = document.getElementById('photo-upload-status');
   photoStatus.textContent = '⏳ Uploading photo…';
 
-  // Build a deterministic key: users/{uid}/items/{itemId}/hero.jpg
-  const ext      = file.name.split('.').pop() || 'jpg';
-  const filename = `users/${uid}/items/${itemId || ('new_' + Date.now())}/hero.${ext}`;
+  // Convert file to base64
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
 
-  // Step 1: get presigned URL from Worker
+  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const slot = 'hero';
+
   const res = await fetch(R2_WORKER, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ filename, contentType: file.type }),
+    body: JSON.stringify({
+      filename:    `${slot}.${ext}`,
+      contentType: file.type || 'image/jpeg',
+      data:        base64,          // ← Worker v2 expects this
+      context:     'item',
+      uid:         uid,
+      itemId:      itemId,
+      slot:        slot,
+    }),
   });
 
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Signer error ${res.status}: ${txt}`);
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || `Upload failed ${res.status}`);
   }
 
-  const { uploadUrl, publicUrl } = await res.json();
-
-  // Step 2: PUT direct to R2
-  const upload = await fetch(uploadUrl, {
-    method:  'PUT',
-    headers: { 'Content-Type': file.type },
-    body:    file,
-  });
-
-  if (!upload.ok) throw new Error(`R2 upload failed: ${upload.status}`);
-
   photoStatus.innerHTML = '<span style="color:var(--hil-green)">✓ Photo uploaded</span>';
-  return publicUrl;
+  return json.publicUrl;
 }
 
 // Wire photo file input → preview
