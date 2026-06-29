@@ -1,9 +1,9 @@
 /**
- * HIL SHELL v2.3
+ * HIL SHELL v2.4
  * Universal shell for all HIL/HL tools
  * Provides: Firebase init, Auth (Google + GitHub + Email), Firestore user record,
  *           fixed header, tool nav bar, auth gate overlay, toast system, CSS design tokens,
- *           PATCH AI chat bubble
+ *           PATCH AI chat bubble with persistent cross-session memory + !! issue logging
  *
  * DROP-IN PATTERN (one line in any tool):
  *   <script src="./hil-shell.js"></script>
@@ -15,9 +15,11 @@
  * LIVE URL:    https://hilsystem.com/tools/hil-shell.js
  *
  * CHANGELOG:
+ *   v2.4 — Persistent cross-session PATCH memory (Firestore patch_memory/session)
+ *           Multi-turn conversation history sent to Gemini each call
+ *           !! prefix → logs owner issue to platform/owner_issues in Firestore
  *   v2.3 — Added PATCH AI chat bubble (floating, session history, Gemini 2.5 Flash backend)
- *   v2.2 — Corrected nav filenames (museum, label-studio), removed sign-studio (merged),
- *           added exchange, import-export, library-hub, organize, restore, supply, stain-lookup
+ *   v2.2 — Corrected nav filenames, added exchange, import-export, library-hub, etc.
  *   v2.1 — Added Family Ledger and HIL Hub to nav
  *   v2.0 — Google + GitHub + Email auth, Firestore user record init
  */
@@ -181,191 +183,60 @@
 
     /* ── PATCH CHAT BUBBLE ── */
     #patch-bubble {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: #000;
-      border: 2px solid var(--hil-green);
-      cursor: pointer;
-      z-index: 4000;
-      overflow: hidden;
+      position: fixed; bottom: 24px; right: 24px;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: #000; border: 2px solid var(--hil-green);
+      cursor: pointer; z-index: 4000; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
       box-shadow: 0 0 12px rgba(0,204,102,0.3);
     }
-    #patch-bubble:hover {
-      border-color: var(--hil-green);
-      box-shadow: 0 0 20px rgba(0,204,102,0.5);
-    }
-    #patch-bubble img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      object-position: center top;
-    }
+    #patch-bubble:hover { box-shadow: 0 0 20px rgba(0,204,102,0.5); }
+    #patch-bubble img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 
     #patch-drawer {
-      position: fixed;
-      bottom: 88px;
-      right: 24px;
-      width: 360px;
-      max-width: calc(100vw - 32px);
-      height: 480px;
-      max-height: calc(100vh - 120px);
-      background: var(--hil-surface);
-      border: 1px solid var(--hil-green);
-      z-index: 3999;
-      display: flex;
-      flex-direction: column;
+      position: fixed; bottom: 88px; right: 24px;
+      width: 360px; max-width: calc(100vw - 32px);
+      height: 480px; max-height: calc(100vh - 120px);
+      background: var(--hil-surface); border: 1px solid var(--hil-green);
+      z-index: 3999; display: flex; flex-direction: column;
       box-shadow: 0 0 30px rgba(0,204,102,0.15);
-      transform: translateY(12px);
-      opacity: 0;
-      pointer-events: none;
+      transform: translateY(12px); opacity: 0; pointer-events: none;
       transition: opacity 0.2s ease, transform 0.2s ease;
     }
-    #patch-drawer.open {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: all;
-    }
+    #patch-drawer.open { opacity: 1; transform: translateY(0); pointer-events: all; }
 
     #patch-drawer-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--hil-border);
-      background: #000;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--hil-border);
+      background: #000; flex-shrink: 0;
     }
-    #patch-drawer-header img {
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      border: 1px solid var(--hil-green);
-      object-fit: cover;
-      object-position: center top;
-    }
-    #patch-drawer-header .patch-name {
-      font-family: var(--font-display);
-      font-size: 11px;
-      color: var(--hil-green);
-      letter-spacing: 2px;
-    }
-    #patch-drawer-header .patch-status {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      color: var(--hil-text-muted);
-      letter-spacing: 1px;
-    }
-    #patch-close-btn {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: var(--hil-text-muted);
-      cursor: pointer;
-      font-size: 18px;
-      line-height: 1;
-      padding: 2px 4px;
-      transition: color 0.15s;
-    }
+    #patch-drawer-header img { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--hil-green); object-fit: cover; object-position: center top; }
+    #patch-drawer-header .patch-name { font-family: var(--font-display); font-size: 11px; color: var(--hil-green); letter-spacing: 2px; }
+    #patch-drawer-header .patch-status { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; }
+    #patch-close-btn { margin-left: auto; background: none; border: none; color: var(--hil-text-muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 4px; transition: color 0.15s; }
     #patch-close-btn:hover { color: var(--hil-text); }
 
-    #patch-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      scrollbar-width: thin;
-      scrollbar-color: var(--hil-border) transparent;
-    }
+    #patch-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: var(--hil-border) transparent; }
 
-    .patch-msg {
-      display: flex;
-      flex-direction: column;
-      max-width: 85%;
-    }
+    .patch-msg { display: flex; flex-direction: column; max-width: 85%; }
     .patch-msg.patch { align-self: flex-start; }
     .patch-msg.user  { align-self: flex-end; }
-
-    .patch-msg .bubble {
-      padding: 9px 12px;
-      font-family: var(--font-body);
-      font-size: 13px;
-      line-height: 1.5;
-      border: 1px solid var(--hil-border);
-    }
-    .patch-msg.patch .bubble {
-      background: var(--hil-surface-2);
-      border-color: var(--hil-border);
-      color: var(--hil-text);
-      border-left: 2px solid var(--hil-green);
-    }
-    .patch-msg.user .bubble {
-      background: var(--hil-green-dim);
-      border-color: var(--hil-green);
-      color: var(--hil-text);
-    }
-
-    .patch-msg .msg-label {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      color: var(--hil-text-muted);
-      letter-spacing: 1px;
-      margin-bottom: 3px;
-    }
+    .patch-msg .bubble { padding: 9px 12px; font-family: var(--font-body); font-size: 13px; line-height: 1.5; border: 1px solid var(--hil-border); }
+    .patch-msg.patch .bubble { background: var(--hil-surface-2); color: var(--hil-text); border-left: 2px solid var(--hil-green); }
+    .patch-msg.user .bubble  { background: var(--hil-green-dim); border-color: var(--hil-green); color: var(--hil-text); }
+    .patch-msg .msg-label { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; margin-bottom: 3px; }
     .patch-msg.user .msg-label { text-align: right; }
 
-    .patch-typing {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 10px 12px;
-    }
-    .patch-typing span {
-      width: 6px; height: 6px;
-      background: var(--hil-green);
-      border-radius: 50%;
-      animation: patch-bounce 1s infinite;
-    }
+    .patch-typing { display: flex; gap: 4px; align-items: center; padding: 10px 12px; }
+    .patch-typing span { width: 6px; height: 6px; background: var(--hil-green); border-radius: 50%; animation: patch-bounce 1s infinite; }
     .patch-typing span:nth-child(2) { animation-delay: 0.15s; }
     .patch-typing span:nth-child(3) { animation-delay: 0.3s; }
-    @keyframes patch-bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-      40% { transform: translateY(-5px); opacity: 1; }
-    }
+    @keyframes patch-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.4; } 40% { transform: translateY(-5px); opacity: 1; } }
 
-    #patch-input-row {
-      display: flex;
-      gap: 0;
-      border-top: 1px solid var(--hil-border);
-      flex-shrink: 0;
-    }
-    #patch-input {
-      flex: 1;
-      background: var(--hil-bg);
-      border: none;
-      border-right: 1px solid var(--hil-border);
-      color: var(--hil-text);
-      font-family: var(--font-body);
-      font-size: 13px;
-      padding: 12px 14px;
-      outline: none;
-      resize: none;
-    }
+    #patch-input-row { display: flex; border-top: 1px solid var(--hil-border); flex-shrink: 0; }
+    #patch-input { flex: 1; background: var(--hil-bg); border: none; border-right: 1px solid var(--hil-border); color: var(--hil-text); font-family: var(--font-body); font-size: 13px; padding: 12px 14px; outline: none; resize: none; }
     #patch-input::placeholder { color: var(--hil-text-muted); }
-    #patch-send-btn {
-      background: none;
-      border: none;
-      color: var(--hil-green);
-      padding: 0 16px;
-      cursor: pointer;
-      font-size: 18px;
-      transition: opacity 0.15s;
-      flex-shrink: 0;
-    }
+    #patch-send-btn { background: none; border: none; color: var(--hil-green); padding: 0 16px; cursor: pointer; font-size: 18px; transition: opacity 0.15s; flex-shrink: 0; }
     #patch-send-btn:hover { opacity: 0.7; }
     #patch-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
   `;
@@ -504,7 +375,6 @@
     const el = document.getElementById('hil-auth-error');
     if (el) el.textContent = '';
   }
-
   function showAuthError(msg) {
     const el = document.getElementById('hil-auth-error');
     if (el) el.textContent = msg;
@@ -518,20 +388,55 @@
   }
 
   // ─── PATCH CHAT BUBBLE ───────────────────────────────────────────────────────
-  // Session chat history (cleared on page reload — persistent history is v2)
-  const patchHistory = [];
+  // v2.4: persistent cross-session memory + multi-turn + !! issue logging
+
+  let patchHistory = [];   // current session thread (clears on page reload)
+  let patchMemory  = '';   // persistent summary loaded from Firestore on login
+
+  // ── Load memory from Firestore (called after auth) ──────────────────────────
+  async function loadPatchMemory(uid) {
+    if (!uid) return;
+    try {
+      const { getFirestore, doc, getDoc } = await import(`${FB_BASE}/firebase-firestore.js`);
+      const db  = getFirestore(firebaseApp);
+      const ref = doc(db, 'users', uid, 'patch_memory', 'session');
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        patchMemory = snap.data().memory_summary || '';
+        console.log('[PATCH] Memory loaded:', patchMemory.length, 'chars');
+      }
+    } catch (e) {
+      console.warn('[PATCH] Memory load failed (non-fatal):', e.message);
+    }
+  }
+
+  // ── Save updated memory to Firestore (called after each PATCH response) ─────
+  async function savePatchMemory(uid, updatedMemory) {
+    if (!uid || !updatedMemory) return;
+    try {
+      const { getFirestore, doc, setDoc } = await import(`${FB_BASE}/firebase-firestore.js`);
+      const db  = getFirestore(firebaseApp);
+      const ref = doc(db, 'users', uid, 'patch_memory', 'session');
+      await setDoc(ref, {
+        memory_summary: updatedMemory,
+        updated_at:     new Date(),
+      }, { merge: true });
+      patchMemory = updatedMemory;
+      console.log('[PATCH] Memory saved:', updatedMemory.length, 'chars');
+    } catch (e) {
+      console.warn('[PATCH] Memory save failed (non-fatal):', e.message);
+    }
+  }
 
   function buildPatchBubble() {
     const PATCH_IMG = 'https://hilsystem.com/patch-hero.png';
 
-    // Bubble button
     const bubble = document.createElement('div');
     bubble.id = 'patch-bubble';
     bubble.title = 'Ask PATCH';
     bubble.innerHTML = `<img src="${PATCH_IMG}" alt="PATCH"/>`;
     document.body.appendChild(bubble);
 
-    // Chat drawer
     const drawer = document.createElement('div');
     drawer.id = 'patch-drawer';
     drawer.innerHTML = `
@@ -545,40 +450,32 @@
       </div>
       <div id="patch-messages"></div>
       <div id="patch-input-row">
-        <textarea id="patch-input" rows="1" placeholder="Ask about your inventory…"></textarea>
+        <textarea id="patch-input" rows="1" placeholder="Ask PATCH… or type !!BUG / !!TODO / !!IDEA"></textarea>
         <button id="patch-send-btn" title="Send">↑</button>
       </div>`;
     document.body.appendChild(drawer);
 
-    // Toggle open/close
     bubble.addEventListener('click', () => {
       const isOpen = drawer.classList.toggle('open');
       if (isOpen && patchHistory.length === 0) {
         appendPatchMessage('patch', "Hey — I'm PATCH. I have your inventory loaded. What are you looking for?");
       }
-      if (isOpen) {
-        setTimeout(() => document.getElementById('patch-input')?.focus(), 200);
-      }
+      if (isOpen) setTimeout(() => document.getElementById('patch-input')?.focus(), 200);
     });
 
     document.getElementById('patch-close-btn').addEventListener('click', () => {
       drawer.classList.remove('open');
     });
 
-    // Send on button click or Enter (Shift+Enter = newline)
     document.getElementById('patch-send-btn').addEventListener('click', sendPatchMessage);
     document.getElementById('patch-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendPatchMessage();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendPatchMessage(); }
     });
   }
 
   function appendPatchMessage(role, text) {
     const messages = document.getElementById('patch-messages');
     if (!messages) return;
-
     const wrapper = document.createElement('div');
     wrapper.className = `patch-msg ${role}`;
     wrapper.innerHTML = `
@@ -601,7 +498,7 @@
   }
 
   async function sendPatchMessage() {
-    const input = document.getElementById('patch-input');
+    const input   = document.getElementById('patch-input');
     const sendBtn = document.getElementById('patch-send-btn');
     if (!input) return;
 
@@ -614,17 +511,13 @@
       return;
     }
 
-    // Render user message
+    // Render user message immediately
     appendPatchMessage('user', text);
-    patchHistory.push({ role: 'user', text });
     input.value = '';
     input.style.height = 'auto';
-
-    // Disable input while waiting
-    input.disabled = true;
+    input.disabled  = true;
     sendBtn.disabled = true;
 
-    // Show typing indicator
     const typingEl = showPatchTyping();
 
     try {
@@ -633,12 +526,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           uid,
-          message: text,
+          message:      text,
+          history:      [...patchHistory],   // full session thread for multi-turn
+          memory:       patchMemory,         // persistent cross-session summary
           tool_context: {
             active_tool: shellConfig.toolName || 'HIL System',
-            tool_id: shellConfig.toolId || 'unknown',
-          }
-        })
+            tool_id:     shellConfig.toolId   || 'unknown',
+          },
+        }),
       });
 
       const data = await res.json();
@@ -646,14 +541,27 @@
 
       const reply = data.response || data.error || 'No response from PATCH.';
       appendPatchMessage('patch', reply);
+
+      // Update session history for multi-turn
+      patchHistory.push({ role: 'user',  text });
       patchHistory.push({ role: 'patch', text: reply });
+
+      // Save updated memory back to Firestore (non-blocking)
+      if (data.updated_memory) {
+        savePatchMemory(uid, data.updated_memory);
+      }
+
+      // Log confirmation already included in reply if !! was detected
+      if (data.issue_logged) {
+        console.log('[PATCH] Issue logged:', data.issue_logged);
+      }
 
     } catch (err) {
       typingEl?.remove();
       appendPatchMessage('patch', 'Connection error — check your network and try again.');
       console.error('PATCH agent error:', err);
     } finally {
-      input.disabled = false;
+      input.disabled   = false;
       sendBtn.disabled = false;
       input.focus();
     }
@@ -691,7 +599,6 @@
 
     const avatar  = document.getElementById('hil-user-avatar');
     const signout = document.getElementById('hil-signout-btn');
-
     if (avatar && user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
     if (signout) signout.style.display = 'block';
 
@@ -702,11 +609,11 @@
     window.db          = firebaseDb;
     window.auth        = firebaseAuth;
 
-    HILShell.toast(`Welcome, ${user.displayName || user.email}`, 'success');
+    // ── Load PATCH memory after auth ─────────────────────────────────────────
+    loadPatchMemory(user.uid);
 
-    if (typeof shellConfig.onAuth === 'function') {
-      shellConfig.onAuth(user);
-    }
+    HILShell.toast(`Welcome, ${user.displayName || user.email}`, 'success');
+    if (typeof shellConfig.onAuth === 'function') shellConfig.onAuth(user);
   }
 
   // ─── WIRE AUTH BUTTONS ────────────────────────────────────────────────────────
@@ -749,12 +656,12 @@
       } catch (err) { showAuthError(friendlyAuthError(err.code)); }
     });
 
-    ['hil-email-input', 'hil-password-input'].forEach(id => {
+    ['hil-email-input','hil-password-input'].forEach(id => {
       document.getElementById(id)?.addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById('hil-email-submit').click();
       });
     });
-    ['hil-reg-email-input', 'hil-reg-password-input', 'hil-reg-name-input'].forEach(id => {
+    ['hil-reg-email-input','hil-reg-password-input','hil-reg-name-input'].forEach(id => {
       document.getElementById(id)?.addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById('hil-reg-submit').click();
       });
@@ -815,6 +722,8 @@
         if (gate && shellConfig.requireAuth !== false) gate.classList.remove('hidden');
         if (signout) signout.style.display = 'none';
         if (avatar)  avatar.style.display  = 'none';
+        patchHistory = [];
+        patchMemory  = '';
       }
     });
   }
@@ -823,18 +732,15 @@
   const HILShell = {
     init(config) {
       shellConfig = config || {};
-
       ['setMode','setView','setTab','openModal','closeModal'].forEach(fn => {
         if (!window[fn]) window[fn] = () => {};
       });
-
       injectStyles();
       buildHeader();
       buildNav();
       if (shellConfig.requireAuth !== false) buildAuthGate();
       buildToastContainer();
-      buildPatchBubble();   // ← PATCH lives here
-
+      buildPatchBubble();
       loadFirebaseAndBoot().catch(err => {
         console.error('HIL Shell: Firebase load failed', err);
         HILShell.toast('Firebase failed to load — check connection', 'error');
