@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Library Hub</title>
+<style>
+/* ── TOOL-SPECIFIC STYLES ONLY — shell provides tokens, header, nav, auth ── */
+.main-content { padding-top: calc(var(--hil-shell-h) + var(--hil-nav-h) + 28px); padding-bottom: 80px; max-width: 1100px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+.page-header { margin-bottom: 40px; }
+.page-eyebrow { font-family: var(--font-mono); font-size: 11px; color: var(--hil-amber); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+.page-title-main { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--hil-text); letter-spacing: 0.06em; line-height: 1.1; }
+.page-title-main span { color: var(--hil-amber); }
+.page-subtitle { margin-top: 8px; font-family: var(--font-ui); font-size: 15px; font-weight: 300; color: var(--hil-text-muted); max-width: 620px; line-height: 1.55; }
+.richards-quote { margin-top: 16px; padding: 12px 16px; background: var(--hil-surface); border-left: 3px solid var(--hil-amber); font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); line-height: 1.7; max-width: 620px; }
+.richards-quote cite { opacity: 0.7; font-style: normal; }
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2px; margin-bottom: 40px; }
+@media (max-width: 700px) { .library-grid { grid-template-columns: 1fr; } }
+.lib-card { background: var(--hil-surface); border: 1px solid var(--hil-border); display: flex; flex-direction: column; position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.15s; text-decoration: none; color: inherit; }
+.lib-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--card-accent, var(--hil-amber)); transform: scaleX(0); transform-origin: left; transition: transform 0.25s; }
+.lib-card:hover::before { transform: scaleX(1); }
+.lib-card:hover { border-color: var(--card-accent, var(--hil-amber)); transform: translateY(-2px); }
+.lib-card.coming-soon { opacity: 0.6; pointer-events: none; }
+.lib-card-header { padding: 20px 20px 0; display: flex; align-items: flex-start; gap: 14px; }
+.lib-card-icon { font-size: 28px; flex-shrink: 0; line-height: 1; }
+.lib-card-meta { flex: 1; }
+.lib-badge { font-family: var(--font-mono); font-size: 9px; color: var(--card-accent, var(--hil-amber)); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 5px; }
+.lib-card-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--hil-text); letter-spacing: 0.06em; line-height: 1.15; }
+.soon-tag { display: inline-block; font-family: var(--font-mono); font-size: 8px; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4); color: #a78bfa; padding: 2px 6px; letter-spacing: 0.1em; margin-left: 6px; vertical-align: middle; border-radius: 2px; }
+.lib-card-body { padding: 12px 20px 8px; flex: 1; }
+.lib-card-desc { font-size: 13px; color: var(--hil-text-muted); line-height: 1.6; }
+.lib-stats { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 20px 0; }
+.lib-stat { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); background: var(--hil-surface-2); border: 1px solid var(--hil-border); border-radius: 2px; padding: 3px 8px; }
+.lib-stat.highlight { color: var(--card-accent, var(--hil-amber)); }
+.lib-topics { padding: 10px 20px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.lib-topic { font-family: var(--font-ui); font-size: 11px; color: var(--hil-text-muted); background: var(--hil-surface-2); border-radius: 2px; padding: 2px 8px; }
+.lib-card-footer { padding: 14px 20px 18px; display: flex; align-items: center; justify-content: space-between; margin-top: auto; border-top: 1px solid var(--hil-border); }
+.lib-open-btn { font-family: var(--font-mono); font-size: 10px; color: var(--card-accent, var(--hil-amber)); letter-spacing: 0.15em; text-transform: uppercase; background: none; border: 1px solid var(--hil-border); padding: 6px 14px; cursor: pointer; text-decoration: none; transition: all 0.15s; display: inline-block; }
+.lib-open-btn:hover { border-color: var(--card-accent, var(--hil-amber)); }
+.lib-status { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; }
+.lib-status.live { color: var(--hil-green); border: 1px solid var(--hil-green-dim); background: rgba(0,204,102,0.06); }
+.lib-status.soon { color: var(--hil-text-muted); border: 1px solid var(--hil-border); }
+.lib-expand { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.lib-expand.open { max-height: 600px; }
+.lib-expand-inner { padding: 16px 20px 20px; background: var(--hil-surface-2); border-top: 1px solid var(--hil-border); }
+.expand-section-label { font-family: var(--font-mono); font-size: 9px; color: var(--card-accent, var(--hil-amber)); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px; }
+.expand-list { list-style: none; }
+.expand-list li { font-size: 12px; color: var(--hil-text-muted); padding: 5px 0; border-bottom: 1px solid var(--hil-border); display: flex; align-items: center; gap: 8px; }
+.expand-list li:last-child { border-bottom: none; }
+.expand-list .check { color: var(--hil-green); font-size: 10px; }
+.expand-list .dot { color: var(--hil-text-muted); font-size: 10px; }
+.prompt-snippet { background: var(--hil-bg); border: 1px solid var(--hil-border); border-radius: 3px; padding: 10px 12px; margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.expand-cta-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.expand-btn { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 7px 14px; cursor: pointer; text-decoration: none; border-radius: 2px; transition: all 0.15s; display: inline-block; }
+.expand-btn.primary { background: var(--card-accent, var(--hil-amber)); color: #000; border: none; }
+.expand-btn.primary:hover { filter: brightness(1.15); }
+.copy-snippet-btn { display: block; width: 100%; background: none; border: 1px solid var(--hil-border); color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; padding: 7px; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
+.copy-snippet-btn:hover, .copy-snippet-btn.copied { border-color: var(--hil-green); color: var(--hil-green); background: rgba(0,204,102,0.06); }
+.section-divider { border: none; border-top: 1px solid var(--hil-border); margin: 36px 0 28px; }
+.section-eyebrow { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 16px; }
+.tool-link-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.tool-link-chip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--hil-surface); border: 1px solid var(--hil-border); border-radius: 3px; text-decoration: none; color: var(--hil-text-muted); font-family: var(--font-ui); font-size: 13px; font-weight: 500; transition: all 0.15s; }
+.tool-link-chip:hover { border-color: var(--hil-green-dim); color: var(--hil-green); background: rgba(0,204,102,0.05); }
+.tool-link-chip .chip-icon { font-size: 16px; }
+.tool-link-chip .chip-arrow { margin-left: auto; font-size: 11px; color: var(--hil-text-muted); }
+</style>
+</head>
+<body>
+
+<script src="./hil-shell.js"></script>
+<script>
+HILShell.init({
+  toolId: 'library-hub',
+  toolName: 'Library Hub',
+  requireAuth: false,
+  onAuth: () => {}
+});
+</script>
+
+<div class="main-content">
+  <div class="page-header">
+    <div class="page-eyebrow">HIL System · Knowledge Base</div>
+    <h1 class="page-title-main">Library <span>Hub</span></h1>
+    <p class="page-subtitle">Six bodies of knowledge. Every household principle you need to own better, maintain smarter, and stop losing things to time.</p>
+    <div class="richards-quote">
+      "A household runs on principles, not products." — Ellen Swallow Richards, 1882<br>
+      <cite>First woman admitted to MIT. Founded the field of home economics as an applied science.</cite>
+    </div>
+  </div>
+
+  <div class="library-grid">
+
+    <!-- L01 CLEAN -->
+    <div class="lib-card" style="--card-accent:#00bbcc">
+      <div class="lib-card-header"><div class="lib-card-icon">🧪</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 01 — APPLIED CHEMISTRY</div><div class="lib-card-title">HIL Clean</div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Ten raw ingredients replace forty branded products. The science behind why they work — not the marketing. Free forever.</div></div>
+      <div class="lib-stats"><div class="lib-stat highlight">10 ingredients</div><div class="lib-stat highlight">40+ products replaced</div><div class="lib-stat">SKU reduction</div></div>
+      <div class="lib-topics"><span class="lib-topic">Surfactants</span><span class="lib-topic">Disinfection</span><span class="lib-topic">Abrasives</span><span class="lib-topic">Solvents</span><span class="lib-topic">DIY formulas</span></div>
+      <div class="lib-card-footer"><a href="hil-stain-lookup.html" class="lib-open-btn">Open Library →</a><span class="lib-status live">LIVE</span></div>
+    </div>
+
+    <!-- L02 ORGANIZE -->
+    <div class="lib-card" style="--card-accent:#4a9eed">
+      <div class="lib-card-header"><div class="lib-card-icon">🧰</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 02 — KIT SYSTEM</div><div class="lib-card-title">HIL Organize</div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Know what you own. Know what you can do. 28 standard kits, three skill tiers, and a free AI Capability Analyzer prompt.</div></div>
+      <div class="lib-stats"><div class="lib-stat highlight">28 standard kits</div><div class="lib-stat highlight">3 skill tiers</div><div class="lib-stat">TK / SK / MK / CK / FC</div></div>
+      <div class="lib-topics"><span class="lib-topic">Repair</span><span class="lib-topic">Cleaning</span><span class="lib-topic">Maintenance</span><span class="lib-topic">Garden</span><span class="lib-topic">Safety</span></div>
+      <div class="lib-expand" id="lib-exp-2">
+        <div class="lib-expand-inner">
+          <div class="expand-section-label">Capability Prompt — paste into any AI</div>
+          <div class="prompt-snippet" id="org-prompt">You are the HIL System Capability Analyzer — a friendly, knowledgeable old-school handyman. Interview me about my home inventory. Ask ONE question at a time starting with: where do you keep your tools right now? Map my answers to HIL Standard Kits, then tell me: what I can do right now, what one addition unlocks the most new capability, and group results into: Tasks I can do alone / Tasks I can do with one cheap addition / Tasks I should hire out. End with a Kit Card showing my active kit IDs.</div>
+          <button class="copy-snippet-btn" id="org-copy-btn" onclick="copySnippet('org-prompt','org-copy-btn')">Copy Capability Prompt →</button>
+          <div class="expand-cta-row"><a href="hil-organize.html" class="expand-btn primary">Open HIL Organize →</a></div>
+        </div>
+      </div>
+      <div class="lib-card-footer"><button class="lib-open-btn" onclick="toggleExpand(2)" id="tog-2">Show Prompt + Details ↓</button><span class="lib-status live">LIVE</span></div>
+    </div>
+
+    <!-- L03 RESTORE -->
+    <div class="lib-card" style="--card-accent:var(--hil-amber)">
+      <div class="lib-card-header"><div class="lib-card-icon">🔧</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 03 — PRESERVATION</div><div class="lib-card-title">HIL Restore</div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Stop replacing. Start restoring. Five base ingredients cover most jobs. Includes the pre-1970 tool quality guide and honest restore-vs-replace math.</div></div>
+      <div class="lib-stats"><div class="lib-stat highlight">5 base ingredients</div><div class="lib-stat highlight">6 techniques</div><div class="lib-stat">Pre-1970 tool guide</div></div>
+      <div class="lib-topics"><span class="lib-topic">Surface rust</span><span class="lib-topic">Tool handles</span><span class="lib-topic">Cast iron</span><span class="lib-topic">Leather</span><span class="lib-topic">Wood</span></div>
+      <div class="lib-expand" id="lib-exp-3">
+        <div class="lib-expand-inner">
+          <div class="expand-section-label">The 5 Base Ingredients</div>
+          <ul class="expand-list">
+            <li><span class="check">✓</span> Beeswax — wood, cast iron, leather waterproofing</li>
+            <li><span class="check">✓</span> Mineral oil — cutting boards, food-safe finishes</li>
+            <li><span class="check">✓</span> Linseed / Tung oil — tool handles, outdoor wood</li>
+            <li><span class="check">✓</span> White vinegar — light rust, mineral deposits</li>
+            <li><span class="check">✓</span> Baking soda — mild abrasive, odor, surface prep</li>
+            <li><span class="check">✓</span> Bar Keepers Friend — stainless, cast iron, porcelain</li>
+          </ul>
+          <div class="expand-cta-row"><a href="hil-restore.html" class="expand-btn primary">Open HIL Restore →</a></div>
+        </div>
+      </div>
+      <div class="lib-card-footer"><button class="lib-open-btn" onclick="toggleExpand(3)" id="tog-3">Show Ingredients ↓</button><span class="lib-status live">LIVE</span></div>
+    </div>
+
+    <!-- L04 SUPPLY -->
+    <div class="lib-card" style="--card-accent:var(--hil-green)">
+      <div class="lib-card-header"><div class="lib-card-icon">🏷</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 04 — INTENTIONAL OWNERSHIP</div><div class="lib-card-title">HIL Supply</div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Own less. Own better. Where to find quality tools cheap, the pre-1970 quality guide, and a decision matrix for when to DIY vs hire.</div></div>
+      <div class="lib-stats"><div class="lib-stat highlight">6-tier acquisition guide</div><div class="lib-stat highlight">$100 full homeowner kit</div><div class="lib-stat">DIY vs Hire matrix</div></div>
+      <div class="lib-topics"><span class="lib-topic">Estate sales</span><span class="lib-topic">Pre-1970 steel</span><span class="lib-topic">Harbor Freight vs Snap-On</span><span class="lib-topic">When to hire</span></div>
+      <div class="lib-expand" id="lib-exp-4">
+        <div class="lib-expand-inner">
+          <div class="expand-section-label">DIY vs Hire — Quick Reference</div>
+          <ul class="expand-list">
+            <li><span class="check">✓ DIY</span> Picture hanging, painting, drain clearing, caulking, gutter cleaning</li>
+            <li><span class="dot">~ Maybe</span> Toilet repair, tile, fence, appliances, basic plumbing</li>
+            <li><span style="color:var(--hil-danger);font-size:10px;">✕ Hire</span> Electrical panel, gas lines, foundation, roof replacement, permits</li>
+          </ul>
+          <div class="expand-cta-row"><a href="hil-supply.html" class="expand-btn primary">Open HIL Supply →</a></div>
+        </div>
+      </div>
+      <div class="lib-card-footer"><button class="lib-open-btn" onclick="toggleExpand(4)" id="tog-4">Show DIY Matrix ↓</button><span class="lib-status live">LIVE</span></div>
+    </div>
+
+    <!-- L05 BUILD -->
+    <div class="lib-card coming-soon" style="--card-accent:#8b5cf6">
+      <div class="lib-card-header"><div class="lib-card-icon">🏗</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 05 — CAPABILITY</div><div class="lib-card-title">HIL Build <span class="soon-tag">COMING SOON</span></div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Tell the system what kits you have. It tells you what you can build, fix, and do — and what one addition unlocks the most new capability.</div></div>
+      <div class="lib-stats"><div class="lib-stat">Powered by HIL Organize kits</div><div class="lib-stat">AI capability analysis</div></div>
+      <div class="lib-topics"><span class="lib-topic">Kit gap finder</span><span class="lib-topic">Unlock tree</span><span class="lib-topic">Project planning</span></div>
+      <div class="lib-card-footer"><span style="font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);letter-spacing:0.1em;">IN DEVELOPMENT</span><span class="lib-status soon">SOON</span></div>
+    </div>
+
+    <!-- L06 MAINTAIN -->
+    <div class="lib-card coming-soon" style="--card-accent:var(--hil-green)">
+      <div class="lib-card-header"><div class="lib-card-icon">📅</div><div class="lib-card-meta"><div class="lib-badge">LIBRARY 06 — SCHEDULED CARE</div><div class="lib-card-title">HIL Maintain <span class="soon-tag">COMING SOON</span></div></div></div>
+      <div class="lib-card-body"><div class="lib-card-desc">Know what your home needs, when it needs it, and what skipping costs. Seasonal maintenance schedules tied to your actual HIL addresses.</div></div>
+      <div class="lib-stats"><div class="lib-stat">Tied to HIL addresses</div><div class="lib-stat">Seasonal schedules</div><div class="lib-stat">Skip-cost calculator</div></div>
+      <div class="lib-topics"><span class="lib-topic">HVAC filters</span><span class="lib-topic">Roof inspection</span><span class="lib-topic">Sump pump</span><span class="lib-topic">Weatherization</span></div>
+      <div class="lib-card-footer"><span style="font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);letter-spacing:0.1em;">IN DEVELOPMENT</span><span class="lib-status soon">SOON</span></div>
+    </div>
+
+  </div>
+
+  <hr class="section-divider">
+  <div class="section-eyebrow">— TOOL BELT —</div>
+  <div class="tool-link-row">
+    <a href="hil-hub.html"           class="tool-link-chip"><span class="chip-icon">📍</span> Address Hub     <span class="chip-arrow">→</span></a>
+    <a href="hil-smart-home.html"    class="tool-link-chip"><span class="chip-icon">🏠</span> Smart Home      <span class="chip-arrow">→</span></a>
+    <a href="hl-vault-cloud.html"    class="tool-link-chip"><span class="chip-icon">🗄</span> Vault           <span class="chip-arrow">→</span></a>
+    <a href="hil-field-tool.html"    class="tool-link-chip"><span class="chip-icon">📱</span> Field Tool      <span class="chip-arrow">→</span></a>
+    <a href="hil-label-studio.html"  class="tool-link-chip"><span class="chip-icon">🖨</span> Labels &amp; Signs <span class="chip-arrow">→</span></a>
+    <a href="hil-museum.html"        class="tool-link-chip"><span class="chip-icon">🏛</span> History Wall    <span class="chip-arrow">→</span></a>
+    <a href="hil-family-ledger.html" class="tool-link-chip"><span class="chip-icon">👨‍👩‍👧</span> Family Ledger  <span class="chip-arrow">→</span></a>
+    <a href="hil-exchange.html"      class="tool-link-chip"><span class="chip-icon">⇄</span> Exchange        <span class="chip-arrow">→</span></a>
+  </div>
+</div>
+
+<script>
+function toggleExpand(n) {
+  const panel = document.getElementById('lib-exp-' + n);
+  const tog   = document.getElementById('tog-' + n);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.lib-expand').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('[id^="tog-"]').forEach(b => { b.textContent = b.textContent.replace('↑','↓'); });
+  if (!isOpen) { panel.classList.add('open'); tog.textContent = tog.textContent.replace('↓','↑'); }
+}
+function copySnippet(textId, btnId) {
+  navigator.clipboard.writeText(document.getElementById(textId).textContent).then(() => {
+    const btn = document.getElementById(btnId); const orig = btn.textContent;
+    btn.textContent = 'Copied ✓'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2200);
+  });
+}
+</script>
+</body>
+</html>
