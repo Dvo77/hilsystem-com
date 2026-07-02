@@ -48,24 +48,18 @@
   const PATCH_AGENT_URL = 'https://hil-patch-agent.dvo77.workers.dev/ask';
 
   // ─── NAV TOOLS LIST ─────────────────────────────────────────────────────────
-  const NAV_TOOLS = [
-    { id: 'hub',            label: 'Hub',            icon: '🧭', href: './hil-hub.html' },
-    { id: 'vault',          label: 'Vault',          icon: '🗄',  href: './hl-vault-cloud.html' },
-    { id: 'museum',         label: 'Museum',         icon: '🏛',  href: './hil-museum.html' },
-    { id: 'family-ledger',  label: 'Ledger',         icon: '👥', href: './hil-family-ledger.html' },
-    { id: 'exchange',       label: 'Exchange',       icon: '⇄',   href: './hil-exchange.html' },
-    { id: 'field-tool',     label: 'Field',          icon: '📍', href: './hil-field-tool.html' },
-    { id: 'labels',         label: 'Labels & Signs', icon: '🏷',  href: './hil-label-studio.html' },
-    { id: 'library-hub',    label: 'Library',        icon: '📚', href: './hil-library-hub.html' },
-    { id: 'stain-lookup',   label: 'HIL Clean',      icon: '🧪', href: './hil-stain-lookup.html' },
-    { id: 'organize',       label: 'Organize',       icon: '📦', href: './hil-organize.html' },
-    { id: 'restore',        label: 'Restore',        icon: '🔧', href: './hil-restore.html' },
-    { id: 'supply',         label: 'Supply',         icon: '🏪', href: './hil-supply.html' },
-    { id: 'room-codes',     label: 'Room Codes',     icon: '🗺',  href: './hl-room-code-generator.html' },
-    { id: 'import-export',  label: 'Import/Export',  icon: '📤', href: './hil-import-export.html' },
-    { id: 'admin',          label: 'Admin',          icon: '⚙',   href: './hil-admin.html' },
-  ];
-
+const NAV_TOOLS = [
+  { id: 'hub',           label: 'Hub',          icon: '🧭', href: './hil-hub.html' },
+  { id: 'vault',         label: 'Vault',        icon: '🗄',  href: './hl-vault-cloud.html' },
+  { id: 'museum',        label: 'Museum',       icon: '🏛',  href: './hil-museum.html' },
+  { id: 'family-ledger', label: 'Ledger',       icon: '👥', href: './hil-family-ledger.html' },
+  { id: 'exchange',      label: 'Exchange',     icon: '⇄',   href: './hil-exchange.html' },
+  { id: 'field-tool',    label: 'Field',        icon: '📍', href: './hil-field-tool.html' },
+  { id: 'labels',        label: 'Labels & Signs', icon: '🏷', href: './hil-label-studio.html' },
+  { id: 'library-hub',   label: 'Library',      icon: '📚', href: './hil-library-hub.html' },
+  { id: 'smart-home',    label: 'Smart Home',   icon: '🏠', href: './hil-smart-home.html' },
+  { id: 'admin',         label: 'Admin',        icon: '⚙',   href: './hil-admin.html' },
+];
   // ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
   const SHELL_CSS = `
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap');
