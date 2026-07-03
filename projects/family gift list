@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Digest Preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --moss:#1C2B1E;--moss-mid:#243326;--moss-light:#2E4030;
+  --parch:#F2EDE4;--amber:#E8951A;--green:#4CAF7D;
+  --red:#D95F5F;--blue:#4A6FA5;--blue-light:#6B92CC;
+  --slate:#7A8C7C;--gold:#E8C547;
+}
+body{background:var(--moss);color:var(--parch);font-family:'Inter',sans-serif;font-size:14px;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+
+/* TRIGGER BUTTON */
+.trigger-btn{
+  padding:12px 24px;border-radius:8px;
+  border:1px solid rgba(232,149,26,0.3);background:rgba(232,149,26,0.07);
+  color:var(--amber);font-size:13px;font-weight:600;cursor:pointer;
+  font-family:'Syne',sans-serif;letter-spacing:0.04em;transition:all 0.15s;
+}
+.trigger-btn:hover{background:rgba(232,149,26,0.15);}
+
+/* OVERLAY */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(10,18,11,0.88);z-index:200;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);padding:20px;
+}
+.overlay.open{display:flex;}
+
+/* MODAL SHELL */
+.modal{
+  background:var(--moss-mid);
+  border:1px solid rgba(232,149,26,0.2);
+  border-radius:16px;
+  width:680px;max-width:100%;
+  max-height:92vh;
+  display:flex;flex-direction:column;
+  animation:pop 0.18s ease;
+  overflow:hidden;
+}
+@keyframes pop{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+
+/* MODAL HEADER */
+.modal-hdr{
+  padding:18px 22px 16px;
+  background:rgba(232,149,26,0.05);
+  border-bottom:1px solid rgba(232,149,26,0.15);
+  display:flex;align-items:flex-start;justify-content:space-between;
+  flex-shrink:0;
+}
+.modal-hdr-left h2{
+  font-family:'Syne',sans-serif;font-weight:800;font-size:18px;
+  color:var(--amber);margin-bottom:2px;
+}
+.modal-hdr-left p{font-size:11px;color:var(--slate);}
+.modal-close{
+  background:none;border:none;color:var(--slate);
+  font-size:20px;cursor:pointer;padding:0 4px;line-height:1;
+  transition:color 0.12s;
+}
+.modal-close:hover{color:var(--parch);}
+
+/* TAB ROW */
+.tab-row{
+  display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);
+  flex-shrink:0;
+}
+.tab{
+  padding:10px 18px;font-size:12px;font-weight:600;
+  font-family:'Syne',sans-serif;cursor:pointer;
+  color:var(--slate);border-bottom:2px solid transparent;
+  transition:all 0.12s;letter-spacing:0.03em;
+}
+.tab:hover{color:var(--parch);}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+
+/* SCROLLABLE BODY */
+.modal-body{overflow-y:auto;flex:1;padding:20px 22px;}
+
+/* ── PREVIEW TAB ── */
+.digest-envelope{
+  background:var(--moss);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  overflow:hidden;
+  font-family:'Inter',sans-serif;
+}
+.env-topbar{
+  background:rgba(232,149,26,0.06);
+  border-bottom:1px solid rgba(232,149,26,0.15);
+  padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.env-subject{font-size:12px;font-weight:600;color:var(--parch);}
+.env-meta{font-size:10px;color:var(--slate);font-family:'DM Mono',monospace;}
+.env-body{padding:18px 20px;}
+
+/* Section headers */
+.digest-section{margin-bottom:22px;}
+.ds-head{
+  font-family:'DM Mono',monospace;font-size:10px;
+  text-transform:uppercase;letter-spacing:0.15em;
+  color:var(--amber);margin-bottom:12px;
+  padding-bottom:6px;
+  border-bottom:1px solid rgba(232,149,26,0.15);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ds-count{
+  font-size:10px;background:rgba(232,149,26,0.1);
+  color:var(--amber);border-radius:10px;padding:1px 7px;
+  border:1px solid rgba(232,149,26,0.2);
+}
+
+/* Kid block */
+.kid-block{
+  background:var(--moss-mid);border:1px solid rgba(255,255,255,0.07);
+  border-radius:8px;padding:13px 15px;margin-bottom:10px;
+}
+.kb-name{
+  font-family:'Syne',sans-serif;font-weight:700;font-size:14px;
+  color:var(--parch);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.kb-age{font-size:10px;font-family:'DM Mono',monospace;color:var(--slate);font-weight:400;}
+
+/* Need item */
+.need-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.need-item:last-child{border-bottom:none;}
+.need-type{
+  font-size:9px;font-family:'DM Mono',monospace;font-weight:600;
+  padding:2px 6px;border-radius:4px;flex-shrink:0;margin-top:1px;
+  letter-spacing:0.05em;
+}
+.nt-complete{background:rgba(76,175,125,0.12);color:var(--green);border:1px solid rgba(76,175,125,0.2);}
+.nt-invest{background:rgba(74,111,165,0.12);color:var(--blue-light);border:1px solid rgba(74,111,165,0.2);}
+.nt-interest{background:rgba(232,197,71,0.1);color:var(--gold);border:1px solid rgba(232,197,71,0.2);}
+.nt-size{background:rgba(217,95,95,0.1);color:var(--red);border:1px solid rgba(217,95,95,0.2);}
+.nt-house{background:rgba(122,140,124,0.12);color:var(--slate);border:1px solid rgba(122,140,124,0.2);}
+.nt-supply{background:rgba(232,149,26,0.1);color:var(--amber);border:1px solid rgba(232,149,26,0.2);}
+
+.need-text{flex:1;font-size:12px;color:var(--parch);line-height:1.6;}
+.need-text strong{color:var(--parch);font-weight:600;}
+.need-text .value-note{color:var(--green);font-size:11px;}
+.need-text .cost-note{color:var(--amber);font-size:11px;}
+
+/* Claim button */
+.claim-btn{
+  flex-shrink:0;padding:4px 10px;border-radius:6px;
+  border:1px solid rgba(76,175,125,0.3);background:rgba(76,175,125,0.08);
+  color:var(--green);font-size:10px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all 0.12s;white-space:nowrap;
+}
+.claim-btn:hover{background:rgba(76,175,125,0.18);}
+.claim-btn.claimed{
+  background:rgba(76,175,125,0.2);border-color:var(--green);
+  color:var(--green);cursor:default;
+}
+.claim-btn.taken{
+  background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.08);
+  color:var(--slate);cursor:default;font-style:italic;
+}
+
+/* Claimed by note */
+.claimed-by{
+  font-size:10px;color:var(--green);font-family:'DM Mono',monospace;
+  margin-top:2px;display:none;
+}
+.claimed-by.show{display:block;}
+
+/* House needs */
+.house-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.house-item:last-child{border-bottom:none;}
+
+/* Claimed section */
+.claimed-section{
+  background:rgba(76,175,125,0.05);
+  border:1px solid rgba(76,175,125,0.12);
+  border-radius:8px;padding:12px 15px;
+}
+.claimed-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:5px 0;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.claimed-row:last-child{border-bottom:none;}
+.cr-item{color:var(--parch);}
+.cr-who{color:var(--green);font-family:'DM Mono',monospace;font-size:10px;}
+
+/* Footer */
+.digest-footer{
+  margin-top:20px;padding-top:14px;
+  border-top:1px solid rgba(255,255,255,0.06);
+  text-align:center;
+}
+.df-tagline{
+  font-family:'DM Mono',monospace;font-size:10px;
+  color:var(--slate);letter-spacing:0.08em;margin-bottom:4px;
+}
+.df-link{font-size:10px;color:rgba(232,149,26,0.5);text-decoration:none;}
+
+/* ── SEND TAB ── */
+.send-form{display:flex;flex-direction:column;gap:14px;}
+.sf-label{font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--slate);font-family:'DM Mono',monospace;margin-bottom:5px;}
+.sf-input{
+  width:100%;background:var(--moss);border:1px solid rgba(255,255,255,0.1);
+  color:var(--parch);font-family:'Inter',sans-serif;font-size:13px;
+  padding:10px 12px;border-radius:7px;outline:none;transition:border-color 0.15s;
+}
+.sf-input:focus{border-color:var(--amber);}
+.recipient-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--moss-light);border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;padding:4px 10px 4px 12px;font-size:12px;color:var(--parch);
+}
+.chip-remove{
+  background:none;border:none;color:var(--slate);
+  font-size:14px;cursor:pointer;padding:0;line-height:1;
+}
+.chip-remove:hover{color:var(--red);}
+.add-recipient-row{display:flex;gap:8px;}
+.add-recipient-row .sf-input{flex:1;}
+.add-btn{
+  padding:10px 16px;border-radius:7px;
+  border:1px solid rgba(232,149,26,0.3);background:rgba(232,149,26,0.07);
+  color:var(--amber);font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;white-space:nowrap;transition:all 0.12s;
+}
+.add-btn:hover{background:rgba(232,149,26,0.15);}
+
+.share-link-box{
+  background:var(--moss);border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;padding:12px 14px;
+}
+.slb-label{font-size:10px;color:var(--slate);font-family:'DM Mono',monospace;margin-bottom:6px;}
+.slb-url{
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);
+  word-break:break-all;margin-bottom:8px;
+}
+.slb-copy{
+  padding:5px 12px;border-radius:5px;border:1px solid rgba(232,149,26,0.25);
+  background:rgba(232,149,26,0.06);color:var(--amber);font-size:10px;
+  font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
+}
+
+.schedule-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.schedule-chip{
+  padding:6px 14px;border-radius:16px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid rgba(255,255,255,0.1);
+  background:none;color:var(--slate);font-family:'Inter',sans-serif;
+  transition:all 0.12s;
+}
+.schedule-chip.active{background:var(--moss-light);border-color:rgba(232,149,26,0.35);color:var(--amber);}
+
+.send-now-btn{
+  width:100%;padding:13px;border-radius:8px;
+  border:1px solid rgba(76,175,125,0.3);background:rgba(76,175,125,0.1);
+  color:var(--green);font-size:14px;font-weight:700;cursor:pointer;
+  font-family:'Syne',sans-serif;letter-spacing:0.05em;transition:all 0.15s;
+}
+.send-now-btn:hover{background:rgba(76,175,125,0.2);}
+
+.sent-confirm{
+  display:none;background:rgba(76,175,125,0.08);
+  border:1px solid rgba(76,175,125,0.2);border-radius:8px;
+  padding:16px;text-align:center;
+}
+.sent-confirm.show{display:block;}
+.sc-icon{font-size:32px;margin-bottom:8px;}
+.sc-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--green);margin-bottom:4px;}
+.sc-sub{font-size:12px;color:var(--slate);line-height:1.6;}
+
+/* ── SETTINGS TAB ── */
+.settings-form{display:flex;flex-direction:column;gap:16px;}
+.setting-row{
+  background:var(--moss);border:1px solid rgba(255,255,255,0.07);
+  border-radius:8px;padding:13px 15px;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+}
+.sr-left h4{font-size:13px;font-weight:600;color:var(--parch);margin-bottom:2px;}
+.sr-left p{font-size:11px;color:var(--slate);line-height:1.6;}
+.toggle{
+  width:38px;height:22px;border-radius:11px;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);
+  cursor:pointer;position:relative;flex-shrink:0;transition:background 0.2s;
+}
+.toggle.on{background:var(--green);border-color:var(--green);}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:14px;height:14px;border-radius:50%;background:#fff;
+  transition:transform 0.2s;
+}
+.toggle.on::after{transform:translateX(16px);}
+
+/* MODAL FOOTER */
+.modal-ftr{
+  padding:14px 22px;border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;justify-content:space-between;align-items:center;
+  flex-shrink:0;
+}
+.mf-note{font-size:11px;color:var(--slate);font-family:'DM Mono',monospace;}
+.mf-actions{display:flex;gap:8px;}
+.mf-btn{
+  padding:8px 18px;border-radius:7px;font-size:12px;font-weight:600;
+  cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:0.03em;transition:all 0.12s;
+}
+.mf-cancel{background:none;border:1px solid rgba(255,255,255,0.1);color:var(--slate);}
+.mf-cancel:hover{border-color:rgba(255,255,255,0.2);color:var(--parch);}
+.mf-send{background:rgba(232,149,26,0.1);border:1px solid rgba(232,149,26,0.3);color:var(--amber);}
+.mf-send:hover{background:rgba(232,149,26,0.2);}
+</style>
+</head>
+<body>
+
+<button class="trigger-btn" onclick="openDigest()">✉ Send Family Digest</button>
+
+<!-- DIGEST MODAL -->
+<div class="overlay" id="digestOverlay" onclick="overlayClick(event)">
+<div class="modal">
+
+  <!-- HEADER -->
+  <div class="modal-hdr">
+    <div class="modal-hdr-left">
+      <h2>📧 Family Digest</h2>
+      <p>Share household needs with the people who care · read-only link · live claim tracking</p>
+    </div>
+    <button class="modal-close" onclick="closeDigest()">✕</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tab-row">
+    <div class="tab active" onclick="switchDigestTab(this,'preview')">Preview</div>
+    <div class="tab" onclick="switchDigestTab(this,'send')">Send & Share</div>
+    <div class="tab" onclick="switchDigestTab(this,'settings')">Settings</div>
+  </div>
+
+  <!-- BODY -->
+  <div class="modal-body">
+
+    <!-- ── PREVIEW TAB ── -->
+    <div id="tab-preview">
+      <div class="digest-envelope">
+
+        <!-- Email chrome -->
+        <div class="env-topbar">
+          <div class="env-subject">DeVoy Family · 2026 Holiday + Household Needs</div>
+          <div class="env-meta">Generated by Family Ledger · hilsystem.com · <span id="digestDate"></span></div>
+        </div>
+
+        <div class="env-body">
+
+          <!-- FOR THE KIDS -->
+          <div class="digest-section">
+            <div class="ds-head">For the Kids <span class="ds-count">3 members</span></div>
+
+            <!-- Maya -->
+            <div class="kid-block">
+              <div class="kb-name">Maya <span class="kb-age">age 12 · HM-MR</span></div>
+
+              <div class="need-item">
+                <div class="need-type nt-complete">COMPLETE</div>
+                <div class="need-text">
+                  <strong>Lego Lamborghini Sián</strong> — 2 missing pieces<br>
+                  <span class="cost-note">~$3 on BrickLink</span> · <span class="value-note">restores $31 in asset value</span>
+                  <div class="claimed-by" id="cb-lego">✓ Claimed by Grandma Janet</div>
+                </div>
+                <button class="claim-btn" id="claim-lego" onclick="claim('lego','Grandma Janet')">Claim</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-invest">INVEST</div>
+                <div class="need-text">
+                  <strong>ETF contribution</strong> — any amount<br>
+                  <span class="value-note">$25 → adds $87 to her age-18 projection</span>
+                </div>
+                <button class="claim-btn" id="claim-etf" onclick="claim('etf','You')">Contribute</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-complete">COMPLETE</div>
+                <div class="need-text">
+                  <strong>Polly Pocket Castle</strong> — 4 missing pieces · no box<br>
+                  <span class="cost-note">Pieces ~$6</span> · <span class="value-note">value: $31 → $45 complete</span>
+                </div>
+                <button class="claim-btn" id="claim-polly" onclick="claim('polly','You')">Claim</button>
+              </div>
+            </div>
+
+            <!-- Eli -->
+            <div class="kid-block">
+              <div class="kb-name">Eli <span class="kb-age">age 9 · HM-ER</span></div>
+
+              <div class="need-item">
+                <div class="need-type nt-complete">COMPLETE</div>
+                <div class="need-text">
+                  <strong>Hot Wheels track</strong> — missing 7 track pieces<br>
+                  <span class="cost-note">~$8 on eBay</span> · <span class="value-note">value: $22 → $35 complete</span>
+                </div>
+                <button class="claim-btn" id="claim-hw" onclick="claim('hw','You')">Claim</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-interest">INTEREST</div>
+                <div class="need-text">
+                  <strong>Minecraft building sets</strong> — new interest flagged by system<br>
+                  <span class="cost-note">Starter set ~$35 · good value retention</span>
+                </div>
+                <button class="claim-btn" id="claim-mc" onclick="claim('mc','You')">Claim</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-invest">INVEST</div>
+                <div class="need-text">
+                  <strong>Trump Account contribution</strong><br>
+                  <span class="value-note">Up to $5,000/yr · opens Jul 4 2026</span>
+                </div>
+                <button class="claim-btn" id="claim-eli-trump" onclick="claim('eli-trump','You')">Contribute</button>
+              </div>
+            </div>
+
+            <!-- Nora -->
+            <div class="kid-block">
+              <div class="kb-name">Nora <span class="kb-age">age 7 · HM-NR</span></div>
+
+              <div class="need-item">
+                <div class="need-type nt-interest">INTEREST</div>
+                <div class="need-text">
+                  <strong>My Little Pony — Sunny Starscout</strong><br>
+                  <span class="cost-note">~$14 · not in collection</span>
+                </div>
+                <button class="claim-btn" id="claim-pony" onclick="claim('pony','You')">Claim</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-size">SIZE</div>
+                <div class="need-text">
+                  <strong>Winter coat — size 6</strong><br>
+                  <span class="cost-note">Current coat expires in ~6 weeks</span>
+                  <div class="claimed-by" id="cb-coat">✓ Claimed by Aunt Sarah</div>
+                </div>
+                <button class="claim-btn taken" id="claim-coat">Aunt Sarah</button>
+              </div>
+
+              <div class="need-item">
+                <div class="need-type nt-invest">INVEST</div>
+                <div class="need-text">
+                  <strong>ETF contribution</strong><br>
+                  <span class="value-note">$25 → adds $104 to her age-18 projection</span>
+                </div>
+                <button class="claim-btn" id="claim-nora-etf" onclick="claim('nora-etf','You')">Contribute</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOR THE HOUSE -->
+          <div class="digest-section">
+            <div class="ds-head">For the House <span class="ds-count">3 items</span></div>
+
+            <div class="house-item">
+              <div class="need-type nt-house">HOUSE</div>
+              <div class="need-text">
+                <strong>Garage north wall shelving</strong> · HM-GR-N2<br>
+                Recommended: IKEA BROR 78"×21" · fits footprint · <span class="cost-note">~$129</span>
+              </div>
+              <button class="claim-btn" id="claim-shelf" onclick="claim('shelf','You')">Claim</button>
+            </div>
+
+            <div class="house-item">
+              <div class="need-type nt-house">HOUSE</div>
+              <div class="need-text">
+                <strong>Kitchen pantry organizer</strong> · 4 slots unaddressed<br>
+                Pull-out shelf organizer recommended · <span class="cost-note">~$34</span>
+              </div>
+              <button class="claim-btn" id="claim-pantry" onclick="claim('pantry','You')">Claim</button>
+            </div>
+
+            <div class="house-item">
+              <div class="need-type nt-house">HOUSE</div>
+              <div class="need-text">
+                <strong>Back bedroom dresser</strong><br>
+                Current flagged FAIR condition · replacement recommended
+              </div>
+              <button class="claim-btn" id="claim-dresser" onclick="claim('dresser','You')">Claim</button>
+            </div>
+          </div>
+
+          <!-- FOR CARRIE -->
+          <div class="digest-section">
+            <div class="ds-head">For Carrie <span class="ds-count">Hollow Moon</span></div>
+
+            <div class="house-item">
+              <div class="need-type nt-supply">RESTOCK</div>
+              <div class="need-text">
+                <strong>Lion's Mane extract</strong> · apothecary running low<br>
+                HM-AP-N1-B0 · <span class="cost-note">reorder threshold hit</span>
+              </div>
+              <button class="claim-btn" id="claim-lions" onclick="claim('lions','You')">Gift</button>
+            </div>
+
+            <div class="house-item">
+              <div class="need-type nt-supply">SUPPLY</div>
+              <div class="need-text">
+                <strong>Apothecary jars — wide mouth 4oz</strong> · qty 12<br>
+                <span class="cost-note">~$18 for 12-pack</span>
+              </div>
+              <button class="claim-btn" id="claim-jars" onclick="claim('jars','You')">Claim</button>
+            </div>
+          </div>
+
+          <!-- FOR DAN -->
+          <div class="digest-section">
+            <div class="ds-head">For Dan <span class="ds-count">Shop</span></div>
+
+            <div class="house-item">
+              <div class="need-type nt-supply">REPLACE</div>
+              <div class="need-text">
+                <strong>Air compressor hose</strong> · cracked · flagged for replacement<br>
+                <span class="cost-note">~$22 · 3/8" × 25ft</span>
+              </div>
+              <button class="claim-btn" id="claim-hose" onclick="claim('hose','You')">Claim</button>
+            </div>
+
+            <div class="house-item">
+              <div class="need-type nt-supply">GIFT CARD</div>
+              <div class="need-text">
+                <strong>Harbor Freight gift card</strong><br>
+                <span class="cost-note">Any amount · always useful</span>
+              </div>
+              <button class="claim-btn" id="claim-hf" onclick="claim('hf','You')">Claim</button>
+            </div>
+          </div>
+
+          <!-- ALREADY CLAIMED -->
+          <div class="digest-section">
+            <div class="ds-head">Already Claimed <span class="ds-count" id="claimedCount">2 items</span></div>
+            <div class="claimed-section">
+              <div class="claimed-row" id="claimed-lego-row">
+                <div class="cr-item">Maya · Lego Lamborghini pieces</div>
+                <div class="cr-who">Grandma Janet</div>
+              </div>
+              <div class="claimed-row" id="claimed-coat-row">
+                <div class="cr-item">Nora · Winter coat (size 6)</div>
+                <div class="cr-who">Aunt Sarah</div>
+              </div>
+              <div id="dynamic-claimed"></div>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="digest-footer">
+            <div class="df-tagline">NOTHING IS LOST · EVERYTHING IS LOGIC</div>
+            <div style="margin-top:4px;">
+              <a class="df-link" href="#">Generated by Family Ledger · hilsystem.com</a>
+              &nbsp;·&nbsp;
+              <a class="df-link" href="#">Unsubscribe</a>
+            </div>
+          </div>
+
+        </div><!-- env-body -->
+      </div><!-- digest-envelope -->
+    </div><!-- tab-preview -->
+
+    <!-- ── SEND TAB ── -->
+    <div id="tab-send" style="display:none;">
+      <div class="send-form">
+
+        <div>
+          <div class="sf-label">Recipients</div>
+          <div class="recipient-chips" id="recipientChips">
+            <div class="chip">Grandma Janet <span class="chip-remove" onclick="removeChip(this)">×</span></div>
+            <div class="chip">Grandpa Tom <span class="chip-remove" onclick="removeChip(this)">×</span></div>
+            <div class="chip">Aunt Sarah <span class="chip-remove" onclick="removeChip(this)">×</span></div>
+          </div>
+          <div class="add-recipient-row" style="margin-top:8px;">
+            <input class="sf-input" id="newRecipient" placeholder="Add email or name…" onkeydown="if(event.key==='Enter')addRecipient()">
+            <button class="add-btn" onclick="addRecipient()">+ Add</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="sf-label">Live Share Link</div>
+          <div class="share-link-box">
+            <div class="slb-label">Anyone with this link can view and claim items — no account required</div>
+            <div class="slb-url">https://hilsystem.com/digest/devoy-2026-holiday-a7f3k</div>
+            <button class="slb-copy" onclick="this.textContent='Copied!'">📋 Copy Link</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="sf-label">Schedule</div>
+          <div class="schedule-row">
+            <button class="schedule-chip active" onclick="setSchedule(this)">Send Now</button>
+            <button class="schedule-chip" onclick="setSchedule(this)">Weekly</button>
+            <button class="schedule-chip" onclick="setSchedule(this)">Monthly</button>
+            <button class="schedule-chip" onclick="setSchedule(this)">Holiday Season</button>
+            <button class="schedule-chip" onclick="setSchedule(this)">Manual Only</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="sf-label">Subject Line</div>
+          <input class="sf-input" value="DeVoy Family · 2026 Holiday + Household Needs">
+        </div>
+
+        <button class="send-now-btn" onclick="sendDigest()">✉ Send Family Digest Now</button>
+
+        <div class="sent-confirm" id="sentConfirm">
+          <div class="sc-icon">✅</div>
+          <div class="sc-title">Digest Sent</div>
+          <div class="sc-sub">
+            Sent to 3 recipients · June 20, 2026<br>
+            Live share link is active — claims update in real time.<br>
+            <span style="color:var(--amber)">Next send: Weekly · every Sunday</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SETTINGS TAB ── -->
+    <div id="tab-settings" style="display:none;">
+      <div class="settings-form">
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Include house needs</h4>
+            <p>Garage, kitchen, bedroom items flagged by the system</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Include Carrie's apothecary needs</h4>
+            <p>Hollow Moon restock alerts and supply requests</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Include Dan's shop needs</h4>
+            <p>Tool replacements and equipment flags</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Show ETF / Trump Account contributions</h4>
+            <p>Financial contribution options with age-18 projections</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Show size updates</h4>
+            <p>Clothing sizes and growth predictions for kids</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Show interest flags</h4>
+            <p>New interests detected by the system from recent activity</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Require admin approval before sending</h4>
+            <p>Preview and approve before digest goes to recipients</p>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div class="setting-row">
+          <div class="sr-left">
+            <h4>Auto-send on schedule</h4>
+            <p>System sends automatically without approval step</p>
+          </div>
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- modal-body -->
+
+  <!-- FOOTER -->
+  <div class="modal-ftr">
+    <div class="mf-note"><span id="claimStatus">2 items claimed · 14 available</span></div>
+    <div class="mf-actions">
+      <button class="mf-btn mf-cancel" onclick="closeDigest()">Close</button>
+      <button class="mf-btn mf-send" onclick="switchDigestTab(document.querySelector('.tab:nth-child(2)'),'send')">Send & Share →</button>
+    </div>
+  </div>
+
+</div><!-- modal -->
+</div><!-- overlay -->
+
+<script>
+// State
+let claimedItems = {
+  'lego': 'Grandma Janet',
+  'coat': 'Aunt Sarah'
+};
+let totalClaimable = 14;
+
+document.getElementById('digestDate').textContent =
+  new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+function openDigest(){ document.getElementById('digestOverlay').classList.add('open'); }
+function closeDigest(){ document.getElementById('digestOverlay').classList.remove('open'); }
+function overlayClick(e){ if(e.target===document.getElementById('digestOverlay')) closeDigest(); }
+
+function switchDigestTab(el, name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['preview','send','settings'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===name?'':'none';
+  });
+}
+
+function claim(id, claimer){
+  const btn = document.getElementById('claim-'+id);
+  const cb = document.getElementById('cb-'+id);
+  if(!btn || btn.classList.contains('taken') || btn.classList.contains('claimed')) return;
+
+  // Ask who is claiming
+  const name = prompt('Your name:') || claimer;
+  if(!name) return;
+
+  claimedItems[id] = name;
+  btn.textContent = name;
+  btn.classList.remove('claim-btn');
+  btn.classList.add('claim-btn','taken');
+
+  if(cb){ cb.textContent = '✓ Claimed by ' + name; cb.classList.add('show'); }
+
+  // Add to claimed section
+  const dc = document.getElementById('dynamic-claimed');
+  const labels = {
+    'lego':'Maya · Lego Lamborghini pieces','etf':'Maya · ETF contribution',
+    'polly':'Maya · Polly Pocket pieces','hw':'Eli · Hot Wheels track pieces',
+    'mc':'Eli · Minecraft starter set','eli-trump':'Eli · Trump Account',
+    'pony':'Nora · My Little Pony Sunny','nora-etf':'Nora · ETF contribution',
+    'shelf':'House · Garage shelving','pantry':'House · Pantry organizer',
+    'dresser':'House · Back bedroom dresser','lions':'Carrie · Lion\'s Mane',
+    'jars':'Carrie · Apothecary jars','hose':'Dan · Air compressor hose',
+    'hf':'Dan · Harbor Freight gift card'
+  };
+  const row = document.createElement('div');
+  row.className='claimed-row';
+  row.innerHTML=`<div class="cr-item">${labels[id]||id}</div><div class="cr-who">${name}</div>`;
+  dc.appendChild(row);
+
+  // Update counts
+  const count = Object.keys(claimedItems).length;
+  document.getElementById('claimedCount').textContent = count+' items';
+  document.getElementById('claimStatus').textContent = count+' items claimed · '+(totalClaimable-count)+' available';
+}
+
+function removeChip(el){ el.parentNode.remove(); }
+
+function addRecipient(){
+  const input = document.getElementById('newRecipient');
+  const val = input.value.trim();
+  if(!val) return;
+  const chips = document.getElementById('recipientChips');
+  const chip = document.createElement('div');
+  chip.className='chip';
+  chip.innerHTML=val+' <span class="chip-remove" onclick="removeChip(this)">×</span>';
+  chips.appendChild(chip);
+  input.value='';
+}
+
+function setSchedule(el){
+  document.querySelectorAll('.schedule-chip').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function sendDigest(){
+  document.querySelector('.send-now-btn').style.display='none';
+  document.getElementById('sentConfirm').classList.add('show');
+}
+</script>
+</body>
+</html>
