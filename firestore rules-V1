@@ -1,0 +1,166 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- HELPERS ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Dedicated top-level lookup collection purely for rules enforcement.
+    // One doc per admin, doc ID == their Firebase Auth UID: admins/{uid}
+    // This exists because admin status is set on a team_members doc (by member ID,
+    // not by UID) which security rules cannot query — only get() by known path.
+    // Create/maintain this doc manually (or via Cloud Run) alongside team_members.is_admin.
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // ---------- ADMINS (platform-wide operator console access) ----------
+    // Existence of a doc here == full access to hil-admin.html (all users' staged
+    // items, all financials — not scoped to one household). This is intentionally
+    // separate from team_members.is_admin: that field is what the admin panel UI
+    // displays/toggles for a person, but THIS collection is the actual security
+    // gate, and only an existing admin can write to it. That closes off any
+    // self-granted or peer-granted privilege escalation — a signed-in user can
+    // never make themselves (or anyone else) admin; only someone already in this
+    // collection can add or remove the next person. Seed the first entry (you)
+    // manually via the Firebase console or Admin SDK — never via a client write.
+    match /admins/{targetUid} {
+      allow read: if isOwner(targetUid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // ---------- USERS ----------
+    // users/{uid} — one doc per authenticated user
+    match /users/{uid} {
+      allow read: if isOwner(uid) || resource.data.public == true;
+  // Users can update their own profile, but never their own plan/tier.
+      // Billing fields must only ever be set by a trusted backend (Cloud Run / webhook), never the client.
+      // Preferences (e.g. seasonal_flair_enabled) are a normal owner-writable field, not gated here.
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) &&
+        request.resource.data.plan == resource.data.plan;
+      allow delete: if false;
+
+      // ---- admin_prefs: dashboard layout / module visibility, admin's own doc ----
+      match /admin_prefs/{prefDocId} {
+        allow read, write: if isOwner(uid);
+      }
+
+// ---- item_records: backend-only write (Cloud Run via staged_items) ----
+      // Admin read access added for hil-admin.html's Financial Overview module,
+      // which aggregates across every user's item_records, not just the admin's own.
+      match /item_records/{itemId} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if false; // sole writer is hil-admin-action Cloud Run service w/ verified ID token
+      }
+
+      // ---- collections (Wunderkammer groupings) ----
+      match /collections/{collectionId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid);
+      }
+
+      // ---- kits ----
+      match /kits/{kitId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid);
+      }
+
+      // ---- vessels ----
+      match /vessels/{vesselId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid);
+      }
+
+      // ---- properties + zones ----
+      match /properties/{propertyId} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid);
+
+        match /zones/{zoneId} {
+          allow read: if isOwner(uid);
+          allow write: if isOwner(uid);
+        }
+      }
+    }
+
+    // ---------- MUSEUM ITEMS ----------
+    // Frontend-owned story layer. Public read if owner opted in; owner-only write.
+    match /museum_items/{museumItemId} {
+      allow read: if resource.data.public == true ||
+        (isSignedIn() && resource.data.owner_uid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.owner_uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.owner_uid == request.auth.uid;
+    }
+
+    // ---------- HISTORY WALL ----------
+    // Public opt-in surface pulled from a user's Museum. Read-heavy, global.
+    match /history_wall/{entryId} {
+      allow read: if true; // public by definition
+      allow write: if false; // populated via backend job off museum_items, not direct client write
+    }
+
+    // ---------- EXCHANGE LISTINGS ----------
+    // Global marketplace surface. Any signed-in user can list; only the lister can edit/remove their own.
+    match /exchange_listings/{listingId} {
+      allow read: if true; // public browsing, including logged-out
+      allow create: if isSignedIn() && request.resource.data.owner_uid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.owner_uid == request.auth.uid;
+    }
+
+// ---------- STAGED ITEMS ----------
+    // Email ingestion pipeline holding area. Owner can read/create/edit their own staged items.
+    // Admin also needs write access here: hil-admin.html's reject action and the
+    // "match unmatched receipt to owner" action both write staged_items directly from
+    // the frontend (approve still routes through Cloud Run — never touches this rule).
+    // Unmatched receipts land with owner_uid == null, so an owner-only rule would lock
+    // the admin out of exactly the records that need fixing — isAdmin() covers that case.
+    match /staged_items/{stagedItemId} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && resource.data.owner_uid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.owner_uid == request.auth.uid;
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.owner_uid == request.auth.uid);
+      allow delete: if isAdmin() ||
+        (isSignedIn() && resource.data.owner_uid == request.auth.uid);
+    }
+
+    // ---------- PLATFORM (global config, counters, feature flags, owner_issues) ----------
+    match /platform/{docId} {
+      allow read: if true; // feature flags etc. need to be readable client-side
+      allow write: if isAdmin();
+
+      match /{subcollection}/{docId2} {
+        allow read: if isAdmin();
+        allow write: if isAdmin() || false; // e.g. owner_issues written by PATCH worker via admin SDK, bypasses rules anyway
+      }
+    }
+
+    // ---------- CONTRACTORS / DISPATCH LOG (House Brain, schema v1.3+) ----------
+    match /users/{uid}/contractors/{contractorId} {
+      allow read, write: if isOwner(uid);
+
+      match /dispatch_log/{logId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // ---------- TEAM MEMBERS (human capital layer, schema v1.2+) ----------
+    match /users/{uid}/team_members/{memberId} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // ---------- DEFAULT DENY ----------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
