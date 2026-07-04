@@ -268,6 +268,19 @@ body{
   margin-top:12px; background:var(--panel-raised); border:1px solid var(--line); border-radius:6px;
   padding:14px; font-family:'Space Mono', monospace; font-size:11px; color:var(--text-faint); text-align:center;
 }
+.flair-bday-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); margin-top:4px; }
+.flair-bday-input{
+  font-family:'Space Mono', monospace; font-size:13px; padding:6px 9px; border-radius:4px;
+  border:1px solid var(--line); background:var(--panel-raised); color:var(--text); width:130px;
+}
+.flair-bday-input:focus{ outline:none; border-color:var(--green); }
+.flair-bday-save{
+  font-family:'Space Mono', monospace; font-size:10px; padding:6px 12px; border-radius:4px;
+  border:1px solid var(--green); background:transparent; color:var(--green); cursor:pointer;
+}
+.flair-bday-save:hover{ background:var(--green-dim); }
+.flair-bday-save:disabled{ opacity:0.4; cursor:wait; }
+.flair-bday-status{ font-family:'Space Mono', monospace; font-size:10px; color:var(--text-faint); margin-left:4px; }
 
 /* ---------- add module ghost ---------- */
 .module-ghost{
@@ -1008,12 +1021,22 @@ async function loadSeasonalFlair(){
     const userSnap = await getDoc(doc(db,"users",currentUid));
     const userData = userSnap.exists() ? userSnap.data() : {};
     const enabledResolved = userSnap.exists() ? (userData?.preferences?.seasonal_flair_enabled !== false) : true;
+    const birthdayMMDD = userData?.birthday || null;
+    // Render into a fixed year (2000 — a leap year, so Feb 29 is valid) since
+    // the native date input needs a full date; only MM-DD is ever stored/read.
+    const dateInputValue = birthdayMMDD ? `2000-${birthdayMMDD}` : "";
     body.innerHTML = `
       <div class="flair-row">
         <div class="flair-desc">Per-user toggle. When on, a 30-second seasonal effect plays on sign-in (snow, etc. — set by current date).</div>
         <div class="switch ${enabledResolved?"on":""}" id="flair-switch"></div>
       </div>
-      <div class="flair-preview">${currentSeasonLabel(userData?.birthday || null)}</div>
+      <div class="flair-bday-row">
+        <div class="flair-desc" style="max-width:none;">Birthday <span style="color:var(--text-faint)">(day/month only — triggers the balloons effect)</span></div>
+        <input type="date" class="flair-bday-input" id="flair-bday-input" value="${dateInputValue}"/>
+        <button class="flair-bday-save" id="flair-bday-save">SAVE</button>
+        <span class="flair-bday-status" id="flair-bday-status"></span>
+      </div>
+      <div class="flair-preview">${currentSeasonLabel(birthdayMMDD)}</div>
     `;
     document.getElementById("flair-switch").onclick = async function(){
       const next = !this.classList.contains("on");
@@ -1024,6 +1047,25 @@ async function loadSeasonalFlair(){
         console.error("[HIL Admin] flair toggle save failed", e);
         this.classList.toggle("on", !next); // revert on failure
         alert("Failed to save: " + e.message);
+      }
+    };
+    document.getElementById("flair-bday-save").onclick = async function(){
+      const input  = document.getElementById("flair-bday-input");
+      const status = document.getElementById("flair-bday-status");
+      const val = input.value; // "YYYY-MM-DD" or ""
+      const mmdd = val ? val.slice(5) : null; // strip the fixed year, keep "MM-DD"
+      this.disabled = true;
+      try{
+        await setDoc(doc(db,"users",currentUid), { birthday: mmdd }, { merge: true });
+        status.textContent = "saved";
+        document.querySelector(".flair-preview").textContent = currentSeasonLabel(mmdd);
+        setTimeout(()=>{ status.textContent = ""; }, 2000);
+      }catch(e){
+        console.error("[HIL Admin] birthday save failed", e);
+        status.textContent = "error";
+        alert("Failed to save: " + e.message);
+      }finally{
+        this.disabled = false;
       }
     };
   }catch(e){
