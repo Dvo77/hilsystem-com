@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather School · HIL System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+<style>
+  /* ── LAYOUT (same member-switcher pattern as Guild / Family Ledger) ── */
+  .ws-shell { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - var(--hil-offset)); }
+  .ws-sidebar {
+    background: #0d0d0d; border-right: 1px solid var(--hil-border); padding: 20px 0;
+    position: sticky; top: var(--hil-offset); height: calc(100vh - var(--hil-offset)); overflow-y: auto;
+  }
+  .ws-sidebar-section { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em; color: var(--hil-text-muted); text-transform: uppercase; padding: 0 16px; margin: 4px 0 8px; }
+  .ws-member-card { margin: 0 10px 4px; padding: 10px 12px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .ws-member-card:hover { background: var(--hil-surface-2); }
+  .ws-member-card.active { background: var(--hil-surface-2); border-color: var(--hil-green); }
+  .ws-member-name { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--hil-text); margin-bottom: 3px; }
+  .ws-member-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+
+  .ws-main { padding: 24px; overflow-y: auto; }
+  .ws-title { font-family: var(--font-display); font-size: 20px; color: var(--hil-text); letter-spacing: 2px; }
+  .ws-subtitle { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 2px; margin-top: 4px; margin-bottom: 20px; }
+
+  @media (max-width: 700px) {
+    .ws-shell { grid-template-columns: 1fr; }
+    .ws-sidebar { position: static; height: auto; }
+  }
+
+  /* ── SHARED COMPONENTS ── */
+  .hil-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hil-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .hil-grid-2, .hil-grid-3 { grid-template-columns: 1fr 1fr; } }
+
+  .hil-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .hil-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--hil-text-muted); }
+  .hil-input, .hil-select {
+    background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 12px; padding: 8px 10px; outline: none; width: 100%;
+    transition: border-color 0.15s;
+  }
+  .hil-input:focus, .hil-select:focus { border-color: var(--hil-green); }
+  .hil-select { cursor: pointer; }
+
+  .hil-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 2px;
+    padding: 8px 16px; border: 1px solid var(--hil-border);
+    background: var(--hil-surface-2); color: var(--hil-text);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .hil-btn:hover { border-color: var(--hil-text-muted); }
+  .hil-btn.primary { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .hil-btn.primary:hover { background: var(--hil-green-dim); }
+  .hil-btn.small { padding: 4px 10px; font-size: 9px; }
+
+  .hil-badge {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 2px; display: inline-block;
+  }
+  .hil-badge.green { background: rgba(0,204,102,0.15); color: var(--hil-green); border: 1px solid var(--hil-green); }
+  .hil-badge.blue  { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+  .hil-badge.gray  { background: var(--hil-surface-2); color: var(--hil-text-muted); border: 1px solid var(--hil-border); }
+  .hil-badge.red   { background: rgba(204,51,51,0.15); color: var(--hil-danger); border: 1px solid var(--hil-danger); }
+
+  .hil-section-label {
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 3px;
+    color: var(--hil-text-muted); border-bottom: 1px solid var(--hil-border);
+    padding-bottom: 6px; margin-bottom: 12px; margin-top: 28px;
+  }
+  .hil-section-label:first-of-type { margin-top: 0; }
+
+  .hil-empty { text-align: center; padding: 32px 24px; color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 11px; }
+  .hil-empty-icon { font-size: 28px; margin-bottom: 10px; }
+
+  .stat-card { background: var(--hil-surface); border: 1px solid var(--hil-border); border-top: 2px solid var(--hil-green); padding: 14px 16px; }
+  .stat-card.blue { border-top-color: #38bdf8; }
+  .stat-val { font-family: var(--font-display); font-size: 22px; color: var(--hil-green); line-height: 1; margin-bottom: 4px; }
+  .stat-card.blue .stat-val { color: #38bdf8; }
+  .stat-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--hil-text-muted); }
+
+  /* ── FORECAST CARD ── */
+  .forecast-card {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); border-left: 3px solid #38bdf8;
+    padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .forecast-main { display: flex; align-items: center; gap: 12px; }
+  .forecast-icon { font-size: 36px; }
+  .forecast-temp { font-family: var(--font-display); font-size: 26px; color: var(--hil-text); }
+  .forecast-sub { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); }
+
+  /* ── LOG LIST ── */
+  .log-row {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 12px 14px;
+    margin-bottom: 6px; display: grid; grid-template-columns: 90px 1fr auto; gap: 12px; align-items: center;
+  }
+  .log-date { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); }
+  .log-summary { font-family: var(--font-ui); font-size: 12px; color: var(--hil-text); }
+  .log-notes { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); margin-top: 2px; }
+
+  /* ── LESSONS ── */
+  .lesson-card { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 14px 16px; margin-bottom: 8px; }
+  .lesson-card.done { border-color: var(--hil-green); }
+  .lesson-title { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--hil-text); margin-bottom: 4px; }
+  .lesson-desc { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); margin-bottom: 10px; }
+  .quiz-q { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text); margin: 10px 0 6px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; margin-bottom: 6px; }
+
+  /* ── PROJECT / PORTFOLIO CARD ── */
+  .project-card {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); border-left: 3px solid #f59e0b;
+    padding: 16px; margin-bottom: 20px;
+  }
+  .project-title { font-family: var(--font-display); font-size: 10px; letter-spacing: 2px; color: #f59e0b; margin-bottom: 8px; }
+  .project-meta { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<div class="ws-shell">
+  <aside class="ws-sidebar">
+    <div class="ws-sidebar-section">Household</div>
+    <div id="member-list">
+      <div style="padding:12px 16px;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">Loading members…</div>
+    </div>
+  </aside>
+
+  <main class="ws-main">
+
+    <div id="no-member-view">
+      <div class="hil-empty">
+        <div class="hil-empty-icon">🌦</div>
+        Select a household member to open their Weather Journal.<br>
+        Members are managed in Family Ledger.
+      </div>
+    </div>
+
+    <div id="member-view" style="display:none">
+      <div class="ws-title" id="view-member-name">—</div>
+      <div class="ws-subtitle">WEATHER SCHOOL</div>
+
+      <!-- ── FORECAST ── -->
+      <div class="forecast-card" id="forecast-card">
+        <div class="forecast-main">
+          <span class="forecast-icon">🌡</span>
+          <div>
+            <div class="forecast-temp" id="forecast-current-temp">—°</div>
+            <div class="forecast-sub" id="forecast-current-cond">Set a location to load today's forecast</div>
+          </div>
+        </div>
+        <div>
+          <div class="forecast-sub" id="forecast-today-range">Today's forecast: —</div>
+          <button class="hil-btn small" id="set-location-btn" style="margin-top:6px">SET LOCATION</button>
+        </div>
+      </div>
+
+      <div class="hil-grid-3" style="margin-bottom:8px">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-total-logs">—</div>
+          <div class="stat-label">OBSERVATIONS LOGGED</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-val" id="stat-accuracy">—</div>
+          <div class="stat-label">PREDICTION ACCURACY</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-lessons">—</div>
+          <div class="stat-label">LESSONS COMPLETE</div>
+        </div>
+      </div>
+
+      <!-- ── LOG TODAY'S OBSERVATION ── -->
+      <div class="hil-section-label">LOG TODAY'S OBSERVATION</div>
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">DATE</label>
+          <input class="hil-input" type="date" id="log-date">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">CONDITION OBSERVED</label>
+          <select class="hil-select" id="log-condition">
+            <option value="Clear">Clear / Sunny</option>
+            <option value="Clouds">Cloudy</option>
+            <option value="Rain">Rainy</option>
+            <option value="Snow">Snowy</option>
+            <option value="Thunderstorm">Stormy</option>
+            <option value="Fog">Foggy</option>
+            <option value="Windy">Windy</option>
+          </select>
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">OBSERVED HIGH (°F)</label>
+          <input class="hil-input" type="number" id="log-high" placeholder="72">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">OBSERVED LOW (°F)</label>
+          <input class="hil-input" type="number" id="log-low" placeholder="54">
+        </div>
+      </div>
+      <div class="hil-field">
+        <label class="hil-label">NOTES (SKY, WIND, ANYTHING INTERESTING)</label>
+        <input class="hil-input" id="log-notes" placeholder="Big cumulus clouds this afternoon, breezy from the west">
+      </div>
+      <button class="hil-btn primary" id="log-submit-btn">LOG OBSERVATION</button>
+
+      <!-- ── OBSERVATION HISTORY ── -->
+      <div class="hil-section-label">OBSERVATION LOG</div>
+      <div id="log-list">
+        <div class="hil-empty"><div class="hil-empty-icon">📓</div>No observations logged yet.</div>
+      </div>
+
+      <!-- ── LESSONS ── -->
+      <div class="hil-section-label">LESSONS</div>
+      <div id="lesson-list"></div>
+
+      <!-- ── WEATHER JOURNAL PROJECT (PBL portfolio hook) ── -->
+      <div class="hil-section-label">WEATHER JOURNAL — PROJECT RECORD</div>
+      <div class="project-card">
+        <div class="project-title">📔 THIS MEMBER'S WEATHER JOURNAL PROJECT</div>
+        <div class="project-meta" id="project-meta">Not started yet — logging your first observation starts the project.</div>
+      </div>
+
+    </div><!-- /member-view -->
+  </main>
+</div>
+
+<script type="module">
+// ── WEATHER PROXY ────────────────────────────────────────────────────────
+// Update this once hil-weather-proxy Worker is deployed. See hil-weather-proxy.js
+// for the Worker source (keeps the OpenWeatherMap key server-side).
+const WEATHER_PROXY_URL = 'https://hil-weather-proxy.dvo77.workers.dev';
+
+// ── LESSON CATALOG ──────────────────────────────────────────────────────
+// Small MVP set. Each lesson is a short read + 3-question quiz.
+// Completing all lessons awards 'junior-meteorologist' (see BADGE_CATALOG
+// note below — keep badge ids in sync with hil-family-ledger.html / hil-guild.html).
+const LESSON_CATALOG = [
+  {
+    id: 'cloud-types',
+    title: 'Cloud Types',
+    desc: 'Learn to tell cumulus, stratus, and cirrus clouds apart.',
+    reading: 'Cumulus clouds are puffy and often mean fair weather. Stratus clouds are flat, gray layers that can bring drizzle. Cirrus clouds are thin and wispy, high in the sky — they often show up before a weather change.',
+    quiz: [
+      { q: 'Which cloud type is puffy and usually means fair weather?', options: ['Cumulus','Stratus','Cirrus'], answer: 0 },
+      { q: 'Which cloud type is a flat gray layer that can bring drizzle?', options: ['Cirrus','Stratus','Cumulus'], answer: 1 },
+      { q: 'Thin, wispy clouds high in the sky are called?', options: ['Stratus','Cumulus','Cirrus'], answer: 2 },
+    ],
+  },
+  {
+    id: 'water-cycle',
+    title: 'The Water Cycle',
+    desc: 'Evaporation, condensation, precipitation — how rain actually happens.',
+    reading: 'The sun heats water in lakes and oceans, turning it into vapor (evaporation). The vapor rises and cools, forming clouds (condensation). When clouds get heavy with water, it falls as rain or snow (precipitation). Then it all happens again.',
+    quiz: [
+      { q: 'What is it called when the sun turns water into vapor?', options: ['Precipitation','Evaporation','Condensation'], answer: 1 },
+      { q: 'What is it called when water vapor cools and forms clouds?', options: ['Condensation','Evaporation','Precipitation'], answer: 0 },
+      { q: 'Rain and snow falling from clouds is called?', options: ['Evaporation','Condensation','Precipitation'], answer: 2 },
+    ],
+  },
+  {
+    id: 'reading-a-forecast',
+    title: 'Reading a Forecast',
+    desc: 'What "70% chance of rain" actually means, and why forecasts change.',
+    reading: 'A "70% chance of rain" means that, out of many similar weather setups, it rained in 70 of them. Forecasts use models built on huge amounts of data, but the atmosphere is hard to predict perfectly — that\'s why forecasts sometimes change as the day gets closer.',
+    quiz: [
+      { q: 'A 70% chance of rain means what?', options: ['It will definitely rain', 'It rained in 70 out of 100 similar setups', 'It rained 70 minutes last time'], answer: 1 },
+      { q: 'Why do forecasts sometimes change closer to the day?', options: ['Forecasters get bored', 'The atmosphere is hard to predict perfectly', 'It never changes'], answer: 1 },
+      { q: 'What do forecasters use to make predictions?', options: ['Guessing', 'Weather models built on data', 'Coin flips'], answer: 1 },
+    ],
+  },
+];
+
+// ── BADGE CATALOG (subset relevant to this module — kept in sync manually) ──
+// Full catalog lives in hil-family-ledger.html (award trigger source) and
+// hil-guild.html (display). Weather School writes badges directly, same
+// frontend-writable doctrine as the rest of Guild.
+const WEATHER_BADGES = {
+  'weather-watcher':      { icon:'🌤', name:'Weather Watcher',      category:'Awareness' },
+  'junior-meteorologist': { icon:'⛈', name:'Junior Meteorologist', category:'Growth' },
+};
+
+// ── STATE ──
+let allMembers = [];
+let activeMember = null;
+let memberLogs = [];
+let memberQuizResults = [];
+let memberBadges = [];
+let currentForecast = null;
+let userLocation = null; // { lat, lon, label }
+
+let _collection, _doc, _addDoc, _setDoc, _onSnapshot, _serverTimestamp;
+
+HILShell.init({
+  toolId:      'weather-school',
+  toolName:    'Weather School',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+
+  const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _setDoc          = fsdk.setDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+
+  const db = window.db;
+
+  // User doc holds weather_location (persists across devices)
+  _onSnapshot(_doc(db, 'users', user.uid), snap => {
+    const data = snap.data();
+    if (data?.weather_location) {
+      userLocation = data.weather_location;
+      loadForecast();
+    }
+  });
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'team_members'), snap => {
+    allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderMemberList();
+  });
+
+  document.getElementById('log-date').valueAsDate = new Date();
+  document.getElementById('set-location-btn').addEventListener('click', setLocation);
+  document.getElementById('log-submit-btn').addEventListener('click', submitLog);
+
+  renderLessons();
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── LOCATION + FORECAST ──
+async function setLocation() {
+  if (!navigator.geolocation) {
+    HILShell.toast('Geolocation not supported in this browser', 'error');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude, label: 'Current location' };
+    userLocation = loc;
+    const user = window.currentUser;
+    if (user) {
+      await _setDoc(_doc(window.db, 'users', user.uid), { weather_location: loc }, { merge: true });
+    }
+    loadForecast();
+  }, () => {
+    HILShell.toast('Location permission denied', 'error');
+  });
+}
+
+async function loadForecast() {
+  if (!userLocation) return;
+  try {
+    const res = await fetch(`${WEATHER_PROXY_URL}/?lat=${userLocation.lat}&lon=${userLocation.lon}`);
+    const data = await res.json();
+    if (data.error) { console.warn('Weather proxy error:', data.error); return; }
+    currentForecast = data;
+    renderForecast();
+  } catch (e) {
+    console.warn('Forecast load failed', e);
+  }
+}
+
+function renderForecast() {
+  if (!currentForecast) return;
+  document.getElementById('forecast-current-temp').textContent = `${currentForecast.current.temp ?? '—'}°`;
+  document.getElementById('forecast-current-cond').textContent =
+    `${currentForecast.current.condition ?? 'Unknown'} · ${currentForecast.city ?? ''}`;
+  const t = currentForecast.forecast_today;
+  document.getElementById('forecast-today-range').textContent = t
+    ? `Today's forecast: ${t.condition}, ${t.low}°–${t.high}°`
+    : "Today's forecast: unavailable";
+}
+
+// ── MEMBER LIST ──
+function renderMemberList() {
+  const list = document.getElementById('member-list');
+  if (!allMembers.length) {
+    list.innerHTML = `<div style="padding:12px 16px;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">No members yet. Add one in Family Ledger.</div>`;
+    return;
+  }
+  list.innerHTML = allMembers.map(m => `
+    <div class="ws-member-card ${activeMember?.id === m.id ? 'active' : ''}" onclick="selectMember('${m.id}')">
+      <div class="ws-member-name">${esc(m.name)}</div>
+      <div class="ws-member-meta">${esc(m.role || 'member')}</div>
+    </div>
+  `).join('');
+}
+
+window.selectMember = function (id) {
+  activeMember = allMembers.find(m => m.id === id);
+  if (!activeMember) return;
+  renderMemberList();
+  document.getElementById('no-member-view').style.display = 'none';
+  document.getElementById('member-view').style.display = 'block';
+  document.getElementById('view-member-name').textContent = activeMember.name.toUpperCase();
+  loadMemberData(id);
+};
+
+function loadMemberData(memberId) {
+  const db  = window.db;
+  const uid = window.currentUser?.uid;
+  if (!db || !uid) return;
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'weather_logs'), snap => {
+    memberLogs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    renderLogs();
+    checkWeatherBadges();
+    upsertJournalProject();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'weather_quiz_results'), snap => {
+    memberQuizResults = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderLessons();
+    checkWeatherBadges();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'badges'), snap => {
+    memberBadges = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  });
+
+  _onSnapshot(_doc(db, 'users', uid, 'team_members', memberId, 'learning_projects', 'weather-journal'), snap => {
+    renderProjectCard(snap.data());
+  });
+}
+
+// ── LOG OBSERVATION ──
+async function submitLog() {
+  const user = window.currentUser;
+  if (!user || !activeMember) { HILShell.toast('Select a member first', 'error'); return; }
+
+  const date      = document.getElementById('log-date').value;
+  const condition = document.getElementById('log-condition').value;
+  const high      = parseFloat(document.getElementById('log-high').value);
+  const low       = parseFloat(document.getElementById('log-low').value);
+  const notes     = document.getElementById('log-notes').value.trim();
+
+  if (!date) { HILShell.toast('Date is required', 'error'); return; }
+
+  const forecastSnapshot = currentForecast?.forecast_today
+    ? { high: currentForecast.forecast_today.high, low: currentForecast.forecast_today.low, condition: currentForecast.forecast_today.condition }
+    : null;
+
+  const predictionCorrect = forecastSnapshot ? (forecastSnapshot.condition === condition) : null;
+
+  try {
+    await _addDoc(_collection(window.db, 'users', user.uid, 'team_members', activeMember.id, 'weather_logs'), {
+      date,
+      observed_condition: condition,
+      observed_high: isNaN(high) ? null : high,
+      observed_low:  isNaN(low)  ? null : low,
+      notes: notes || null,
+      forecast_snapshot: forecastSnapshot,
+      prediction_correct: predictionCorrect,
+      owner_uid: user.uid,
+      created_at: _serverTimestamp(),
+    });
+    HILShell.toast('Observation logged 🌤', 'success');
+    document.getElementById('log-notes').value = '';
+    document.getElementById('log-high').value = '';
+    document.getElementById('log-low').value = '';
+  } catch (e) {
+    HILShell.toast('Failed to log: ' + e.message, 'error');
+  }
+}
+
+function renderLogs() {
+  document.getElementById('stat-total-logs').textContent = memberLogs.length;
+
+  const graded = memberLogs.filter(l => l.prediction_correct !== null && l.prediction_correct !== undefined);
+  const accuracy = graded.length
+    ? Math.round((graded.filter(l => l.prediction_correct).length / graded.length) * 100) + '%'
+    : '—';
+  document.getElementById('stat-accuracy').textContent = accuracy;
+
+  if (!memberLogs.length) {
+    document.getElementById('log-list').innerHTML =
+      `<div class="hil-empty"><div class="hil-empty-icon">📓</div>No observations logged yet.</div>`;
+    return;
+  }
+
+  document.getElementById('log-list').innerHTML = memberLogs.map(l => `
+    <div class="log-row">
+      <div class="log-date">${esc(l.date)}</div>
+      <div>
+        <div class="log-summary">${esc(l.observed_condition)}${l.observed_high != null ? `, ${l.observed_high}°/${l.observed_low ?? '?'}°` : ''}</div>
+        ${l.notes ? `<div class="log-notes">${esc(l.notes)}</div>` : ''}
+      </div>
+      <div>
+        ${l.prediction_correct === true  ? `<span class="hil-badge green">MATCHED FORECAST</span>` : ''}
+        ${l.prediction_correct === false ? `<span class="hil-badge red">FORECAST WAS OFF</span>` : ''}
+        ${l.prediction_correct === null || l.prediction_correct === undefined ? `<span class="hil-badge gray">NO FORECAST SNAPSHOT</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── LESSONS ──
+function renderLessons() {
+  const completeCount = LESSON_CATALOG.filter(l => memberQuizResults.find(r => r.lesson_id === l.id)).length;
+  const statEl = document.getElementById('stat-lessons');
+  if (statEl) statEl.textContent = `${completeCount}/${LESSON_CATALOG.length}`;
+
+  document.getElementById('lesson-list').innerHTML = LESSON_CATALOG.map(lesson => {
+    const result = memberQuizResults.find(r => r.lesson_id === lesson.id);
+    const done = !!result;
+    return `
+    <div class="lesson-card ${done ? 'done' : ''}">
+      <div class="lesson-title">${done ? '✅' : '📘'} ${esc(lesson.title)}</div>
+      <div class="lesson-desc">${esc(lesson.desc)}</div>
+      ${done
+        ? `<span class="hil-badge green">SCORE ${result.score}/${result.total}</span>`
+        : `<button class="hil-btn small" onclick="openLesson('${lesson.id}')">START LESSON</button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+window.openLesson = function (lessonId) {
+  const lesson = LESSON_CATALOG.find(l => l.id === lessonId);
+  if (!lesson) return;
+  if (!activeMember) { HILShell.toast('Select a member first', 'error'); return; }
+
+  let answers = new Array(lesson.quiz.length).fill(null);
+
+  const card = [...document.querySelectorAll('.lesson-card')].find(c => c.querySelector('.lesson-title')?.textContent.includes(lesson.title));
+  if (!card) return;
+
+  card.innerHTML = `
+    <div class="lesson-title">📘 ${esc(lesson.title)}</div>
+    <div class="lesson-desc">${esc(lesson.reading)}</div>
+    ${lesson.quiz.map((q, qi) => `
+      <div class="quiz-q">${qi + 1}. ${esc(q.q)}</div>
+      ${q.options.map((opt, oi) => `
+        <button type="button" class="hil-btn small quiz-opt" data-q="${qi}" data-o="${oi}">${esc(opt)}</button>
+      `).join('')}
+    `).join('')}
+    <button class="hil-btn primary" id="quiz-submit-${lesson.id}" style="margin-top:8px">SUBMIT QUIZ</button>
+  `;
+
+  card.querySelectorAll('.quiz-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const qi = parseInt(btn.dataset.q, 10);
+      const oi = parseInt(btn.dataset.o, 10);
+      answers[qi] = oi;
+      card.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(b => b.classList.remove('primary'));
+      btn.classList.add('primary');
+    });
+  });
+
+  document.getElementById(`quiz-submit-${lesson.id}`).addEventListener('click', () => submitQuiz(lesson, answers));
+};
+
+async function submitQuiz(lesson, answers) {
+  const user = window.currentUser;
+  if (!user || !activeMember) return;
+  if (answers.some(a => a === null)) { HILShell.toast('Answer every question first', 'error'); return; }
+
+  const score = answers.filter((a, i) => a === lesson.quiz[i].answer).length;
+
+  try {
+    await _setDoc(
+      _doc(window.db, 'users', user.uid, 'team_members', activeMember.id, 'weather_quiz_results', lesson.id),
+      { lesson_id: lesson.id, score, total: lesson.quiz.length, completed_at: _serverTimestamp() }
+    );
+    HILShell.toast(`Quiz complete: ${score}/${lesson.quiz.length}`, 'success');
+  } catch (e) {
+    HILShell.toast('Failed to save quiz: ' + e.message, 'error');
+  }
+}
+
+// ── BADGES (frontend-writable, same doctrine as rest of Guild) ──
+async function awardWeatherBadge(badgeId) {
+  const user = window.currentUser;
+  if (!user || !activeMember) return;
+  if (memberBadges.find(b => b.badge_id === badgeId)) return;
+
+  const meta = WEATHER_BADGES[badgeId];
+  if (!meta) return;
+
+  try {
+    await _addDoc(
+      _collection(window.db, 'users', user.uid, 'team_members', activeMember.id, 'badges'),
+      { badge_id: badgeId, icon: meta.icon, name: meta.name, category: meta.category, desc: '', earned_at: _serverTimestamp() }
+    );
+    HILShell.toast(`🏅 Badge earned: ${meta.name}!`, 'success');
+  } catch (e) { console.warn('Badge award failed', e); }
+}
+
+function checkWeatherBadges() {
+  if (memberLogs.length >= 5) awardWeatherBadge('weather-watcher');
+  if (LESSON_CATALOG.every(l => memberQuizResults.find(r => r.lesson_id === l.id))) {
+    awardWeatherBadge('junior-meteorologist');
+  }
+}
+
+// ── LEARNING PROJECT (PBL portfolio hook) ──
+// Firestore schema (new this session):
+//   users/{uid}/team_members/{memberId}/learning_projects/{projectId}
+//   { project_id, module, title, subject_tags[], status, entry_count,
+//     hours_estimate, started_at, last_activity_at, completed_at,
+//     linked_log_collection, owner_uid }
+// This is a generic shape other modules (Music School, Incubator) can reuse
+// later for the same DPI/portfolio documentation purpose.
+async function upsertJournalProject() {
+  const user = window.currentUser;
+  if (!user || !activeMember || !memberLogs.length) return;
+
+  const ref = _doc(window.db, 'users', user.uid, 'team_members', activeMember.id, 'learning_projects', 'weather-journal');
+  try {
+    await _setDoc(ref, {
+      project_id: 'weather-journal',
+      module: 'weather_school',
+      title: 'Weather Observation Journal',
+      subject_tags: ['Science', 'Earth Science', 'Meteorology'],
+      status: 'in_progress',
+      entry_count: memberLogs.length,
+      hours_estimate: Math.round(memberLogs.length * 0.25 * 10) / 10, // ~15 min/observation
+      started_at: memberLogs[memberLogs.length - 1]?.created_at ?? _serverTimestamp(),
+      last_activity_at: _serverTimestamp(),
+      linked_log_collection: 'weather_logs',
+      owner_uid: user.uid,
+    }, { merge: true });
+  } catch (e) { console.warn('Journal project upsert failed', e); }
+}
+
+function renderProjectCard(project) {
+  const el = document.getElementById('project-meta');
+  if (!el) return;
+  if (!project) {
+    el.textContent = 'Not started yet — logging your first observation starts the project.';
+    return;
+  }
+  el.innerHTML = `
+    <strong>${esc(project.title)}</strong> · ${esc(project.subject_tags?.join(', ') || '')}<br>
+    ${project.entry_count} entries logged · ~${project.hours_estimate} hours estimated<br>
+    Status: ${project.status === 'completed' ? '✅ Completed' : 'In progress'}
+  `;
+}
+</script>
+
+</body>
+</html>
