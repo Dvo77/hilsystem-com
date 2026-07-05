@@ -109,6 +109,7 @@ const NAV_TOOLS = [
   { id: 'museum',        label: 'Museum',       icon: '🏛',  href: './hil-museum.html' },
   { id: 'family-ledger', label: 'Ledger',       icon: '👥', href: './hil-family-ledger.html' },
   { id: 'exchange',      label: 'Exchange',     icon: '⇄',   href: './hil-exchange.html' },
+  { id: 'guild',         label: 'Guild',        icon: '🏅', href: './hil-guild.html' },
   { id: 'field-tool',    label: 'Field',        icon: '📍', href: './hil-field-tool.html' },
   { id: 'labels',        label: 'Labels & Signs', icon: '🏷', href: './hil-label-studio.html' },
   { id: 'library-hub',   label: 'Library',      icon: '📚', href: './hil-library-hub.html' },
