@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guild · HIL System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600&family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+<style>
+  /* ── LAYOUT (mirrors Family Ledger's member-switcher pattern) ── */
+  .gd-shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - var(--hil-offset));
+  }
+  .gd-sidebar {
+    background: #0d0d0d;
+    border-right: 1px solid var(--hil-border);
+    padding: 20px 0;
+    position: sticky;
+    top: var(--hil-offset);
+    height: calc(100vh - var(--hil-offset));
+    overflow-y: auto;
+  }
+  .gd-sidebar-section {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em;
+    color: var(--hil-text-muted); text-transform: uppercase;
+    padding: 0 16px; margin: 4px 0 8px;
+  }
+  .gd-member-card {
+    margin: 0 10px 4px; padding: 10px 12px;
+    border: 1px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .gd-member-card:hover { background: var(--hil-surface-2); }
+  .gd-member-card.active { background: var(--hil-surface-2); border-color: var(--hil-green); }
+  .gd-member-name { font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--hil-text); margin-bottom: 3px; }
+  .gd-member-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+
+  .gd-main { padding: 24px; overflow-y: auto; }
+
+  @media (max-width: 700px) {
+    .gd-shell { grid-template-columns: 1fr; }
+    .gd-sidebar { position: static; height: auto; }
+  }
+
+  /* ── WELCOME BANNER (new — replaces the old cold dashboard header) ── */
+  .gd-hero {
+    background: linear-gradient(135deg, rgba(0,204,102,0.08), rgba(245,158,11,0.05));
+    border: 1px solid var(--hil-border);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .gd-hero-avatars { display: flex; flex-shrink: 0; }
+  .gd-bot {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: block; object-fit: cover; overflow: hidden;
+    border: 2px solid var(--hil-border);
+    background: var(--hil-surface-2);
+  }
+  .gd-bot.patch { border-color: #38bdf8; box-shadow: 0 0 14px rgba(56,189,248,0.25); }
+  .gd-bot.scratch { border-color: var(--hil-green); box-shadow: 0 0 14px rgba(0,204,102,0.25); margin-left: -14px; }
+  .gd-hero-text { flex: 1; min-width: 0; }
+  .gd-hero-greeting {
+    font-family: 'Fredoka', var(--font-ui); font-weight: 600; font-size: 19px;
+    color: var(--hil-text); margin-bottom: 4px;
+  }
+  .gd-hero-sub {
+    font-family: var(--font-ui); font-size: 12.5px; color: var(--hil-text-muted); line-height: 1.5;
+  }
+  .gd-hero-stats { display: flex; gap: 10px; flex-shrink: 0; }
+  .gd-pebble {
+    text-align: center; padding: 8px 14px; border-radius: 12px;
+    background: var(--hil-surface); border: 1px solid var(--hil-border); min-width: 64px;
+  }
+  .gd-pebble-val { font-family: 'Fredoka', var(--font-display); font-size: 20px; color: var(--hil-green); line-height: 1; }
+  .gd-pebble.gold .gd-pebble-val { color: #f59e0b; }
+  .gd-pebble-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 0.06em; color: var(--hil-text-muted); margin-top: 3px; }
+
+  @media (max-width: 560px) {
+    .gd-hero { flex-direction: column; align-items: flex-start; }
+    .gd-hero-stats { width: 100%; }
+    .gd-pebble { flex: 1; }
+  }
+
+  /* ── SHARED COMPONENTS ── */
+  .hil-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .hil-grid-2 { grid-template-columns: 1fr 1fr; } }
+
+  .hil-btn {
+    font-family: 'Fredoka', var(--font-ui); font-size: 12px; font-weight: 600;
+    padding: 9px 18px; border: 1px solid var(--hil-border); border-radius: 999px;
+    background: var(--hil-surface-2); color: var(--hil-text);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .hil-btn:hover { border-color: var(--hil-text-muted); transform: translateY(-1px); }
+  .hil-btn.primary { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .hil-btn.primary:hover { background: var(--hil-green-dim); }
+
+  .hil-badge {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 999px; display: inline-block;
+  }
+  .hil-badge.green { background: rgba(0,204,102,0.15); color: var(--hil-green); border: 1px solid var(--hil-green); }
+  .hil-badge.amber { background: rgba(204,136,0,0.15); color: var(--hil-warning); border: 1px solid var(--hil-warning); }
+  .hil-badge.gray  { background: var(--hil-surface-2); color: var(--hil-text-muted); border: 1px solid var(--hil-border); }
+  .hil-badge.blue  { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.3); }
+  .hil-badge.gold  { background: rgba(245,158,11,0.12); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+
+  .hil-section-label {
+    font-family: 'Fredoka', var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: 0.3px;
+    color: var(--hil-text); border-bottom: 1px solid var(--hil-border);
+    padding-bottom: 8px; margin-bottom: 14px; margin-top: 30px;
+  }
+  .hil-section-label:first-of-type { margin-top: 4px; }
+
+  .hil-empty {
+    text-align: center; padding: 40px 24px;
+    color: var(--hil-text-muted); font-family: var(--font-ui); font-size: 12px;
+    border-radius: 12px; background: var(--hil-surface); border: 1px dashed var(--hil-border);
+  }
+  .hil-empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* ── BADGES (rounder, warmer) ── */
+  .badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; }
+  .badge-card {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); border-radius: 14px;
+    padding: 18px 14px; text-align: center; transition: transform 0.15s, border-color 0.15s;
+  }
+  .badge-card.earned { border-color: var(--hil-green); }
+  .badge-card.earned:hover { transform: translateY(-2px); }
+  .badge-card.locked { opacity: 0.45; }
+  .badge-icon { font-size: 30px; margin-bottom: 8px; display: block; }
+  .badge-name { font-family: 'Fredoka', var(--font-ui); font-weight: 600; font-size: 12px; color: var(--hil-text); margin-bottom: 4px; }
+  .badge-cat { margin-bottom: 8px; }
+  .badge-desc { font-family: var(--font-ui); font-size: 10.5px; color: var(--hil-text-muted); margin: 6px 0; line-height: 1.5; }
+  .badge-date { font-family: var(--font-mono); font-size: 9px; color: var(--hil-green); }
+  .badge-locked-label { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+
+  /* ── MILESTONES (friendlier progress rows) ── */
+  .milestone-row {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 8px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+  }
+  .milestone-row.completed { border-color: var(--hil-green); background: rgba(0,204,102,0.05); }
+  .milestone-icon { font-size: 22px; }
+  .milestone-name { font-family: 'Fredoka', var(--font-ui); font-size: 13px; color: var(--hil-text); font-weight: 600; margin-bottom: 2px; }
+  .milestone-desc { font-family: var(--font-ui); font-size: 11px; color: var(--hil-text-muted); margin-bottom: 6px; }
+  .milestone-reward { font-family: 'Fredoka', var(--font-display); font-size: 11px; color: #f59e0b; letter-spacing: 0.3px; white-space: nowrap; text-align: right; }
+  .milestone-reward .done { color: var(--hil-green); }
+  .progress-bar { height: 6px; border-radius: 999px; background: var(--hil-surface-2); width: 100%; max-width: 220px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--hil-green); transition: width 0.3s; border-radius: 999px; }
+
+  /* ── MODULE CARDS → "mission cards" ── */
+  .module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .module-card {
+    background: var(--hil-surface); border: 1px solid var(--hil-border); border-radius: 16px;
+    padding: 20px; display: flex; flex-direction: column; gap: 12px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .module-card:not(.dim):hover { transform: translateY(-3px); border-color: var(--hil-green); }
+  .module-card.dim { opacity: 0.65; }
+  .module-icon-circle {
+    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+  }
+  .module-title {
+    font-family: 'Fredoka', var(--font-ui); font-weight: 600; font-size: 14.5px;
+    color: var(--hil-text);
+  }
+  .module-desc { font-family: var(--font-ui); font-size: 11.5px; color: var(--hil-text-muted); line-height: 1.6; flex: 1; }
+  .module-card .hil-btn { align-self: flex-start; }
+</style>
+</head>
+<body>
+
+<div class="gd-shell">
+  <aside class="gd-sidebar">
+    <div class="gd-sidebar-section">Household</div>
+    <div id="member-list">
+      <div style="padding:12px 16px;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">Loading members…</div>
+    </div>
+  </aside>
+
+  <main class="gd-main">
+
+    <div id="no-member-view">
+      <div class="hil-empty">
+        <img src="https://raw.githubusercontent.com/Dvo77/hilsystem-com/main/hil-guild-hero.png"
+             alt="Welcome to the Guild" style="max-width:340px;width:100%;border-radius:16px;margin-bottom:16px;">
+        <div>No household members yet.<br>Add one in Family Ledger to get started.</div>
+      </div>
+    </div>
+
+    <div id="member-view" style="display:none">
+
+      <!-- ── WELCOME BANNER ── -->
+      <div class="gd-hero">
+        <div class="gd-hero-avatars">
+          <img class="gd-bot patch" src="https://raw.githubusercontent.com/Dvo77/hilsystem-com/main/patch-hero.png" alt="Patch">
+          <img class="gd-bot scratch" src="https://raw.githubusercontent.com/Dvo77/hilsystem-com/main/scratch-hero.png" alt="Scratch">
+        </div>
+        <div class="gd-hero-text">
+          <div class="gd-hero-greeting" id="gd-hero-greeting">Welcome back!</div>
+          <div class="gd-hero-sub" id="gd-hero-sub">Let's see what's new since last time.</div>
+        </div>
+        <div class="gd-hero-stats">
+          <div class="gd-pebble gold">
+            <div class="gd-pebble-val" id="gd-stat-badges">—</div>
+            <div class="gd-pebble-label">BADGES</div>
+          </div>
+          <div class="gd-pebble">
+            <div class="gd-pebble-val" id="gd-stat-milestones">—</div>
+            <div class="gd-pebble-label">GOALS HIT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── MODULES (moved up top — this is what kids actually click) ── -->
+      <div class="hil-section-label">PICK SOMETHING TO WORK ON</div>
+      <div class="module-grid">
+
+        <div class="module-card">
+          <div class="module-icon-circle">🧠</div>
+          <div class="module-title">Guild Incubator</div>
+          <div class="module-desc">
+            Build your own personal wiki — write up your skills, projects, and the stuff you're good at. It's yours, and it travels with you.
+          </div>
+          <a href="./hil-incubator-generator.html" style="display:inline-block">
+            <button class="hil-btn primary">Open Incubator →</button>
+          </a>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon-circle">🌦</div>
+          <div class="module-title">Weather School</div>
+          <div class="module-desc">
+            Guess tomorrow's weather, then check how close you got. Short lessons along the way build toward your own Weather Journal.
+          </div>
+          <a href="./hil-weather-school.html" style="display:inline-block">
+            <button class="hil-btn primary">Open Weather School →</button>
+          </a>
+        </div>
+
+        <div class="module-card dim">
+          <div class="module-icon-circle">🎸</div>
+          <div class="module-title">Guild Music School</div>
+          <div class="module-desc">
+            Guitar, banjo, and harmonica lessons that remember where you left off. Still being built — hang tight.
+          </div>
+          <button class="hil-btn" disabled style="opacity:0.5;cursor:default">Coming soon</button>
+        </div>
+
+      </div>
+
+      <!-- ── BADGES ── -->
+      <div class="hil-section-label">BADGES YOU'VE EARNED</div>
+      <div class="badge-grid" id="badge-grid">
+        <div class="hil-empty" style="grid-column:1/-1"><div class="hil-empty-icon">🏅</div>No badges yet — they show up as you use the system.</div>
+      </div>
+
+      <!-- ── MILESTONES ── -->
+      <div class="hil-section-label">GOALS IN PROGRESS</div>
+      <div id="milestone-list">
+        <div class="hil-empty"><div class="hil-empty-icon">🎯</div>Nothing tracked yet.</div>
+      </div>
+
+    </div><!-- /member-view -->
+  </main>
+</div>
+
+<script type="module">
+// ── BADGE CATALOG ──────────────────────────────────────────────────────────
+// Mirrors BADGE_CATALOG in hil-family-ledger.html exactly. Ledger triggers
+// awards (writes to team_members/{id}/badges); Guild only reads + displays.
+// Keep these two lists in sync until a shared module is set up.
+const BADGE_CATALOG = [
+  {id:'first-item',        icon:'📦', name:'First Item',       category:'Stewardship', desc:'First item catalogued in the vault'},
+  {id:'at-address',        icon:'📍', name:'At Address',        category:'Stewardship', desc:'5 items assigned HL addresses'},
+  {id:'first-donation',    icon:'💚', name:'First Donation',    category:'Circulation', desc:'First donation logged'},
+  {id:'first-trade',       icon:'🔄', name:'First Trade',       category:'Circulation', desc:'First trade completed'},
+  {id:'provenance-keeper', icon:'📖', name:'Provenance Keeper', category:'Stewardship', desc:'Added provenance narrative to 3 items'},
+  {id:'pattern-finder',    icon:'🔍', name:'Pattern Finder',    category:'Awareness',   desc:'Viewed portfolio projection'},
+  {id:'giver',             icon:'🌱', name:'The Giver',         category:'Circulation', desc:'Donated 3+ items in a month'},
+  {id:'archivist',         icon:'🏛', name:'Archivist',         category:'Stewardship', desc:'10+ items catalogued with photos'},
+  {id:'weather-watcher',   icon:'🌤', name:'Weather Watcher',   category:'Awareness',   desc:'Logged 5 weather observations'},
+  {id:'junior-meteorologist', icon:'⛈', name:'Junior Meteorologist', category:'Growth', desc:'Completed all Weather School lessons'},
+];
+
+// ── MILESTONE CATALOG ──────────────────────────────────────────────────────
+// Milestones are persisted to Firestore (see schema note near checkMilestones).
+// Frontend-writable, same doctrine as badges.
+const MILESTONE_CATALOG = [
+  {id:'item-tracker-10',    icon:'🏅', name:'Item Tracker',    metric:'items',     target:10, desc:n=>`${n} / 10 items catalogued`,          reward_badge_id:'archivist'},
+  {id:'donation-streak-3',  icon:'💚', name:'Donation Streak', metric:'donations', target:3,  desc:n=>`${n} / 3 donations logged`,            reward_badge_id:'giver'},
+  {id:'fair-trader-2',      icon:'🔄', name:'Fair Trader',     metric:'trades',    target:2,  desc:n=>`${n} / 2 trades completed`,            reward_badge_id:'first-trade'},
+];
+
+function catBadgeColor(cat) {
+  return {Stewardship:'green', Circulation:'amber', Growth:'blue', Awareness:'gold', Execution:'gray'}[cat] || 'gray';
+}
+
+// Rotating, low-key sub-greetings so the banner doesn't feel static.
+const HERO_SUBS = [
+  "Let's see what's new since last time.",
+  "Ready to earn something today?",
+  "Pick a mission below to get started.",
+  "Nice work so far — keep it going.",
+];
+
+// ── STATE ──
+let allMembers      = [];
+let activeMember    = null;
+let memberItems     = [];
+let memberDonations = [];
+let memberTrades    = [];
+let memberBadges    = [];
+let memberMilestones = [];
+
+let _collection, _doc, _addDoc, _onSnapshot, _serverTimestamp;
+
+HILShell.init({
+  toolId:      'guild',
+  toolName:    'Guild',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+
+  const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+
+  const db = window.db;
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'team_members'), snap => {
+    allMembers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderMemberList();
+  });
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── MEMBER LIST ──
+function renderMemberList() {
+  const list = document.getElementById('member-list');
+  if (!allMembers.length) {
+    list.innerHTML = `<div style="padding:12px 16px;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">No members yet. Add one in Family Ledger.</div>`;
+    document.getElementById('no-member-view').style.display = 'block';
+    document.getElementById('member-view').style.display = 'none';
+    return;
+  }
+
+  // Auto-select so the dashboard shows immediately — no manual "pick someone" step.
+  if (!activeMember || !allMembers.find(m => m.id === activeMember.id)) {
+    const defaultMember =
+      allMembers.find(m => m.linked_uid === window.currentUser?.uid) ||
+      allMembers.find(m => m.role === 'family') ||
+      allMembers[0];
+    if (defaultMember) {
+      selectMember(defaultMember.id);
+      return; // selectMember() re-renders the list itself
+    }
+  }
+
+  list.innerHTML = allMembers.map(m => `
+    <div class="gd-member-card ${activeMember?.id === m.id ? 'active' : ''}" onclick="selectMember('${m.id}')">
+      <div class="gd-member-name">${esc(m.name)}</div>
+      <div class="gd-member-meta">${esc(m.role || 'member')}</div>
+    </div>
+  `).join('');
+}
+
+window.selectMember = function (id) {
+  activeMember = allMembers.find(m => m.id === id);
+  if (!activeMember) return;
+  renderMemberList();
+  document.getElementById('no-member-view').style.display = 'none';
+  document.getElementById('member-view').style.display = 'block';
+
+  const first = (activeMember.name || '').split(' ')[0];
+  document.getElementById('gd-hero-greeting').textContent = `Hey ${first}! 👋`;
+  document.getElementById('gd-hero-sub').textContent = HERO_SUBS[Math.floor(Math.random() * HERO_SUBS.length)];
+
+  loadMemberData(id);
+};
+
+function loadMemberData(memberId) {
+  const db  = window.db;
+  const uid = window.currentUser?.uid;
+  if (!db || !uid) return;
+
+  _onSnapshot(_collection(db, 'users', uid, 'item_records'), snap => {
+    memberItems = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.team_member_id === memberId);
+    checkMilestones();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'donations'), snap => {
+    memberDonations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    checkMilestones();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'trades'), snap => {
+    memberTrades = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    checkMilestones();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'badges'), snap => {
+    memberBadges = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderBadges();
+  });
+
+  _onSnapshot(_collection(db, 'users', uid, 'team_members', memberId, 'milestones'), snap => {
+    memberMilestones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderMilestones();
+  });
+}
+
+// ── BADGES (display only — award logic lives in Family Ledger) ──
+function renderBadges() {
+  const earnedIds = memberBadges.map(b => b.badge_id);
+  document.getElementById('gd-stat-badges').textContent = memberBadges.length;
+
+  document.getElementById('badge-grid').innerHTML = BADGE_CATALOG.map(badge => {
+    const earned = earnedIds.includes(badge.id);
+    const earnedBadge = memberBadges.find(b => b.badge_id === badge.id);
+    return `
+    <div class="badge-card ${earned ? 'earned' : 'locked'}">
+      <span class="badge-icon">${badge.icon}</span>
+      <div class="badge-name">${badge.name}</div>
+      <div class="badge-cat"><span class="hil-badge ${catBadgeColor(badge.category)}">${badge.category.toUpperCase()}</span></div>
+      <div class="badge-desc">${badge.desc}</div>
+      ${earned
+        ? `<div class="badge-date">Earned ${earnedBadge?.earned_at?.toDate?.().toLocaleDateString() || '—'}</div>`
+        : `<div class="badge-locked-label">🔒 Not yet earned</div>`
+      }
+    </div>`;
+  }).join('');
+}
+
+// ── MILESTONES ──
+// Firestore schema:
+//   users/{uid}/team_members/{memberId}/milestones/{milestoneId}
+//   { milestone_id, name, desc, icon, category, criteria:{metric,target},
+//     progress, reward_badge_id, completed_at, owner_uid, created_at, updated_at }
+// Frontend-writable — same doctrine as badges (gamification layer, not
+// inventory truth; see Authority Layer Doctrine).
+function currentValueFor(metric) {
+  if (metric === 'items')     return memberItems.length;
+  if (metric === 'donations') return memberDonations.length;
+  if (metric === 'trades')    return memberTrades.filter(t => t.status === 'accepted').length;
+  return 0;
+}
+
+async function checkMilestones() {
+  const user = window.currentUser;
+  if (!user || !activeMember) return;
+
+  for (const m of MILESTONE_CATALOG) {
+    const value = currentValueFor(m.metric);
+    const already = memberMilestones.find(x => x.milestone_id === m.id);
+    if (already?.completed_at) continue;
+    if (value < m.target) continue;
+
+    try {
+      await _addDoc(
+        _collection(window.db, 'users', user.uid, 'team_members', activeMember.id, 'milestones'),
+        {
+          milestone_id: m.id,
+          name: m.name,
+          desc: m.desc(value),
+          icon: m.icon,
+          criteria: { metric: m.metric, target: m.target },
+          progress: 1,
+          reward_badge_id: m.reward_badge_id,
+          owner_uid: user.uid,
+          completed_at: _serverTimestamp(),
+          created_at: _serverTimestamp(),
+        }
+      );
+      HILShell.toast(`🎯 Nice! You hit a goal: ${m.name}`, 'success');
+    } catch (e) { console.warn('Milestone write failed', e); }
+  }
+  renderMilestones();
+}
+
+function renderMilestones() {
+  const completedCount = memberMilestones.filter(m => m.completed_at).length;
+  document.getElementById('gd-stat-milestones').textContent = completedCount;
+
+  document.getElementById('milestone-list').innerHTML = MILESTONE_CATALOG.map(m => {
+    const value = currentValueFor(m.metric);
+    const done  = memberMilestones.find(x => x.milestone_id === m.id && x.completed_at);
+    const progress = Math.min(value / m.target, 1);
+    return `
+    <div class="milestone-row ${done ? 'completed' : ''}">
+      <div class="milestone-icon">${done ? '✅' : m.icon}</div>
+      <div>
+        <div class="milestone-name">${m.name}</div>
+        <div class="milestone-desc">${m.desc(value)}</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(progress * 100)}%"></div></div>
+      </div>
+      <div class="milestone-reward">${done ? `<span class="done">EARNED</span>` : `unlocks: ${m.reward_badge_id}`}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+
+</body>
+</html>
