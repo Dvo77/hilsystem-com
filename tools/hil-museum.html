@@ -818,7 +818,7 @@ function renderPublicCollection() {
     <div class="collection-header">
       <div class="collection-hero">
         ${col.hero_photo
-          ? `<img class="collection-hero-img" src="${esc(col.hero_photo)}" alt="">`
+          ? `<img class="collection-hero-img" src="${esc(col.hero_photo)}?v=${col.updated_at?.seconds||''}" alt="">`
           : `<div class="hero-placeholder"><div class="big-icon">${col.icon||'🏺'}</div><div>HERO PHOTO</div></div>`}
       </div>
       <div class="collection-info">
@@ -869,7 +869,7 @@ function renderItemCard(item) {
   return `
     <div class="item-card ${item.status !== 'active' ? 'transferred' : ''}" data-id="${item.id}">
       <div class="item-photo">
-        ${item.hero_photo ? `<img src="${esc(item.hero_photo)}" alt="" loading="lazy">` : (item.icon || '🏺')}
+        ${item.hero_photo ? `<img src="${esc(item.hero_photo)}?v=${item.updated_at?.seconds||''}" alt="" loading="lazy">` : (item.icon || '🏺')}
       </div>
       <div class="item-body">
         <div class="item-name">${esc(item.name)}</div>
@@ -888,7 +888,7 @@ function openPublicItemModal(item, col) {
   const modal = document.getElementById('pub-item-modal');
   const photo = document.getElementById('pub-mm-photo');
   if (item.hero_photo) {
-    photo.innerHTML = `<img src="${esc(item.hero_photo)}" alt="" style="width:100%;height:100%;object-fit:cover">`;
+    photo.innerHTML = `<img src="${esc(item.hero_photo)}?v=${item.updated_at?.seconds||''}" alt="" style="width:100%;height:100%;object-fit:cover">`;
   } else {
     photo.innerHTML = item.icon || '🏺';
   }
@@ -1013,7 +1013,7 @@ function renderBuilderItems() {
     return `
     <div class="builder-item-row">
       <div class="builder-thumb">
-        ${item.hero_photo ? `<img src="${esc(item.hero_photo)}" alt="" loading="lazy">` : (item.icon || '🏺')}
+        ${item.hero_photo ? `<img src="${esc(item.hero_photo)}?v=${item.updated_at?.seconds||''}" alt="" loading="lazy">` : (item.icon || '🏺')}
       </div>
       <div>
         <div class="builder-item-name">${esc(item.name)}</div>
@@ -1033,7 +1033,7 @@ function renderBuilderCollections() {
   }
   list.innerHTML = allCollections.map(c => `
     <div class="builder-item-row">
-      <div class="builder-thumb" style="font-size:24px">${c.hero_photo ? `<img src="${esc(c.hero_photo)}" alt="">` : (c.icon||'🏺')}</div>
+      <div class="builder-thumb" style="font-size:24px">${c.hero_photo ? `<img src="${esc(c.hero_photo)}?v=${c.updated_at?.seconds||''}" alt="">` : (c.icon||'🏺')}</div>
       <div>
         <div class="builder-item-name">${esc(c.name)}</div>
         <div class="builder-item-meta">${(c.category||'').toUpperCase()} · ${allItems.filter(i=>i.collection_id===c.id).length} items</div>
@@ -1096,7 +1096,7 @@ function fillItemForm(item) {
   if (allCollections.length) ss('f-collection', item.collection_id||allCollections[0].id);
   pendingItemPhoto = null;
   if (item.hero_photo) {
-    document.getElementById('item-photo-img').src = item.hero_photo;
+    document.getElementById('item-photo-img').src = item.hero_photo + '?v=' + (item.updated_at?.seconds || Date.now());
     document.getElementById('item-photo-preview').style.display = 'block';
   } else {
     document.getElementById('item-photo-preview').style.display = 'none';
@@ -1125,7 +1125,7 @@ async function saveItem() {
     const targetId = editingItemId || _doc(col).id;
 
     if (pendingItemPhoto) {
-      const url = await uploadPhoto(pendingItemPhoto, user.uid, `museum/items/${targetId}`);
+      const url = await uploadPhoto(pendingItemPhoto, user.uid, 'item', targetId);
       data.hero_photo = url;
       pendingItemPhoto = null;
     } else {
@@ -1180,7 +1180,7 @@ function openEditCollection(id) {
   ss('c-category', col.category||'collectible');
   pendingColPhoto = null;
   if (col.hero_photo) {
-    document.getElementById('col-photo-img').src = col.hero_photo;
+    document.getElementById('col-photo-img').src = col.hero_photo + '?v=' + (col.updated_at?.seconds || Date.now());
     document.getElementById('col-photo-preview').style.display = 'block';
   } else {
     document.getElementById('col-photo-preview').style.display = 'none';
@@ -1202,7 +1202,7 @@ async function saveCollection() {
     const col = _col(window.db,'users',user.uid,'museum_collections');
     const targetId = editingColId || _doc(col).id;
     if (pendingColPhoto) {
-      data.hero_photo = await uploadPhoto(pendingColPhoto, user.uid, `museum/collections/${targetId}`);
+      data.hero_photo = await uploadPhoto(pendingColPhoto, user.uid, 'collection', targetId);
       pendingColPhoto = null;
     } else {
       const existing = gv('c-hero-photo');
@@ -1249,17 +1249,41 @@ async function saveProfile() {
 }
 
 // ── R2 PHOTO UPLOAD ──
-async function uploadPhoto(file, uid, path) {
-  const ext      = file.name.split('.').pop() || 'jpg';
-  const filename = `users/${uid}/${path}/hero.${ext}`;
+// Single-step base64 upload — matches hilsystem-r2-signer's actual
+// current contract. (The old two-step "get uploadUrl, then PUT" pattern
+// was retired when the Worker was upgraded; this is the same fix
+// already applied to Vault's uploadPhotoToR2.)
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // reader.result looks like "data:image/jpeg;base64,AAAA..."
+      // the Worker wants just the base64 payload, no data: prefix.
+      const commaIdx = reader.result.indexOf(',');
+      resolve(reader.result.slice(commaIdx + 1));
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhoto(file, uid, context, itemId, slot = 'hero') {
+  const data = await fileToBase64(file);
   const res = await fetch(R2_WORKER, {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ filename, contentType: file.type }),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type,
+      data,
+      context,
+      uid,
+      itemId,
+      slot,
+    }),
   });
   if (!res.ok) throw new Error(`Signer ${res.status}: ${await res.text()}`);
-  const { uploadUrl, publicUrl } = await res.json();
-  const up = await fetch(uploadUrl, { method:'PUT', headers:{'Content-Type':file.type}, body:file });
-  if (!up.ok) throw new Error(`R2 ${up.status}`);
+  const { publicUrl } = await res.json();
   return publicUrl;
 }
 
