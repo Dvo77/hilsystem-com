@@ -12,13 +12,16 @@
  * ES module `export` syntax — a plain script + window.HILVaultClient
  * will NOT work with import() and silently yields undefined functions.
  *
- * Assumes `firebase.auth()` is already initialized via hil-shell.js.
+ * Reads the signed-in user from window.currentUser, which hil-shell.js
+ * sets via the modular SDK's onAuthStateChanged (there is no global
+ * `firebase` namespace on these pages — this uses the modular SDK, not
+ * the old compat SDK, so we can't call firebase.auth().currentUser).
  */
 
 const HIL_ADMIN_ACTION_BASE = "https://hil-admin-action-937314472168.us-central1.run.app";
 
 async function getIdToken() {
-  const user = firebase.auth().currentUser;
+  const user = window.currentUser;
   if (!user) throw new Error("Not signed in");
   return user.getIdToken();
 }
