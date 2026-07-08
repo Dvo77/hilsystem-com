@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Room Visualizer — Floor Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+
+<style>
+  /* ── LAYOUT ── */
+  .hil-container { max-width: 1180px; margin: 0 auto; padding: 24px 16px 100px; }
+
+  .rv-page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .rv-page-head h1 { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--hil-green); text-transform: uppercase; }
+  .rv-page-head .rv-sub { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 1px; margin-top: 4px; }
+
+  /* ── STRUCTURE TABS ── */
+  .rv-struct-tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .rv-struct-tab {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px;
+    padding: 8px 14px; background: var(--hil-surface); border: 1px solid var(--hil-border);
+    color: var(--hil-text-muted); cursor: pointer; transition: all .15s;
+  }
+  .rv-struct-tab:hover { border-color: var(--hil-text-muted); color: var(--hil-text); }
+  .rv-struct-tab.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-dim); }
+  .rv-struct-add {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    padding: 8px 12px; background: none; border: 1px dashed var(--hil-border);
+    color: var(--hil-text-muted); cursor: pointer; transition: all .15s;
+  }
+  .rv-struct-add:hover { border-color: var(--hil-green); color: var(--hil-green); }
+
+  /* ── MAIN GRID ── */
+  .rv-main { display: grid; grid-template-columns: 1fr 260px; gap: 16px; }
+  @media (max-width: 860px) { .rv-main { grid-template-columns: 1fr; } }
+
+  /* ── TOOLBAR ── */
+  .rv-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .rv-tool-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px;
+    padding: 9px 14px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer; transition: all .15s;
+  }
+  .rv-tool-btn:hover { border-color: var(--hil-text-muted); }
+  .rv-tool-btn.active { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .rv-tool-btn.danger { color: var(--hil-danger); border-color: var(--hil-border); }
+  .rv-tool-btn.danger:hover { border-color: var(--hil-danger); }
+  .rv-tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .rv-hint { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: .5px; margin-left: auto; }
+
+  /* ── CANVAS ── */
+  .rv-canvas-wrap {
+    background: var(--hil-surface); border: 1px solid var(--hil-border);
+    overflow: hidden; touch-action: none; position: relative;
+  }
+  .rv-canvas-wrap.drawing { cursor: crosshair; }
+  svg.rv-svg { display: block; width: 100%; height: auto; }
+
+  .rv-zone-poly { stroke-width: 2; cursor: pointer; transition: opacity .15s; }
+  .rv-zone-poly:hover { opacity: .85; }
+  .rv-zone-poly.selected { stroke-width: 3; stroke-dasharray: 6 3; }
+  .rv-zone-label { font-family: var(--font-mono); font-size: 13px; fill: #fff; text-anchor: middle; pointer-events: none; }
+  .rv-zone-code { font-family: var(--font-display); font-size: 10px; fill: rgba(255,255,255,.65); text-anchor: middle; pointer-events: none; letter-spacing: 1px; }
+
+  .rv-draw-point { fill: var(--hil-green); stroke: #000; stroke-width: 1; }
+  .rv-draw-line { stroke: var(--hil-green); stroke-width: 2; stroke-dasharray: 5 4; fill: none; }
+  .rv-draw-fill { fill: rgba(0,204,102,.12); stroke: var(--hil-green); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+  /* ── SIDE PANEL ── */
+  .rv-panel { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 14px; align-self: start; }
+  .rv-panel h3 { font-family: var(--font-display); font-size: 10px; letter-spacing: 2.5px; color: var(--hil-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--hil-border); padding-bottom: 8px; margin-bottom: 10px; }
+  .rv-room-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 6px; cursor: pointer;
+    border: 1px solid transparent; transition: all .12s;
+  }
+  .rv-room-row:hover { background: var(--hil-surface-2); }
+  .rv-room-row.selected { border-color: var(--hil-green); background: var(--hil-green-dim); }
+  .rv-room-swatch { width: 14px; height: 14px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.3); }
+  .rv-room-info { flex: 1; min-width: 0; }
+  .rv-room-name { font-size: 13px; color: var(--hil-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rv-room-code { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; }
+  .rv-empty-panel { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-align: center; padding: 20px 8px; line-height: 1.6; }
+
+  /* ── EDIT SUBPANEL ── */
+  .rv-edit-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hil-border); }
+  .rv-field { margin-bottom: 10px; }
+  .rv-field label { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+  .rv-field input, .rv-field select {
+    width: 100%; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 10px; outline: none;
+  }
+  .rv-field input:focus, .rv-field select:focus { border-color: var(--hil-green); }
+  .rv-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rv-swatch { width: 26px; height: 26px; cursor: pointer; border: 2px solid transparent; }
+  .rv-swatch.active { border-color: #fff; }
+  .rv-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rv-edit-actions .rv-tool-btn { flex: 1; text-align: center; }
+
+  /* ── MODAL ── */
+  .rv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .rv-modal-overlay.open { display: flex; }
+  .rv-modal { background: var(--hil-surface); border: 1px solid var(--hil-green); padding: 24px; width: 380px; max-width: 100%; }
+  .rv-modal h2 { font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; color: var(--hil-green); text-transform: uppercase; margin-bottom: 16px; }
+  .rv-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .rv-modal-actions .rv-tool-btn { flex: 1; text-align: center; }
+
+  .rv-toast-inline { font-family: var(--font-mono); font-size: 10px; color: var(--hil-warning); margin-top: 6px; display: none; }
+  .rv-toast-inline.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <div class="rv-page-head">
+    <div>
+      <h1>Room Visualizer</h1>
+      <div class="rv-sub">DRAW ROOMS · PLACE ADDRESSES · REPLACES TYPED HL ENTRY</div>
+    </div>
+  </div>
+
+  <div class="rv-struct-tabs" id="struct-tabs">
+    <!-- populated at runtime -->
+  </div>
+
+  <div class="rv-main">
+    <div>
+      <div class="rv-toolbar">
+        <button class="rv-tool-btn" id="btn-draw" onclick="setMode('draw')">✎ Draw Room</button>
+        <button class="rv-tool-btn active" id="btn-select" onclick="setMode('select')">↖ Select</button>
+        <button class="rv-tool-btn" id="btn-finish" onclick="finishShape()" disabled>✓ Close Shape</button>
+        <button class="rv-tool-btn danger" id="btn-cancel-draw" onclick="cancelDraw()" disabled>✕ Cancel</button>
+        <span class="rv-hint" id="rv-hint">Select a structure to begin</span>
+      </div>
+
+      <div class="rv-canvas-wrap" id="canvas-wrap">
+        <svg class="rv-svg" id="rv-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22281f" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect width="1000" height="700" fill="url(#grid)"/>
+          <g id="zones-layer"></g>
+          <g id="draw-layer"></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rv-panel">
+      <h3>Rooms <span id="room-count">(0)</span></h3>
+      <div id="room-list"><div class="rv-empty-panel">No rooms drawn yet.<br>Pick a structure, then tap Draw Room.</div></div>
+
+      <div class="rv-edit-block" id="edit-block" style="display:none">
+        <h3>Edit Room</h3>
+        <div class="rv-field">
+          <label>Room Name</label>
+          <input type="text" id="edit-label" placeholder="Workshop">
+        </div>
+        <div class="rv-field">
+          <label>Zone Code (permanent)</label>
+          <input type="text" id="edit-code" maxlength="3" disabled style="opacity:.6">
+        </div>
+        <div class="rv-field">
+          <label>Room Type</label>
+          <select id="edit-type">
+            <option value="workshop">Workshop</option>
+            <option value="kitchen">Kitchen</option>
+            <option value="bedroom">Bedroom</option>
+            <option value="bathroom">Bathroom</option>
+            <option value="garage">Garage</option>
+            <option value="basement">Basement</option>
+            <option value="barn">Barn</option>
+            <option value="studio">Studio</option>
+            <option value="office">Office</option>
+            <option value="storage">Storage</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="rv-field">
+          <label>Color</label>
+          <div class="rv-swatches" id="edit-swatches"></div>
+        </div>
+        <div class="rv-edit-actions">
+          <button class="rv-tool-btn" onclick="saveEdit()">💾 Save</button>
+          <button class="rv-tool-btn danger" onclick="deleteZone()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NEW ROOM MODAL -->
+<div class="rv-modal-overlay" id="new-room-modal">
+  <div class="rv-modal">
+    <h2>New Room</h2>
+    <div class="rv-field">
+      <label>Room Name</label>
+      <input type="text" id="nr-label" placeholder="Workshop" autocomplete="off">
+    </div>
+    <div class="rv-field">
+      <label>Zone Code (2 letters, permanent)</label>
+      <input type="text" id="nr-code" maxlength="3" placeholder="WS" autocomplete="off" style="text-transform:uppercase">
+      <div class="rv-toast-inline" id="nr-code-warn">That code is already used in this structure.</div>
+    </div>
+    <div class="rv-field">
+      <label>Room Type</label>
+      <select id="nr-type">
+        <option value="workshop">Workshop</option>
+        <option value="kitchen">Kitchen</option>
+        <option value="bedroom">Bedroom</option>
+        <option value="bathroom">Bathroom</option>
+        <option value="garage">Garage</option>
+        <option value="basement">Basement</option>
+        <option value="barn">Barn</option>
+        <option value="studio">Studio</option>
+        <option value="office">Office</option>
+        <option value="storage">Storage</option>
+        <option value="outdoor">Outdoor</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="rv-field">
+      <label>Color</label>
+      <div class="rv-swatches" id="nr-swatches"></div>
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveNewRoom()">💾 Save Room</button>
+      <button class="rv-tool-btn danger" onclick="cancelNewRoom()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW STRUCTURE MODAL -->
+<div class="rv-modal-overlay" id="new-struct-modal">
+  <div class="rv-modal">
+    <h2>New Structure</h2>
+    <div class="rv-field">
+      <label>Structure Code (2 letters, permanent)</label>
+      <input type="text" id="ns-code" maxlength="2" placeholder="HM" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div class="rv-field">
+      <label>Structure Name</label>
+      <input type="text" id="ns-name" placeholder="Main House" autocomplete="off">
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveNewStruct()">💾 Add Structure</button>
+      <button class="rv-tool-btn danger" onclick="closeModal('new-struct-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// PALETTE — matches HIL Shell accent family, distinct per-room
+// ══════════════════════════════════════
+const PALETTE = ['#00cc66','#4a9eed','#ffd84c','#ff5c5c','#cc8800','#8a6de0','#4cd9ff','#ff8fb3'];
+const SNAP = 20; // grid snap in SVG units
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let db, currentUser;
+let _collection,_doc,_setDoc,_addDoc,_updateDoc,_deleteDoc,_onSnapshot,_serverTimestamp,_query,_where,_getDocs,_arrayUnion;
+
+let propertyId = null;
+let property = null;          // property doc data
+let zones = [];                // all zone docs for this property (all structures)
+let activeStruct = null;       // currently viewed struct_code
+let mode = 'select';           // 'draw' | 'select'
+let drawPoints = [];           // [{x,y}] while drawing
+let selectedZoneCode = null;
+let pendingPolygon = null;     // polygon points waiting on the New Room modal
+
+// ══════════════════════════════════════
+// SHELL INIT
+// ══════════════════════════════════════
+HILShell.init({
+  toolId:      'room-visualizer',
+  toolName:    'Room Visualizer',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+  currentUser = user;
+
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+
+  _collection = fsdk.collection; _doc = fsdk.doc; _setDoc = fsdk.setDoc;
+  _addDoc = fsdk.addDoc; _updateDoc = fsdk.updateDoc; _deleteDoc = fsdk.deleteDoc;
+  _onSnapshot = fsdk.onSnapshot; _serverTimestamp = fsdk.serverTimestamp;
+  _query = fsdk.query; _where = fsdk.where; _getDocs = fsdk.getDocs;
+  _arrayUnion = fsdk.arrayUnion;
+
+  db = window.db;
+  await ensureProperty();
+  watchZones();
+}
+
+// ══════════════════════════════════════
+// PROPERTY — ensure exactly one exists, create if missing
+// ══════════════════════════════════════
+async function ensureProperty() {
+  const propsCol = _collection(db, 'users', currentUser.uid, 'properties');
+  const snap = await _getDocs(propsCol);
+  if (!snap.empty) {
+    const d = snap.docs[0];
+    propertyId = d.id;
+    property = d.data();
+  } else {
+    const ref = await _addDoc(propsCol, {
+      name: 'My Property',
+      address: '',
+      struct_codes: [],
+      floorplan: {
+        url: null, format: 'json', scale: null, source: 'manual_draw',
+        width_px: 1000, height_px: 700, zones_mapped: false,
+        uploaded_at: _serverTimestamp(),
+      },
+      owner_uid: currentUser.uid,
+      created_at: _serverTimestamp(),
+    });
+    propertyId = ref.id;
+    property = { name: 'My Property', struct_codes: [] };
+  }
+  renderStructTabs();
+}
+
+// ══════════════════════════════════════
+// STRUCTURE TABS
+// ══════════════════════════════════════
+function renderStructTabs() {
+  const wrap = document.getElementById('struct-tabs');
+  const codes = property.struct_codes || [];
+  if (!activeStruct && codes.length) activeStruct = codes[0];
+
+  wrap.innerHTML = codes.map(c => `
+    <button class="rv-struct-tab ${c === activeStruct ? 'active' : ''}" onclick="switchStruct('${c}')">${c}</button>
+  `).join('') + `<button class="rv-struct-add" onclick="openModal('new-struct-modal')">+ Add Structure</button>`;
+
+  updateHint();
+  renderZonesOnCanvas();
+  renderRoomList();
+}
+
+function switchStruct(code) {
+  activeStruct = code;
+  selectedZoneCode = null;
+  hideEditBlock();
+  renderStructTabs();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function saveNewStruct() {
+  const code = document.getElementById('ns-code').value.trim().toUpperCase();
+  const name = document.getElementById('ns-name').value.trim();
+  if (!/^[A-Z]{2}$/.test(code)) { HILShell.toast('Structure code must be exactly 2 letters', 'error'); return; }
+  if ((property.struct_codes || []).includes(code)) { HILShell.toast('That structure code already exists', 'error'); return; }
+
+  const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+  await _updateDoc(propRef, { struct_codes: _arrayUnion(code) });
+  property.struct_codes = [...(property.struct_codes || []), code];
+  activeStruct = code;
+
+  document.getElementById('ns-code').value = '';
+  document.getElementById('ns-name').value = '';
+  closeModal('new-struct-modal');
+  HILShell.toast('Structure added: ' + code, 'success');
+  renderStructTabs();
+}
+
+// ══════════════════════════════════════
+// ZONES — realtime listener, scoped to property
+// ══════════════════════════════════════
+function watchZones() {
+  const zonesCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'zones');
+  _onSnapshot(zonesCol, snap => {
+    zones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderZonesOnCanvas();
+    renderRoomList();
+  }, err => HILShell.toast('Zones load error: ' + err.message, 'error'));
+}
+
+function zonesForActiveStruct() {
+  return zones.filter(z => z.struct_code === activeStruct);
+}
+
+// ══════════════════════════════════════
+// MODE / TOOLBAR
+// ══════════════════════════════════════
+function setMode(m) {
+  if (m === 'draw' && !activeStruct) { HILShell.toast('Add or select a structure first', 'error'); return; }
+  mode = m;
+  drawPoints = [];
+  document.getElementById('btn-draw').classList.toggle('active', m === 'draw');
+  document.getElementById('btn-select').classList.toggle('active', m === 'select');
+  document.getElementById('canvas-wrap').classList.toggle('drawing', m === 'draw');
+  document.getElementById('btn-finish').disabled = true;
+  document.getElementById('btn-cancel-draw').disabled = (m !== 'draw');
+  renderDrawLayer();
+  updateHint();
+}
+
+function updateHint() {
+  const hint = document.getElementById('rv-hint');
+  if (!activeStruct) { hint.textContent = 'Select or add a structure to begin'; return; }
+  if (mode === 'draw') {
+    hint.textContent = drawPoints.length
+      ? `${drawPoints.length} point${drawPoints.length>1?'s':''} — click near the start to close, or press Close Shape`
+      : 'Click to place the first corner of the room';
+  } else {
+    hint.textContent = 'Tap a room to edit it, or switch to Draw Room';
+  }
+}
+
+function cancelDraw() {
+  drawPoints = [];
+  renderDrawLayer();
+  document.getElementById('btn-finish').disabled = true;
+  updateHint();
+}
+
+// ══════════════════════════════════════
+// SVG COORDINATE HELPERS
+// ══════════════════════════════════════
+function svgPointFromEvent(evt) {
+  const svg = document.getElementById('rv-svg');
+  const pt = svg.createSVGPoint();
+  const t = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+  pt.x = t.clientX; pt.y = t.clientY;
+  const ctm = svg.getScreenCTM().inverse();
+  const loc = pt.matrixTransform(ctm);
+  return { x: snap(loc.x), y: snap(loc.y) };
+}
+function snap(v) { return Math.round(v / SNAP) * SNAP; }
+
+document.getElementById('rv-svg').addEventListener('click', onCanvasClick);
+
+function onCanvasClick(evt) {
+  if (mode !== 'draw') {
+    // hit-test zones in select mode (polygons already have their own onclick, this is fallback)
+    return;
+  }
+  const p = svgPointFromEvent(evt);
+
+  // closing gesture: click near first point
+  if (drawPoints.length >= 3) {
+    const first = drawPoints[0];
+    const dist = Math.hypot(p.x - first.x, p.y - first.y);
+    if (dist < 16) { finishShape(); return; }
+  }
+  drawPoints.push(p);
+  document.getElementById('btn-finish').disabled = drawPoints.length < 3;
+  renderDrawLayer();
+  updateHint();
+}
+
+function renderDrawLayer() {
+  const layer = document.getElementById('draw-layer');
+  if (!drawPoints.length) { layer.innerHTML = ''; return; }
+  const ptsAttr = drawPoints.map(p => `${p.x},${p.y}`).join(' ');
+  const dots = drawPoints.map(p => `<circle class="rv-draw-point" cx="${p.x}" cy="${p.y}" r="5"></circle>`).join('');
+  const shape = drawPoints.length >= 3
+    ? `<polygon class="rv-draw-fill" points="${ptsAttr}"></polygon>`
+    : `<polyline class="rv-draw-line" points="${ptsAttr}"></polyline>`;
+  layer.innerHTML = shape + dots;
+}
+
+// ══════════════════════════════════════
+// FINISH SHAPE → open New Room modal
+// ══════════════════════════════════════
+function finishShape() {
+  if (drawPoints.length < 3) { HILShell.toast('Add at least 3 points to make a room', 'error'); return; }
+  pendingPolygon = drawPoints.slice();
+  document.getElementById('nr-label').value = '';
+  document.getElementById('nr-code').value = '';
+  document.getElementById('nr-code-warn').classList.remove('show');
+  buildSwatchPicker('nr-swatches', PALETTE[zonesForActiveStruct().length % PALETTE.length]);
+  openModal('new-room-modal');
+}
+
+function cancelNewRoom() {
+  pendingPolygon = null;
+  closeModal('new-room-modal');
+}
+
+function buildSwatchPicker(containerId, activeColor) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = PALETTE.map(c => `
+    <div class="rv-swatch ${c === activeColor ? 'active' : ''}" style="background:${c}" data-color="${c}" onclick="pickSwatch('${containerId}','${c}')"></div>
+  `).join('');
+  el.dataset.selected = activeColor;
+}
+function pickSwatch(containerId, color) {
+  const el = document.getElementById(containerId);
+  el.dataset.selected = color;
+  [...el.children].forEach(s => s.classList.toggle('active', s.dataset.color === color));
+}
+
+function centroid(points) {
+  let x = 0, y = 0;
+  points.forEach(p => { x += p.x; y += p.y; });
+  return { x: Math.round(x / points.length), y: Math.round(y / points.length) };
+}
+
+async function saveNewRoom() {
+  const label = document.getElementById('nr-label').value.trim();
+  const code = document.getElementById('nr-code').value.trim().toUpperCase();
+  const type = document.getElementById('nr-type').value;
+  const color = document.getElementById('nr-swatches').dataset.selected || PALETTE[0];
+
+  if (!label) { HILShell.toast('Room name is required', 'error'); return; }
+  if (!/^[A-Z]{2,3}$/.test(code)) { HILShell.toast('Zone code must be 2–3 letters', 'error'); return; }
+  if (zones.some(z => z.id === code)) {
+    document.getElementById('nr-code-warn').classList.add('show');
+    return;
+  }
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', code);
+  await _setDoc(zoneRef, {
+    code, label, canonical_type: type, struct_code: activeStruct,
+    color, icon: null,
+    label_history: [{ label, changed_at: new Date() }],
+    map_polygon: {
+      points: pendingPolygon,
+      color, opacity: 0.3,
+      label_position: centroid(pendingPolygon),
+    },
+    created_at: _serverTimestamp(),
+    updated_at: _serverTimestamp(),
+  });
+
+  const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+  await _updateDoc(propRef, { 'floorplan.zones_mapped': true });
+
+  pendingPolygon = null;
+  drawPoints = [];
+  closeModal('new-room-modal');
+  HILShell.toast('Room saved: ' + label, 'success');
+  setMode('select');
+}
+
+// ══════════════════════════════════════
+// RENDER ZONES ON CANVAS
+// ══════════════════════════════════════
+function renderZonesOnCanvas() {
+  const layer = document.getElementById('zones-layer');
+  const list = zonesForActiveStruct();
+  layer.innerHTML = list.map(z => {
+    const pts = (z.map_polygon?.points || []).map(p => `${p.x},${p.y}`).join(' ');
+    const lp = z.map_polygon?.label_position || { x: 0, y: 0 };
+    const selected = z.id === selectedZoneCode;
+    return `
+      <polygon class="rv-zone-poly ${selected ? 'selected' : ''}"
+        points="${pts}"
+        fill="${z.color}33" stroke="${z.color}"
+        onclick="onZoneClick('${z.id}', event)"></polygon>
+      <text class="rv-zone-label" x="${lp.x}" y="${lp.y - 2}">${escapeHtml(z.label)}</text>
+      <text class="rv-zone-code" x="${lp.x}" y="${lp.y + 14}">${z.id}</text>
+    `;
+  }).join('');
+}
+
+function onZoneClick(code, evt) {
+  evt.stopPropagation();
+  if (mode === 'draw') return;
+  selectZone(code);
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ══════════════════════════════════════
+// ROOM LIST (side panel)
+// ══════════════════════════════════════
+function renderRoomList() {
+  const list = zonesForActiveStruct();
+  document.getElementById('room-count').textContent = `(${list.length})`;
+  const el = document.getElementById('room-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="rv-empty-panel">No rooms drawn yet.<br>Pick a structure, then tap Draw Room.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(z => `
+    <div class="rv-room-row ${z.id === selectedZoneCode ? 'selected' : ''}" onclick="selectZone('${z.id}')">
+      <div class="rv-room-swatch" style="background:${z.color}"></div>
+      <div class="rv-room-info">
+        <div class="rv-room-name">${escapeHtml(z.label)}</div>
+        <div class="rv-room-code">${z.id} · ${z.canonical_type}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════
+// SELECT / EDIT ZONE
+// ══════════════════════════════════════
+function selectZone(code) {
+  selectedZoneCode = code;
+  const z = zones.find(x => x.id === code);
+  if (!z) { hideEditBlock(); return; }
+
+  document.getElementById('edit-block').style.display = 'block';
+  document.getElementById('edit-label').value = z.label;
+  document.getElementById('edit-code').value = z.id;
+  document.getElementById('edit-type').value = z.canonical_type || 'other';
+  buildSwatchPicker('edit-swatches', z.color);
+
+  renderZonesOnCanvas();
+  renderRoomList();
+}
+
+function hideEditBlock() {
+  document.getElementById('edit-block').style.display = 'none';
+}
+
+async function saveEdit() {
+  if (!selectedZoneCode) return;
+  const z = zones.find(x => x.id === selectedZoneCode);
+  const newLabel = document.getElementById('edit-label').value.trim();
+  const newType = document.getElementById('edit-type').value;
+  const newColor = document.getElementById('edit-swatches').dataset.selected || z.color;
+  if (!newLabel) { HILShell.toast('Room name is required', 'error'); return; }
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', selectedZoneCode);
+  const updates = {
+    label: newLabel,
+    canonical_type: newType,
+    color: newColor,
+    'map_polygon.color': newColor,
+    updated_at: _serverTimestamp(),
+  };
+  if (newLabel !== z.label) {
+    updates.label_history = _arrayUnion({ label: newLabel, changed_at: new Date() });
+  }
+  await _updateDoc(zoneRef, updates);
+  HILShell.toast('Room updated', 'success');
+}
+
+async function deleteZone() {
+  if (!selectedZoneCode) return;
+  if (!confirm(`Delete room "${document.getElementById('edit-label').value}"? This does not move or delete any items already addressed to it — reassign those first.`)) return;
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', selectedZoneCode);
+  await _deleteDoc(zoneRef);
+  selectedZoneCode = null;
+  hideEditBlock();
+  HILShell.toast('Room deleted', 'success');
+}
+
+// init toolbar state
+updateHint();
+</script>
+</body>
+</html>
