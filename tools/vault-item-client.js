@@ -8,6 +8,10 @@
  * client per firestore.rules. Everything routes through hil-admin-action
  * (Cloud Run) using the signed-in user's Firebase ID token instead.
  *
+ * Loaded via dynamic import() in hl-vault-cloud.html, so this MUST use
+ * ES module `export` syntax — a plain script + window.HILVaultClient
+ * will NOT work with import() and silently yields undefined functions.
+ *
  * Assumes `firebase.auth()` is already initialized via hil-shell.js.
  */
 
@@ -29,65 +33,35 @@ async function callAdminAction(path, body) {
     },
     body: JSON.stringify(body),
   });
-  const data = await resp.json();
+  const data = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    throw new Error(data.error || `Request to ${path} failed (${resp.status})`);
+    throw new Error(data.error || `Request failed (${resp.status})`);
   }
   return data;
 }
 
-/**
- * Adding a new item from Vault's add-item form.
- * Step 1: write to staged_items (frontend IS allowed to do this).
- * Step 2: call /commit-staged to have Cloud Run promote it to item_records.
- */
-async function vaultAddItem(db, ownerUid, itemFields) {
-  const stagedRef = db.collection("staged_items").doc();
-  await stagedRef.set({
-    id: stagedRef.id,
-    owner_uid: ownerUid,
-    source: "manual",
-    status: "pending",
-    subject: itemFields.display_name || "",
-    parsed: {
-      name: itemFields.display_name || "",
-      description: itemFields.description || "",
-      attachments: itemFields.photos || [],
-    },
-    created_at: firebase.firestore.FieldValue.serverTimestamp(),
-  });
-
-  // The "confirm" tap in Vault's UI triggers this immediately —
-  // no separate approval screen for manual entries.
-  return callAdminAction("/commit-staged", { staged_item_id: stagedRef.id });
-}
-
-/**
- * Editing an existing item from Vault's item detail view.
- * fields = only the keys the user actually changed.
- */
-async function vaultUpdateItem(ownerUid, itemId, fields) {
+export async function vaultUpdateItem(itemId, fields) {
   return callAdminAction("/update-item", {
-    owner_uid: ownerUid,
-    item_id: itemId,
+    item_id: itemId || null,
     fields,
   });
 }
 
-/**
- * Deleting (archiving) an item from Vault.
- * There is no hard-delete path — this always soft-deletes.
- */
-async function vaultArchiveItem(ownerUid, itemId, reason) {
+export async function vaultArchiveItem(itemId, reason) {
   return callAdminAction("/archive-item", {
-    owner_uid: ownerUid,
     item_id: itemId,
-    reason,
+    reason: reason || null,
+  });
+}
+
+export async function vaultCommitStaged(stagedItemId) {
+  return callAdminAction("/commit-staged", {
+    staged_item_id: stagedItemId,
   });
 }
 
 window.HILVaultClient = {
-  vaultAddItem,
   vaultUpdateItem,
   vaultArchiveItem,
+  vaultCommitStaged,
 };
