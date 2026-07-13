@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Fixed Points — Electrical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+
+<style>
+  .hil-container { max-width: 1180px; margin: 0 auto; padding: 24px 16px 100px; }
+
+  .rd-page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  .rd-page-head h1 { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--hil-green); text-transform: uppercase; }
+  .rd-back { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-decoration: none; letter-spacing: 1px; }
+  .rd-back:hover { color: var(--hil-green); }
+  .rd-sub { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 1px; margin-bottom: 16px; }
+
+  .rd-main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  @media (max-width: 860px) { .rd-main { grid-template-columns: 1fr; } }
+
+  .rd-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .rd-tool-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px;
+    padding: 9px 14px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer; transition: all .15s;
+  }
+  .rd-tool-btn:hover { border-color: var(--hil-text-muted); }
+  .rd-tool-btn.active { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .rd-tool-btn.danger { color: var(--hil-danger); border-color: var(--hil-border); }
+  .rd-tool-btn.danger:hover { border-color: var(--hil-danger); }
+  .rd-tool-btn.small { padding: 6px 10px; font-size: 9px; }
+  .rd-hint { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: .5px; margin-left: auto; }
+
+  .fp-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .fp-filter-chip {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 6px 10px;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border); color: var(--hil-text-muted); cursor: pointer;
+  }
+  .fp-filter-chip.active { border-color: var(--blue,#4a9eed); color: var(--blue,#4a9eed); background: rgba(74,158,237,.12); }
+
+  .rd-canvas-wrap { background: var(--hil-surface); border: 1px solid var(--hil-border); overflow: hidden; touch-action: none; }
+  .rd-canvas-wrap.placing { cursor: crosshair; }
+  svg.rd-svg { display: block; width: 100%; height: auto; }
+
+  .rd-room-bg { stroke-width: 2; }
+  .rd-container-icon { cursor: pointer; }
+  .rd-container-icon.selected > circle:first-child { stroke-width: 5; }
+
+  .rd-panel { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 14px; align-self: start; }
+  .rd-panel h3 { font-family: var(--font-display); font-size: 10px; letter-spacing: 2.5px; color: var(--hil-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--hil-border); padding-bottom: 8px; margin-bottom: 10px; }
+  .rd-item-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; cursor: pointer; border: 1px solid transparent; transition: all .12s; }
+  .rd-item-row:hover { background: var(--hil-surface-2); }
+  .rd-item-row.selected { border-color: var(--hil-green); background: var(--hil-green-dim); }
+  .rd-item-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .rd-item-info { flex: 1; min-width: 0; }
+  .rd-item-name { font-size: 13px; color: var(--hil-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rd-item-sub { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; }
+  .rd-empty-panel { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-align: center; padding: 20px 8px; line-height: 1.6; }
+
+  .rd-edit-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hil-border); }
+  .rd-field { margin-bottom: 10px; }
+  .rd-field label { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+  .rd-field input, .rd-field select {
+    width: 100%; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 10px; outline: none;
+  }
+  .rd-field input:focus, .rd-field select:focus { border-color: var(--hil-green); }
+  .rd-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rd-edit-actions .rd-tool-btn { flex: 1; text-align: center; }
+  .rd-field-row { display: flex; gap: 8px; }
+  .rd-field-row .rd-field { flex: 1; }
+
+  .rd-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .rd-modal-overlay.open { display: flex; }
+  .rd-modal { background: var(--hil-surface); border: 1px solid var(--hil-green); padding: 24px; width: 380px; max-width: 100%; max-height: 88vh; overflow-y: auto; }
+  .rd-modal h2 { font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; color: var(--hil-green); text-transform: uppercase; margin-bottom: 16px; }
+  .rd-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .rd-modal-actions .rd-tool-btn { flex: 1; text-align: center; }
+  .rd-type-note { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); margin-top: -4px; margin-bottom: 12px; line-height: 1.5; }
+
+  .rv-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rv-swatch { width: 26px; height: 26px; cursor: pointer; border: 2px solid transparent; }
+  .rv-swatch.active { border-color: #fff; }
+  .rd-icon-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rd-icon-swatch {
+    width: 46px; height: 46px; cursor: pointer; border: 2px solid var(--hil-border);
+    background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 4px; transition: border-color .12s;
+  }
+  .rd-icon-swatch.active { border-color: var(--hil-green); }
+  .rd-icon-swatch svg { width: 22px; height: 22px; }
+  .rd-icon-swatch span { font-family: var(--font-mono); font-size: 7px; color: #444; margin-top: 1px; }
+
+  .fp-picker-list { display: flex; flex-direction: column; gap: 8px; }
+  .fp-picker-item { padding: 10px 12px; background: var(--hil-surface-2); border: 1px solid var(--hil-border); cursor: pointer; font-family: var(--font-mono); font-size: 12px; }
+  .fp-picker-item:hover { border-color: var(--hil-green); }
+
+  .fp-circuit-addr {
+    font-family: var(--font-mono); font-size: 13px; color: var(--hil-green);
+    background: var(--hil-bg); border: 1px solid var(--hil-border); padding: 8px 10px; margin-bottom: 8px;
+  }
+  .fp-related-list { margin-top: 4px; }
+  .fp-related-row {
+    display: flex; align-items: center; gap: 6px; padding: 5px 6px; font-family: var(--font-mono); font-size: 10px;
+    color: var(--hil-text-muted); cursor: pointer; border: 1px solid transparent;
+  }
+  .fp-related-row:hover { border-color: var(--hil-border); color: var(--hil-text); }
+
+  .fp-breaker-grid-wrap { background: #0e0e0e; border: 1px solid var(--hil-border); padding: 10px; margin-bottom: 10px; }
+  .fp-breaker-add-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .fp-breaker-add-form .rd-field-row { align-items: flex-end; }
+  .fp-breaker-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .fp-breaker-list-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    font-family: var(--font-mono); font-size: 10px; padding: 6px 8px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+  }
+  .fp-breaker-list-row .del { color: var(--hil-danger); cursor: pointer; }
+  .fp-checkbox-row { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+</style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <div class="rd-page-head">
+    <div>
+      <h1 id="rd-title">Fixed Points — Electrical</h1>
+    </div>
+    <a class="rd-back" href="./hil-smart-home.html">← Back to Smart Home</a>
+  </div>
+  <div class="rd-sub" id="rd-sub">Loading…</div>
+
+  <div id="fp-picker-wrap" style="display:none">
+    <div class="rd-panel" style="max-width:480px">
+      <h3 id="fp-picker-title">Choose a Room</h3>
+      <div class="fp-picker-list" id="fp-picker-list"></div>
+    </div>
+  </div>
+
+  <div id="fp-main-wrap" style="display:none">
+  <div class="rd-main">
+    <div>
+      <div class="rd-toolbar">
+        <button class="rd-tool-btn" id="btn-place" onclick="setMode('place')">＋ Add Point</button>
+        <button class="rd-tool-btn active" id="btn-view" onclick="setMode('view')">↖ View</button>
+        <span class="rd-hint" id="rd-hint">Loading…</span>
+      </div>
+
+      <div class="fp-filters" id="fp-filters"></div>
+
+      <div class="rd-canvas-wrap" id="canvas-wrap">
+        <svg class="rd-svg" id="rd-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22281f" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <g id="room-layer"></g>
+          <g id="points-layer"></g>
+          <g id="compass"></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rd-panel">
+      <h3>Fixed Points <span id="c-count">(0)</span></h3>
+      <div id="c-list"><div class="rd-empty-panel">Nothing placed yet.<br>Tap Add Point to start.</div></div>
+
+      <div class="rd-edit-block" id="edit-block" style="display:none">
+        <h3>Selected</h3>
+        <div class="rd-field">
+          <label>Label</label>
+          <input type="text" id="edit-name" placeholder="Optional — e.g. 'above counter'">
+        </div>
+        <div class="rd-dim-readout" id="edit-address" style="font-family:var(--font-mono);font-size:11px;color:var(--hil-green);margin-bottom:10px"></div>
+
+        <div class="rd-field-row">
+          <div class="rd-field">
+            <label>Level</label>
+            <select id="edit-level"></select>
+          </div>
+          <div class="rd-field" id="edit-color-wrap">
+            <label>Color</label>
+            <div class="rv-swatches" id="edit-color"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-circuit" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field">
+              <label>Panel</label>
+              <select id="edit-panel-ref" onchange="onPanelRefChange()"></select>
+            </div>
+            <div class="rd-field">
+              <label>Breaker</label>
+              <select id="edit-breaker-id" onchange="onBreakerSelectChange()"></select>
+            </div>
+          </div>
+          <div class="fp-circuit-addr" id="edit-circuit-addr">No circuit linked</div>
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Voltage</label><input type="number" id="edit-voltage" placeholder="120"></div>
+            <div class="rd-field" id="edit-amperage-wrap"><label>Amperage</label><input type="number" id="edit-amperage" placeholder="15"></div>
+          </div>
+          <div id="edit-also-on-circuit" style="display:none">
+            <label style="display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--hil-text-muted);text-transform:uppercase;margin-bottom:4px">Also on this circuit</label>
+            <div class="fp-related-list" id="edit-also-on-circuit-list"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-duplex" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Top (A) — HA entity</label><input type="text" id="edit-sub-a" placeholder="switch.kt_n3_a0_a"></div>
+            <div class="rd-field"><label>Bottom (B) — HA entity</label><input type="text" id="edit-sub-b" placeholder="switch.kt_n3_a0_b"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-data" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Patch Panel Port</label><input type="text" id="edit-patch-port" placeholder="e.g. 1A"></div>
+            <div class="rd-field"><label>Cable Run To</label><input type="text" id="edit-cable-run" placeholder="Destination HL address"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-light" style="display:none">
+          <div class="rd-field">
+            <label>Controlled By</label>
+            <select id="edit-controlled-by"></select>
+          </div>
+        </div>
+
+        <div id="edit-controls-list-wrap" style="display:none">
+          <label style="display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--hil-text-muted);text-transform:uppercase;margin-bottom:4px">Controls</label>
+          <div class="fp-related-list" id="edit-controls-list"></div>
+        </div>
+
+        <div id="edit-fields-panel" style="display:none">
+          <div class="rd-field">
+            <label>Panel Code <span style="opacity:.6">(e.g. S2)</span></label>
+            <input type="text" id="edit-panel-code" placeholder="S2" maxlength="6" style="text-transform:uppercase">
+          </div>
+          <div class="fp-breaker-grid-wrap">
+            <svg id="breaker-grid-svg" width="100%" viewBox="0 0 260 220"></svg>
+          </div>
+          <div class="fp-breaker-list" id="fp-breaker-list"></div>
+          <div class="fp-breaker-add-form">
+            <div class="rd-field-row">
+              <div class="rd-field"><label>Row</label><select id="brk-row"></select></div>
+              <div class="rd-field"><label>Col</label><select id="brk-col"><option value="1">1 (Left)</option><option value="2">2 (Right)</option><option value="3">3 (Center)</option></select></div>
+            </div>
+            <div class="rd-field"><label>Label</label><input type="text" id="brk-label" placeholder="e.g. Kitchen Outlets"></div>
+            <div class="fp-checkbox-row"><input type="checkbox" id="brk-tandem"> Tandem (-T)</div>
+            <div class="fp-checkbox-row"><input type="checkbox" id="brk-dp"> Double Pole (-2P)</div>
+            <button class="rd-tool-btn small" onclick="addBreaker()">＋ Add Breaker</button>
+          </div>
+        </div>
+
+        <div class="rd-field">
+          <label>HA Entity <span style="opacity:.6">(single point)</span></label>
+          <input type="text" id="edit-ha-entity" placeholder="switch.kt_n3_a0">
+        </div>
+        <div class="rd-field">
+          <label>Installed Item ID <span style="opacity:.6">(optional — smart device here)</span></label>
+          <input type="text" id="edit-installed-item" placeholder="item_records doc id">
+        </div>
+        <div class="rd-field">
+          <label>Notes</label>
+          <input type="text" id="edit-notes" placeholder="Anything worth remembering">
+        </div>
+
+        <div class="rd-hint" style="margin:6px 0 0;display:block">Drag the icon on the canvas to move it.</div>
+        <div class="rd-edit-actions">
+          <button class="rd-tool-btn" onclick="savePointDetail()">💾 Save</button>
+          <button class="rd-tool-btn danger" onclick="deletePoint()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="rd-modal-overlay" id="new-point-modal">
+  <div class="rd-modal">
+    <h2>New Fixed Point</h2>
+    <div class="rd-type-note">Placed at this spot on the wall. Address is computed automatically from position — fill in the rest after placing.</div>
+    <div class="rd-field">
+      <label>Type</label>
+      <div class="rd-icon-picker" id="nc-type-picker"></div>
+    </div>
+    <div class="rd-modal-actions">
+      <button class="rd-tool-btn" onclick="saveNewPoint()">💾 Place</button>
+      <button class="rd-tool-btn danger" onclick="closeModal('new-point-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SNAP = 20;
+const PALETTE = ['#00cc66','#4a9eed','#ffd84c','#ff5c5c','#cc8800','#8a6de0','#4cd9ff','#ff8fb3'];
+
+const TYPE_DEFS = {
+  outlet:     { code: 'OT',   label: 'Outlet',        defaultColor: '#00cc66', hasCircuit: true, isDuplex: true,
+    glyph: '<rect x="6" y="4" width="12" height="16" rx="2" stroke="#222" stroke-width="1.6" fill="none"/><circle cx="12" cy="9" r="1.6" fill="#222"/><circle cx="12" cy="15" r="1.6" fill="#222"/>' },
+  switch:     { code: 'SW',   label: 'Switch',        defaultColor: '#cc8800', hasCircuit: true, isDuplex: false,
+    glyph: '<circle cx="12" cy="12" r="8" stroke="#222" stroke-width="1.6" fill="none"/><line x1="8" y1="15" x2="15" y2="7" stroke="#222" stroke-width="1.8" stroke-linecap="round"/>' },
+  gfci:       { code: 'GFCI', label: 'GFCI',          defaultColor: '#ff5c5c', hasCircuit: true, isDuplex: true,
+    glyph: '<rect x="6" y="4" width="12" height="16" rx="2" stroke="#222" stroke-width="1.6" fill="none"/><circle cx="12" cy="9" r="1.6" fill="#222"/><circle cx="12" cy="15" r="1.6" fill="#222"/><rect x="7.5" y="4.8" width="3.2" height="2" fill="#222"/><rect x="13.3" y="4.8" width="3.2" height="2" fill="#222"/>' },
+  data_port:  { code: 'KS',   label: 'Data/Keystone', defaultColor: '#4a9eed', hasCircuit: false, isDuplex: false,
+    glyph: '<rect x="5" y="5" width="14" height="14" transform="rotate(45 12 12)" stroke="#222" stroke-width="1.6" fill="none"/><line x1="8" y1="8" x2="16" y2="16" stroke="#222" stroke-width="1.4"/>' },
+  panel:      { code: 'PL',   label: 'Breaker Panel', defaultColor: '#8a6de0', hasCircuit: false, isDuplex: false, isPanel: true,
+    glyph: '<rect x="4" y="3" width="16" height="18" rx="1" stroke="#222" stroke-width="1.6" fill="none"/><line x1="4" y1="8" x2="20" y2="8" stroke="#222" stroke-width="1.2"/><line x1="12" y1="8" x2="12" y2="21" stroke="#222" stroke-width="1.2"/>' },
+  light:      { code: 'LT',   label: 'Light Fixture', defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<circle cx="12" cy="11" r="6" stroke="#222" stroke-width="1.6" fill="none"/><path d="M9 17l1.5 3h3L15 17" stroke="#222" stroke-width="1.4" fill="none" stroke-linejoin="round"/>' },
+  chandelier: { code: 'CH',   label: 'Chandelier',    defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<circle cx="12" cy="6" r="2" stroke="#222" stroke-width="1.4" fill="none"/><path d="M12 8v3M12 11L6 18M12 11l6 7M12 11L4 15M12 11l8 4" stroke="#222" stroke-width="1.2" fill="none"/><circle cx="6" cy="18" r="1.3" fill="#222"/><circle cx="18" cy="18" r="1.3" fill="#222"/><circle cx="4" cy="15" r="1.3" fill="#222"/><circle cx="20" cy="15" r="1.3" fill="#222"/>' },
+  sconce:     { code: 'SC',   label: 'Wall Sconce',   defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<line x1="4" y1="20" x2="4" y2="4" stroke="#222" stroke-width="1.8"/><path d="M4 8h8a4 4 0 0 1 0 8H4" stroke="#222" stroke-width="1.6" fill="none"/>' },
+};
+const TYPE_LIST = ['outlet','switch','gfci','data_port','panel','light','chandelier','sconce'];
+const LEVELS = ['A','B','C','D','E','F','G'];
+const BREAKER_ROWS = ['H','G','F','E','D','C','B','A'];
+
+let db, currentUser;
+let _collection,_doc,_setDoc,_addDoc,_updateDoc,_deleteDoc,_onSnapshot,_serverTimestamp,_query,_where,_getDoc,_getDocs;
+
+const params = new URLSearchParams(location.search);
+let propertyId = params.get('property');
+let zoneCode = params.get('zone');
+
+let property = null;
+let zone = null;
+let structScale = {};
+let allPoints = [];
+let points = [];
+let unsubAllPoints = null;
+let mode = 'view';
+let selectedId = null;
+let pendingPlacePoint = null;
+let newPointType = 'outlet';
+let draggingId = null;
+let activeFilter = 'all';
+
+HILShell.init({
+  toolId:      'fixed-points',
+  toolName:    'Fixed Points',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+  currentUser = user;
+
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection = fsdk.collection; _doc = fsdk.doc; _setDoc = fsdk.setDoc;
+  _addDoc = fsdk.addDoc; _updateDoc = fsdk.updateDoc; _deleteDoc = fsdk.deleteDoc;
+  _onSnapshot = fsdk.onSnapshot; _serverTimestamp = fsdk.serverTimestamp;
+  _query = fsdk.query; _where = fsdk.where; _getDoc = fsdk.getDoc; _getDocs = fsdk.getDocs;
+
+  db = window.db;
+  buildLevelSelect();
+  buildFilters();
+  buildBreakerRowSelect();
+
+  if (!propertyId || !zoneCode) {
+    await showPicker();
+  } else {
+    startZone();
+  }
+}
+
+async function showPicker() {
+  document.getElementById('fp-picker-wrap').style.display = 'block';
+  document.getElementById('rd-sub').textContent = 'Pick a room to overlay electrical points on.';
+
+  if (!propertyId) {
+    const snap = await _getDocs(_collection(db, 'users', currentUser.uid, 'properties'));
+    const props = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (props.length === 1) {
+      propertyId = props[0].id;
+      return showZonePicker();
+    }
+    document.getElementById('fp-picker-title').textContent = 'Choose a Property';
+    document.getElementById('fp-picker-list').innerHTML = props.length
+      ? props.map(p => `<div class="fp-picker-item" onclick="pickProperty('${p.id}')">${escapeHtml(p.name || p.id)}</div>`).join('')
+      : `<div class="rd-empty-panel">No properties found. Build a floor plan first in Room Visualizer.</div>`;
+    return;
+  }
+  showZonePicker();
+}
+
+function pickProperty(id) {
+  propertyId = id;
+  showZonePicker();
+}
+
+async function showZonePicker() {
+  document.getElementById('fp-picker-title').textContent = 'Choose a Room';
+  const snap = await _getDocs(_collection(db, 'users', currentUser.uid, 'properties', propertyId, 'zones'));
+  const zones = snap.docs.map(d => ({ code: d.id, ...d.data() }));
+  document.getElementById('fp-picker-list').innerHTML = zones.length
+    ? zones.map(z => `<div class="fp-picker-item" onclick="pickZone('${z.code}')">${escapeHtml(z.label)} <span style="opacity:.5">(${z.code})</span></div>`).join('')
+    : `<div class="rd-empty-panel">No rooms drawn yet on this property. Draw one in Room Visualizer first.</div>`;
+}
+
+function pickZone(code) {
+  zoneCode = code;
+  const url = new URL(location.href);
+  url.searchParams.set('property', propertyId);
+  url.searchParams.set('zone', zoneCode);
+  history.replaceState(null, '', url);
+  document.getElementById('fp-picker-wrap').style.display = 'none';
+  startZone();
+}
+
+function jumpToPoint(id) {
+  const p = allPoints.find(pt => pt.id === id);
+  if (!p) return;
+  if (p.zone_code === zoneCode) { selectPoint(id); return; }
+  const url = new URL(location.href);
+  url.searchParams.set('property', propertyId);
+  url.searchParams.set('zone', p.zone_code);
+  location.href = url.toString();
+}
+
+async function startZone() {
+  try {
+    const propSnap = await _getDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId));
+    if (propSnap.exists()) {
+      property = propSnap.data();
+      structScale = (property.floorplan && property.floorplan.struct_scale) || {};
+    }
+  } catch (e) { /* scale defaults to 1 ft/square if this fails — non-fatal */ }
+
+  document.getElementById('fp-main-wrap').style.display = 'block';
+  watchZone();
+  watchAllPoints();
+}
+
+function watchZone() {
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', zoneCode);
+  _onSnapshot(zoneRef, snap => {
+    if (!snap.exists()) {
+      document.getElementById('rd-sub').textContent = 'This room no longer exists — it may have been deleted from the Floor Plan.';
+      return;
+    }
+    zone = snap.data();
+    document.getElementById('rd-title').textContent = 'Fixed Points — ' + zone.label;
+    document.getElementById('rd-sub').textContent = `${zone.struct_code} · ${zoneCode} · Electrical overlay`;
+    renderRoom();
+    recomputeAddresses();
+  }, err => HILShell.toast('Room load error: ' + err.message, 'error'));
+}
+
+function renderRoom() {
+  if (!zone || !zone.map_polygon) return;
+  const pts = zone.map_polygon.points || [];
+  if (!pts.length) return;
+
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const pad = 40;
+  const vb = `${minX - pad} ${minY - pad} ${(maxX - minX) + pad * 2} ${(maxY - minY) + pad * 2}`;
+  document.getElementById('rd-svg').setAttribute('viewBox', vb);
+
+  const ptsAttr = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const openingsMarkup = (zone.openings || []).map(o => {
+    const color = o.type === 'door' ? '#cc8800' : '#4cd9ff';
+    const label = o.type === 'door' ? 'D' : 'W';
+    const widthIn = o.width_in || (o.type === 'door' ? 32 : 36);
+    const scale = (zone.struct_code && structScale[zone.struct_code]) || 1;
+    const pxPerFt = SNAP / scale;
+    const lengthPx = Math.max(14, (widthIn / 12) * pxPerFt);
+    const angle = o.angle || 0;
+    return `
+      <g transform="translate(${o.x},${o.y}) rotate(${angle})">
+        <rect x="${-lengthPx/2}" y="-5" width="${lengthPx}" height="10" fill="${color}" stroke="#000" stroke-width="1.5" opacity="0.85"></rect>
+        <text x="0" y="4" transform="rotate(${-angle})" text-anchor="middle" font-size="9" font-weight="bold" fill="#000" font-family="monospace" pointer-events="none">${label}</text>
+      </g>
+    `;
+  }).join('');
+  document.getElementById('room-layer').innerHTML = `
+    <rect x="${minX - pad}" y="${minY - pad}" width="${(maxX-minX)+pad*2}" height="${(maxY-minY)+pad*2}" fill="url(#grid)"/>
+    <polygon class="rd-room-bg" points="${ptsAttr}" fill="${zone.color}22" stroke="${zone.color}"></polygon>
+    ${openingsMarkup}
+  `;
+
+  const cx = maxX + pad - 34, cy = minY + pad + 34;
+  document.getElementById('compass').innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="26" fill="rgba(0,0,0,.55)" stroke="#4a9eed" stroke-width="1.5"></circle>
+    <text x="${cx}" y="${cy-14}" text-anchor="middle" font-size="12" fill="#4a9eed" font-weight="bold" font-family="monospace">N</text>
+    <text x="${cx+19}" y="${cy+4}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">E</text>
+    <text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">S</text>
+    <text x="${cx-19}" y="${cy+4}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">W</text>
+    <line x1="${cx}" y1="${cy-18}" x2="${cx}" y2="${cy+18}" stroke="#3a453a" stroke-width="1"></line>
+    <line x1="${cx-18}" y1="${cy}" x2="${cx+18}" y2="${cy}" stroke="#3a453a" stroke-width="1"></line>
+  `;
+}
+
+function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+      (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+const WALL_DIST_THRESHOLD = 60;
+function nearestPointOnSegmentFP(p, a, b) {
+  const abx = b.x - a.x, aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  if (len2 === 0) return a;
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return { x: a.x + abx * t, y: a.y + aby * t };
+}
+
+function anchorForPosition(pos) {
+  const poly = zone?.map_polygon?.points;
+  if (!poly || poly.length < 3) return 'F';
+
+  const xs = poly.map(p => p.x), ys = poly.map(p => p.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+
+  let bestDist = Infinity, bestSeg = null;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const nearest = nearestPointOnSegmentFP(pos, a, b);
+    const d = Math.hypot(nearest.x - pos.x, nearest.y - pos.y);
+    if (d < bestDist) { bestDist = d; bestSeg = { a, b, mid: { x: (a.x+b.x)/2, y: (a.y+b.y)/2 } }; }
+  }
+
+  if (bestDist > WALL_DIST_THRESHOLD || !bestSeg) return 'F';
+
+  const dx = Math.abs(bestSeg.b.x - bestSeg.a.x);
+  const dy = Math.abs(bestSeg.b.y - bestSeg.a.y);
+  if (dy > dx) {
+    return bestSeg.mid.x < cx ? 'W' : 'E';
+  } else {
+    return bestSeg.mid.y < cy ? 'N' : 'S';
+  }
+}
+
+function recomputeAddresses() {
+  if (!zone || !zone.struct_code) return;
+  const structCode = zone.struct_code;
+  const list = points.filter(p => p.room_position);
+
+  const groups = {};
+  list.forEach(p => {
+    const anchor = anchorForPosition(p.room_position);
+    p._anchor = anchor;
+    (groups[anchor] = groups[anchor] || []).push(p);
+  });
+
+  Object.entries(groups).forEach(([anchor, items]) => {
+    if (anchor === 'F') {
+      items.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
+    } else if (anchor === 'N' || anchor === 'S') {
+      items.sort((a, b) => a.room_position.x - b.room_position.x);
+    } else {
+      items.sort((a, b) => a.room_position.y - b.room_position.y);
+    }
+    items.forEach((p, i) => {
+      const col = anchor === 'F' ? '' : String(i + 1);
+      const level = p.level || 'A';
+      p._computedAddress = `${structCode}-${zoneCode}-${anchor}${col}-${level}0`;
+    });
+  });
+
+  list.forEach(p => {
+    if (p._computedAddress && p._computedAddress !== p.hl_address) {
+      _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+        { hl_address: p._computedAddress, updated_at: _serverTimestamp() }).catch(() => {});
+    }
+  });
+
+  renderPoints();
+  renderList();
+}
+
+function watchAllPoints() {
+  if (unsubAllPoints) unsubAllPoints();
+  const q = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points');
+  unsubAllPoints = _onSnapshot(q, snap => {
+    allPoints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    points = allPoints.filter(p => p.zone_code === zoneCode);
+    recomputeAddresses();
+    refreshOpenEditPanel();
+  }, err => HILShell.toast('Fixed Points load error: ' + err.message, 'error'));
+}
+
+function refreshOpenEditPanel() {
+  if (selectedId && findPoint(selectedId)) selectPoint(selectedId);
+}
+
+function setMode(m) {
+  mode = m;
+  selectedId = null;
+  hideEditBlock();
+  document.getElementById('btn-place').classList.toggle('active', m === 'place');
+  document.getElementById('btn-view').classList.toggle('active', m === 'view');
+  document.getElementById('canvas-wrap').classList.toggle('placing', m === 'place');
+  document.getElementById('rd-hint').textContent = m === 'place'
+    ? 'Tap anywhere inside the room to place a point'
+    : 'Tap a point to select it, or drag it to move';
+  renderPoints();
+}
+
+function buildFilters() {
+  const el = document.getElementById('fp-filters');
+  const chips = [{ key: 'all', label: 'All' }, ...TYPE_LIST.map(t => ({ key: t, label: TYPE_DEFS[t].code }))];
+  el.innerHTML = chips.map(c => `<div class="fp-filter-chip ${c.key === activeFilter ? 'active' : ''}" data-filter="${c.key}" onclick="setFilter('${c.key}')">${c.label}</div>`).join('');
+}
+function setFilter(key) {
+  activeFilter = key;
+  document.querySelectorAll('.fp-filter-chip').forEach(el => el.classList.toggle('active', el.dataset.filter === key));
+  renderPoints();
+  renderList();
+}
+function visiblePoints() {
+  return activeFilter === 'all' ? points : points.filter(p => p.type === activeFilter);
+}
+
+function buildLevelSelect() {
+  const sel = document.getElementById('edit-level');
+  sel.innerHTML = LEVELS.map(l => `<option value="${l}">${l}${l === 'A' ? ' (floor/low)' : ''}</option>`).join('');
+}
+function buildBreakerRowSelect() {
+  const sel = document.getElementById('brk-row');
+  sel.innerHTML = BREAKER_ROWS.map(r => `<option value="${r}">${r}${r === 'A' ? ' (bottom)' : (r === 'H' ? ' (top)' : '')}</option>`).join('');
+}
+
+document.getElementById('rd-svg').addEventListener('click', evt => {
+  if (mode !== 'place') return;
+  const p = svgPointFromEvent(evt);
+  if (!zone || !pointInPolygon(p, zone.map_polygon.points)) {
+    HILShell.toast('Place inside the room outline', 'error');
+    return;
+  }
+  pendingPlacePoint = p;
+  newPointType = 'outlet';
+  buildTypePicker();
+  openModal('new-point-modal');
+});
+
+function buildTypePicker() {
+  const el = document.getElementById('nc-type-picker');
+  el.innerHTML = TYPE_LIST.map(t => `
+    <div class="rd-icon-swatch ${t === newPointType ? 'active' : ''}" data-type="${t}" onclick="pickNewType('${t}')">
+      <svg viewBox="0 0 24 24">${TYPE_DEFS[t].glyph}</svg>
+      <span>${TYPE_DEFS[t].code}</span>
+    </div>
+  `).join('');
+}
+function pickNewType(t) {
+  newPointType = t;
+  document.querySelectorAll('#nc-type-picker .rd-icon-swatch').forEach(el => el.classList.toggle('active', el.dataset.type === t));
+}
+
+function svgPointFromEvent(evt) {
+  const svg = document.getElementById('rd-svg');
+  const pt = svg.createSVGPoint();
+  const t = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+  pt.x = t.clientX; pt.y = t.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: Math.round(loc.x / SNAP) * SNAP, y: Math.round(loc.y / SNAP) * SNAP };
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function saveNewPoint() {
+  if (!pendingPlacePoint) { HILShell.toast('Placement point lost — tap the room again', 'error'); return; }
+
+  const type = newPointType;
+  const def = TYPE_DEFS[type];
+  const pointId = `${def.code}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const roomPosition = { x: pendingPlacePoint.x, y: pendingPlacePoint.y };
+
+  const doc = {
+    hl_address: null,
+    family: 'E',
+    type,
+    name: '',
+    level: 'A',
+    color: def.defaultColor,
+    room_position: roomPosition,
+    zone_code: zoneCode,
+    struct_code: zone.struct_code,
+    sub_points: { A: null, B: null },
+    ha_entity: null,
+    installed_item_id: null,
+    panel_ref: null, breaker_id: null, circuit: null,
+    voltage: (def.hasCircuit ? 120 : null),
+    amperage: null,
+    patch_panel_port: null, cable_run_to: null,
+    controlled_by: null,
+    panel_code: def.isPanel ? 'P1' : null,
+    breakers: def.isPanel ? [] : null,
+    notes: '',
+    owner_uid: currentUser.uid,
+    created_at: _serverTimestamp(), updated_at: _serverTimestamp(),
+  };
+
+  await _setDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', pointId), doc);
+  HILShell.toast('Placed: ' + def.label, 'success');
+
+  pendingPlacePoint = null;
+  closeModal('new-point-modal');
+}
+
+function renderPoints() {
+  const layer = document.getElementById('points-layer');
+  layer.innerHTML = visiblePoints().map(p => {
+    const pos = p.room_position || { x: 0, y: 0 };
+    const isSelected = selectedId === p.id;
+    const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+    const color = p.color || def.defaultColor;
+    const glyph = def.glyph;
+
+    const bg = `<circle cx="${pos.x}" cy="${pos.y}" r="14" fill="#fff" stroke="${color}" stroke-width="3"></circle>`;
+    const glyphG = `<g transform="translate(${pos.x-9},${pos.y-9}) scale(0.75)">${glyph}</g>`;
+
+    return `
+      <g class="rd-container-icon ${isSelected ? 'selected' : ''}"
+        onmousedown="startDrag(event,'${p.id}')"
+        ontouchstart="startDrag(event,'${p.id}')"
+        onclick="selectPoint('${p.id}', event)">
+        ${bg}${glyphG}
+      </g>
+    `;
+  }).join('');
+}
+
+function findPoint(id) { return allPoints.find(p => p.id === id); }
+
+function selectPoint(id, evt) {
+  if (evt) evt.stopPropagation();
+  if (mode === 'place') return;
+  selectedId = id;
+  const p = findPoint(id);
+  if (!p) { hideEditBlock(); return; }
+
+  const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+
+  document.getElementById('edit-block').style.display = 'block';
+  document.getElementById('edit-name').value = p.name || '';
+  updateAddressReadout();
+  document.getElementById('edit-level').value = p.level || 'A';
+  buildColorSwatches('edit-color', p.color || def.defaultColor);
+
+  document.getElementById('edit-fields-circuit').style.display = def.hasCircuit ? 'block' : 'none';
+  document.getElementById('edit-amperage-wrap').style.display = (p.type === 'switch' || def.isLoad) ? 'none' : 'block';
+  document.getElementById('edit-fields-duplex').style.display = def.isDuplex ? 'block' : 'none';
+  document.getElementById('edit-fields-data').style.display = (p.type === 'data_port') ? 'block' : 'none';
+  document.getElementById('edit-fields-light').style.display = def.isLoad ? 'block' : 'none';
+  document.getElementById('edit-controls-list-wrap').style.display = (p.type === 'switch') ? 'block' : 'none';
+  document.getElementById('edit-fields-panel').style.display = def.isPanel ? 'block' : 'none';
+
+  if (def.hasCircuit) {
+    populatePanelRefSelect(p.panel_ref);
+    onPanelRefChange(p.breaker_id);
+    document.getElementById('edit-voltage').value = p.voltage ?? '';
+    document.getElementById('edit-amperage').value = p.amperage ?? '';
+    renderAlsoOnCircuit(p);
+  }
+  if (def.isDuplex) {
+    document.getElementById('edit-sub-a').value = (p.sub_points && p.sub_points.A) || '';
+    document.getElementById('edit-sub-b').value = (p.sub_points && p.sub_points.B) || '';
+  }
+  if (p.type === 'data_port') {
+    document.getElementById('edit-patch-port').value = p.patch_panel_port || '';
+    document.getElementById('edit-cable-run').value = p.cable_run_to || '';
+  }
+  if (def.isLoad) {
+    populateControlledBySelect(p.controlled_by);
+  }
+  if (p.type === 'switch') {
+    renderControlsList(p);
+  }
+  if (def.isPanel) {
+    document.getElementById('edit-panel-code').value = p.panel_code || 'P1';
+    renderBreakerGrid(p);
+    renderBreakerList(p);
+  }
+
+  document.getElementById('edit-ha-entity').value = p.ha_entity || '';
+  document.getElementById('edit-installed-item').value = p.installed_item_id || '';
+  document.getElementById('edit-notes').value = p.notes || '';
+
+  renderPoints();
+  renderList();
+}
+
+function hideEditBlock() {
+  document.getElementById('edit-block').style.display = 'none';
+}
+
+function updateAddressReadout() {
+  const p = findPoint(selectedId);
+  const el = document.getElementById('edit-address');
+  if (!p || !el) return;
+  el.textContent = p._computedAddress || p.hl_address || '';
+}
+
+function buildColorSwatches(containerId, activeColor) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = PALETTE.map(c => `<div class="rv-swatch ${c === activeColor ? 'active' : ''}" data-color="${c}" style="background:${c}" onclick="pickColor('${containerId}','${c}')"></div>`).join('');
+  el.dataset.selected = activeColor;
+}
+function pickColor(containerId, color) {
+  const el = document.getElementById(containerId);
+  el.dataset.selected = color;
+  [...el.children].forEach(s => s.classList.toggle('active', s.dataset.color === color));
+}
+
+function allPanels() { return allPoints.filter(p => p.type === 'panel'); }
+
+function breakerAddress(panel, brk) {
+  if (!panel || !brk) return null;
+  const code = panel.panel_code || 'P1';
+  let addr = `EL-${panel.zone_code}-${code}-${brk.col}${brk.row}`;
+  if (brk.tandem) addr += '-T';
+  if (brk.double_pole) addr += '-2P';
+  return addr;
+}
+
+function populatePanelRefSelect(currentPanelId) {
+  const sel = document.getElementById('edit-panel-ref');
+  const panels = allPanels();
+  sel.innerHTML = `<option value="">— No panel linked —</option>` +
+    panels.map(pl => `<option value="${pl.id}" ${pl.id === currentPanelId ? 'selected' : ''}>${escapeHtml(pl.name || pl.panel_code || pl.id)} (${pl.zone_code})</option>`).join('');
+}
+
+function onPanelRefChange(presetBreakerId) {
+  const panelId = document.getElementById('edit-panel-ref').value;
+  const panel = allPoints.find(p => p.id === panelId);
+  const brkSel = document.getElementById('edit-breaker-id');
+  const breakers = (panel && panel.breakers) || [];
+  brkSel.innerHTML = `<option value="">— Select breaker —</option>` +
+    breakers.map(b => `<option value="${b.id}">${b.label ? escapeHtml(b.label) + ' — ' : ''}${b.col}${b.row}${b.tandem ? '-T' : ''}${b.double_pole ? '-2P' : ''}</option>`).join('');
+  if (presetBreakerId) brkSel.value = presetBreakerId;
+  onBreakerSelectChange();
+}
+
+function onBreakerSelectChange() {
+  const panelId = document.getElementById('edit-panel-ref').value;
+  const breakerId = document.getElementById('edit-breaker-id').value;
+  const panel = allPoints.find(p => p.id === panelId);
+  const brk = panel && (panel.breakers || []).find(b => b.id === breakerId);
+  const el = document.getElementById('edit-circuit-addr');
+  el.textContent = brk ? breakerAddress(panel, brk) : 'No circuit linked';
+}
+
+function renderAlsoOnCircuit(p) {
+  const wrap = document.getElementById('edit-also-on-circuit');
+  const list = document.getElementById('edit-also-on-circuit-list');
+  if (!p.panel_ref || !p.breaker_id) { wrap.style.display = 'none'; return; }
+  const siblings = allPoints.filter(o => o.id !== p.id && o.panel_ref === p.panel_ref && o.breaker_id === p.breaker_id);
+  if (!siblings.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = siblings.map(s => `
+    <div class="fp-related-row" onclick="jumpToPoint('${s.id}')">
+      <span>●</span> ${escapeHtml(s.name || TYPE_DEFS[s.type].label)} — ${s.zone_code}${s.zone_code !== zoneCode ? ' ↗' : ''}
+    </div>
+  `).join('');
+}
+
+function populateControlledBySelect(currentSwitchId) {
+  const sel = document.getElementById('edit-controlled-by');
+  const switches = allPoints.filter(p => p.type === 'switch');
+  sel.innerHTML = `<option value="">— No switch linked —</option>` +
+    switches.map(s => `<option value="${s.id}" ${s.id === currentSwitchId ? 'selected' : ''}>${escapeHtml(s.name || s._computedAddress || s.id)} (${s.zone_code})</option>`).join('');
+}
+
+function renderControlsList(p) {
+  const list = document.getElementById('edit-controls-list');
+  const controlled = allPoints.filter(o => o.controlled_by === p.id);
+  if (!controlled.length) { list.innerHTML = `<div class="rd-hint" style="margin-left:0">Not linked to any fixtures yet.</div>`; return; }
+  list.innerHTML = controlled.map(c => `
+    <div class="fp-related-row" onclick="jumpToPoint('${c.id}')">
+      <span>●</span> ${escapeHtml(c.name || TYPE_DEFS[c.type].label)} — ${c.zone_code}${c.zone_code !== zoneCode ? ' ↗' : ''}
+    </div>
+  `).join('');
+}
+
+function renderBreakerGrid(panel) {
+  const svg = document.getElementById('breaker-grid-svg');
+  const breakers = panel.breakers || [];
+  const rows = BREAKER_ROWS;
+  const cellW = 60, cellH = 22, gap = 4, labelW = 20;
+  const hasCenter = breakers.some(b => b.col === '3');
+  const cols = hasCenter ? ['1','2','3'] : ['1','2'];
+
+  let svgRows = '';
+  rows.forEach((row, ri) => {
+    const y = ri * (cellH + gap);
+    svgRows += `<text x="10" y="${y + cellH/2 + 4}" text-anchor="middle" font-size="9" fill="#00cc66" font-family="monospace">${row}</text>`;
+    cols.forEach((col, ci) => {
+      const x = labelW + ci * (cellW + gap);
+      const brk = breakers.find(b => b.row === row && b.col === col);
+      const fill = brk ? 'rgba(0,204,102,.16)' : '#1a1a1a';
+      const stroke = brk ? '#00cc66' : '#333';
+      const text = brk ? (brk.label ? brk.label.slice(0, 10) : `${col}${row}`) : `${col}${row}`;
+      const textColor = brk ? '#00cc66' : '#555';
+      svgRows += `
+        <rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+        <text x="${x + cellW/2}" y="${y + cellH/2 + 3}" text-anchor="middle" font-size="8" fill="${textColor}" font-family="monospace">${escapeHtml(text)}</text>
+      `;
+    });
+  });
+  const totalW = labelW + cols.length * (cellW + gap);
+  const totalH = rows.length * (cellH + gap);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.innerHTML = svgRows;
+}
+
+function renderBreakerList(panel) {
+  const el = document.getElementById('fp-breaker-list');
+  const breakers = panel.breakers || [];
+  if (!breakers.length) { el.innerHTML = `<div class="rd-hint" style="margin-left:0">No breakers added yet.</div>`; return; }
+  el.innerHTML = breakers.map(b => `
+    <div class="fp-breaker-list-row">
+      <span>${breakerAddress(panel, b)}${b.label ? ' — ' + escapeHtml(b.label) : ''}</span>
+      <span class="del" onclick="deleteBreaker('${b.id}')">🗑</span>
+    </div>
+  `).join('');
+}
+
+async function addBreaker() {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const row = document.getElementById('brk-row').value;
+  const col = document.getElementById('brk-col').value;
+  const label = document.getElementById('brk-label').value.trim();
+  const tandem = document.getElementById('brk-tandem').checked;
+  const double_pole = document.getElementById('brk-dp').checked;
+  const id = 'brk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const breakers = [...(p.breakers || []), { id, row, col, label, tandem, double_pole }];
+
+  await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+    { breakers, updated_at: _serverTimestamp() });
+  p.breakers = breakers;
+  document.getElementById('brk-label').value = '';
+  document.getElementById('brk-tandem').checked = false;
+  document.getElementById('brk-dp').checked = false;
+  renderBreakerGrid(p);
+  renderBreakerList(p);
+  HILShell.toast('Breaker added', 'success');
+}
+
+async function deleteBreaker(breakerId) {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const breakers = (p.breakers || []).filter(b => b.id !== breakerId);
+  await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+    { breakers, updated_at: _serverTimestamp() });
+  p.breakers = breakers;
+  renderBreakerGrid(p);
+  renderBreakerList(p);
+}
+
+async function savePointDetail() {
+  if (!selectedId) return;
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+
+  const update = {
+    name: document.getElementById('edit-name').value.trim(),
+    level: document.getElementById('edit-level').value,
+    color: document.getElementById('edit-color').dataset.selected || p.color,
+    ha_entity: document.getElementById('edit-ha-entity').value.trim() || null,
+    installed_item_id: document.getElementById('edit-installed-item').value.trim() || null,
+    notes: document.getElementById('edit-notes').value.trim(),
+    updated_at: _serverTimestamp(),
+  };
+
+  if (def.hasCircuit) {
+    const panelId = document.getElementById('edit-panel-ref').value || null;
+    const breakerId = document.getElementById('edit-breaker-id').value || null;
+    const panel = allPoints.find(x => x.id === panelId);
+    const brk = panel && (panel.breakers || []).find(b => b.id === breakerId);
+    update.panel_ref = panelId;
+    update.breaker_id = breakerId;
+    update.circuit = brk ? breakerAddress(panel, brk) : null;
+    const v = document.getElementById('edit-voltage').value;
+    update.voltage = v === '' ? null : Number(v);
+    if (p.type !== 'switch' && !def.isLoad) {
+      const a = document.getElementById('edit-amperage').value;
+      update.amperage = a === '' ? null : Number(a);
+    }
+  }
+  if (def.isDuplex) {
+    update.sub_points = {
+      A: document.getElementById('edit-sub-a').value.trim() || null,
+      B: document.getElementById('edit-sub-b').value.trim() || null,
+    };
+  }
+  if (p.type === 'data_port') {
+    update.patch_panel_port = document.getElementById('edit-patch-port').value.trim() || null;
+    update.cable_run_to = document.getElementById('edit-cable-run').value.trim() || null;
+  }
+  if (def.isLoad) {
+    update.controlled_by = document.getElementById('edit-controlled-by').value || null;
+  }
+  if (def.isPanel) {
+    update.panel_code = document.getElementById('edit-panel-code').value.trim().toUpperCase() || 'P1';
+  }
+
+  await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id), update);
+  Object.assign(p, update);
+  recomputeAddresses();
+  HILShell.toast('Saved', 'success');
+}
+
+async function deletePoint() {
+  if (!selectedId) return;
+  if (!confirm('Delete this fixed point? This cannot be undone.')) return;
+  await _deleteDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', selectedId));
+  selectedId = null;
+  hideEditBlock();
+  HILShell.toast('Deleted', 'success');
+}
+
+function startDrag(evt, id) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  if (mode === 'place') return;
+  draggingId = id;
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', onDragEnd);
+}
+
+function onDragMove(evt) {
+  if (!draggingId) return;
+  evt.preventDefault();
+  const p = svgPointFromEvent(evt);
+  const c = findPoint(draggingId);
+  if (c) { c.room_position = p; renderPoints(); }
+}
+
+async function onDragEnd() {
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend', onDragEnd);
+  if (!draggingId) return;
+  const c = findPoint(draggingId);
+  draggingId = null;
+  if (!c) return;
+
+  await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', c.id),
+    { room_position: c.room_position, updated_at: _serverTimestamp() });
+  recomputeAddresses();
+}
+
+function renderList() {
+  const list = visiblePoints();
+  document.getElementById('c-count').textContent = `(${list.length})`;
+  const el = document.getElementById('c-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="rd-empty-panel">Nothing placed yet.<br>Tap Add Point to start.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const sel = selectedId === p.id;
+    const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+    const dot = p.color || def.defaultColor;
+    const name = p.name ? p.name : def.label;
+    const sub = def.code + (p.circuit ? ' · ' + p.circuit : '');
+    const addr = p._computedAddress ? `<div class="rd-item-sub" style="color:var(--hil-green)">${p._computedAddress}</div>` : '';
+    return `
+      <div class="rd-item-row ${sel ? 'selected' : ''}" onclick="selectPoint('${p.id}')">
+        <div class="rd-item-dot" style="background:${dot}"></div>
+        <div class="rd-item-info">
+          <div class="rd-item-name">${escapeHtml(name)}</div>
+          <div class="rd-item-sub">${sub}</div>
+          ${addr}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+</script>
+
+</body>
+</html>
