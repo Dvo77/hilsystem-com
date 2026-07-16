@@ -1,0 +1,295 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     TRUST AUDIT CARD — drop into hil-family-ledger.html
+     Assumes hil-shell.js already initialized: `firebase`, `auth`, `db`
+     are live globals on the page (HILShell.init() pattern).
+     Assumes ADMIN_ACTION_URL points at your hil-admin-action Cloud Run
+     base URL — set it once near your other tool constants.
+     ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+  #audit-card {
+    background: #0a0c0b;
+    border: 1px solid #00cc66;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'Barlow Condensed', sans-serif;
+    color: #e0e0e0;
+  }
+  #audit-card h3 {
+    font-family: 'Orbitron', sans-serif;
+    color: #00cc66;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px 0;
+    text-transform: uppercase;
+  }
+  .audit-score-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .audit-score-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 2rem;
+    color: #00cc66;
+  }
+  .audit-score-label {
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+  }
+  .audit-pending-banner {
+    background: rgba(204, 136, 0, 0.15);
+    border: 1px solid #cc8800;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: #cc8800;
+  }
+  .audit-btn {
+    background: transparent;
+    border: 1px solid #00cc66;
+    color: #00cc66;
+    font-family: 'Space Mono', monospace;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+  }
+  .audit-btn:hover { background: #00cc66; color: #0a0c0b; }
+  .audit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .audit-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #1a1c1a;
+    font-size: 0.9rem;
+  }
+  .audit-item-row:last-child { border-bottom: none; }
+  .audit-toggle {
+    display: flex;
+    gap: 6px;
+  }
+  .audit-toggle button {
+    background: transparent;
+    border: 1px solid #444;
+    color: #888;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .audit-toggle button.active-present { border-color: #00cc66; color: #00cc66; }
+  .audit-toggle button.active-missing { border-color: #cc4400; color: #cc4400; }
+  .audit-result-banner {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  .audit-badge-toast {
+    background: rgba(0, 204, 102, 0.15);
+    border: 1px solid #00cc66;
+    color: #00cc66;
+  }
+</style>
+
+<div id="audit-card">
+  <h3>Trust Audit</h3>
+  <div class="audit-score-row">
+    <span class="audit-score-value" id="audit-score-value">—</span>
+    <span class="audit-score-label">Trust Score</span>
+  </div>
+
+  <div id="audit-pending-banner" style="display:none" class="audit-pending-banner"></div>
+
+  <div id="audit-no-pending">
+    <button class="audit-btn" id="audit-trigger-btn">Run Spot Check</button>
+  </div>
+
+  <div id="audit-checklist" style="display:none">
+    <div id="audit-item-list"></div>
+    <button class="audit-btn" id="audit-submit-btn" style="margin-top:12px">Submit Audit</button>
+  </div>
+
+  <div id="audit-result" style="display:none"></div>
+</div>
+
+<script>
+(function () {
+  // ── CONFIG ──────────────────────────────────────────────────
+  const ADMIN_ACTION_URL = 'https://hil-admin-action-937314472168.us-central1.run.app';
+  // ────────────────────────────────────────────────────────────
+
+  let currentAuditEventId = null;
+  let currentItems = {}; // item_id -> 'present' | 'missing' (default present)
+  let itemNameCache = {}; // item_id -> display_name, populate from your existing Vault item cache if you have one
+
+  const els = {
+    scoreValue: document.getElementById('audit-score-value'),
+    pendingBanner: document.getElementById('audit-pending-banner'),
+    noPending: document.getElementById('audit-no-pending'),
+    triggerBtn: document.getElementById('audit-trigger-btn'),
+    checklist: document.getElementById('audit-checklist'),
+    itemList: document.getElementById('audit-item-list'),
+    submitBtn: document.getElementById('audit-submit-btn'),
+    result: document.getElementById('audit-result'),
+  };
+
+  async function getIdToken() {
+    return await auth.currentUser.getIdToken();
+  }
+
+  async function loadTrustScore() {
+    // Personal tier reads users/{uid}.stats.trust_score directly.
+    // If this page is viewing a team_member instead, swap the source
+    // to team_members/{memberId}.trust_score.
+    const uid = auth.currentUser.uid;
+    const userDoc = await db.collection('users').doc(uid).get();
+    const score = userDoc.data()?.stats?.trust_score;
+    els.scoreValue.textContent = (score === undefined || score === null) ? '—' : score;
+  }
+
+  async function checkPendingAudit() {
+    const uid = auth.currentUser.uid;
+    const pendingSnap = await db.collection(`users/${uid}/audit_events`)
+      .where('status', '==', 'pending')
+      .limit(1)
+      .get();
+
+    if (pendingSnap.empty) {
+      els.pendingBanner.style.display = 'none';
+      els.noPending.style.display = 'block';
+      els.checklist.style.display = 'none';
+      return;
+    }
+
+    const doc = pendingSnap.docs[0];
+    const event = doc.data();
+    currentAuditEventId = doc.id;
+    currentItems = {};
+    (event.expected_item_ids || []).forEach(id => { currentItems[id] = 'present'; });
+
+    els.pendingBanner.textContent = event.audit_type === 'annual_review'
+      ? `Don't Be a Fool — ${event.expected_item_ids.length} item(s) flagged untouched for 24+ months.`
+      : `Spot check active — go look at zone/kit "${event.scope_id}" and report what's there.`;
+    els.pendingBanner.style.display = 'block';
+    els.noPending.style.display = 'none';
+
+    renderChecklist(event.expected_item_ids || []);
+    els.checklist.style.display = 'block';
+  }
+
+  function renderChecklist(itemIds) {
+    els.itemList.innerHTML = '';
+    itemIds.forEach(id => {
+      const row = document.createElement('div');
+      row.className = 'audit-item-row';
+      const label = itemNameCache[id] || id; // fallback to raw id if name not cached
+      row.innerHTML = `
+        <span>${label}</span>
+        <div class="audit-toggle" data-item="${id}">
+          <button class="present-btn active-present">Present</button>
+          <button class="missing-btn">Missing</button>
+        </div>
+      `;
+      els.itemList.appendChild(row);
+
+      row.querySelector('.present-btn').addEventListener('click', () => {
+        currentItems[id] = 'present';
+        row.querySelector('.present-btn').classList.add('active-present');
+        row.querySelector('.missing-btn').classList.remove('active-missing');
+      });
+      row.querySelector('.missing-btn').addEventListener('click', () => {
+        currentItems[id] = 'missing';
+        row.querySelector('.missing-btn').classList.add('active-missing');
+        row.querySelector('.present-btn').classList.remove('active-present');
+      });
+    });
+  }
+
+  els.triggerBtn.addEventListener('click', async () => {
+    els.triggerBtn.disabled = true;
+    els.triggerBtn.textContent = 'Selecting…';
+    try {
+      const token = await getIdToken();
+      const res = await fetch(`${ADMIN_ACTION_URL}/trigger-audit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ audit_type: 'trust_spotcheck', scope_type: 'zone' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'trigger failed');
+      await checkPendingAudit();
+    } catch (err) {
+      console.error('trigger-audit error:', err);
+      els.pendingBanner.textContent = 'Could not start audit — try again.';
+      els.pendingBanner.style.display = 'block';
+    } finally {
+      els.triggerBtn.disabled = false;
+      els.triggerBtn.textContent = 'Run Spot Check';
+    }
+  });
+
+  els.submitBtn.addEventListener('click', async () => {
+    if (!currentAuditEventId) return;
+    els.submitBtn.disabled = true;
+    els.submitBtn.textContent = 'Submitting…';
+    try {
+      const token = await getIdToken();
+      const presentIds = Object.keys(currentItems).filter(id => currentItems[id] === 'present');
+      const res = await fetch(`${ADMIN_ACTION_URL}/submit-audit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          audit_event_id: currentAuditEventId,
+          reported_present_ids: presentIds,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'submit failed');
+
+      els.checklist.style.display = 'none';
+      els.pendingBanner.style.display = 'none';
+      els.noPending.style.display = 'block';
+
+      els.result.style.display = 'block';
+      els.result.className = 'audit-result-banner ' + (data.issued_badge ? 'audit-badge-toast' : '');
+      els.result.textContent = data.issued_badge
+        ? `Score: ${data.match_score}% — badge earned: "${data.issued_badge.display_name}"`
+        : `Score: ${data.match_score}%`;
+
+      await loadTrustScore();
+    } catch (err) {
+      console.error('submit-audit error:', err);
+      els.result.style.display = 'block';
+      els.result.textContent = 'Could not submit audit — try again.';
+    } finally {
+      els.submitBtn.disabled = false;
+      els.submitBtn.textContent = 'Submit Audit';
+    }
+  });
+
+  // ── INIT ────────────────────────────────────────────────────
+  // Call this after hil-shell.js confirms auth is ready. If your
+  // shell exposes an onAuthReady callback, wire it there instead
+  // of the raw firebase listener below.
+  firebase.auth().onAuthStateChanged(user => {
+    if (!user) return;
+    loadTrustScore();
+    checkPendingAudit();
+  });
+})();
+</script>
