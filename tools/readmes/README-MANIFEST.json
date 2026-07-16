@@ -1,3 +1,25 @@
 {
-  "readmes": []
+  "readmes": [{
+  "readmes": [
+    "Seasonal-Flare-README.md",
+    "fixed-points-README.md",
+    "hil-address-hub-README.md",
+    "hil-admin-README.md",
+    "hil-clean-README.md",
+    "hil-exchange-README.md",
+    "hil-family-ledger-README.md",
+    "hil-gamification-audit-layer-README.md",
+    "hil-guild-README.md",
+    "hil-ha-bridge-README.md",
+    "hil-library-hub-README.md",
+    "hil-room-detail-README.md",
+    "hil-room-visualizer-README.md",
+    "hil-shell-README.md",
+    "hil-smart-home-README.md",
+    "hil-stain-lookup-README.md",
+    "hil-weather-school-README.md",
+    "history-wall-README.md",
+    "hl-vault-cloud-README.md"
+  ]
+}]
 }
