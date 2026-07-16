@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vessel Builder · HIL System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="./hil-shell.js"></script>
+  <style>
+    /* ── LAYOUT ── */
+    .vb-shell {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - var(--hil-offset));
+    }
+    .vb-sidebar {
+      background: #0d0d0d;
+      border-right: 1px solid var(--hil-border);
+      padding: 20px 0;
+      position: sticky;
+      top: var(--hil-offset);
+      height: calc(100vh - var(--hil-offset));
+      overflow-y: auto;
+    }
+    .vb-nav-item {
+      display: flex; align-items: center; gap: 8px;
+      margin: 0 10px 4px; padding: 10px 12px;
+      font-family: var(--font-ui); font-size: 14px; color: var(--hil-text-muted);
+      border: 1px solid transparent; cursor: pointer; transition: all 0.15s;
+    }
+    .vb-nav-item:hover { background: var(--hil-surface-2); }
+    .vb-nav-item.active { background: var(--hil-surface-2); border-color: var(--hil-green); color: var(--hil-green); }
+    .vb-nav-count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); }
+
+    .vb-main { padding: 24px 28px; max-width: 1100px; }
+    .vb-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .vb-page-title { font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; color: var(--hil-text); text-transform: uppercase; }
+    .vb-page-sub { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); margin-top: 4px; }
+
+    /* ── BUTTONS ── */
+    .vb-btn {
+      font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px;
+      padding: 9px 16px; cursor: pointer; border: 1px solid var(--hil-border);
+      background: var(--hil-surface-2); color: var(--hil-text); transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .vb-btn:hover { border-color: var(--hil-text-muted); }
+    .vb-btn.primary { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+    .vb-btn.primary:hover { opacity: 0.85; }
+    .vb-btn.danger { border-color: var(--hil-danger); color: var(--hil-danger); background: none; }
+    .vb-btn.danger:hover { background: rgba(204,51,51,0.1); }
+    .vb-btn.small { padding: 5px 10px; font-size: 9px; }
+
+    /* ── CARDS / LIST ── */
+    .vb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .vb-card {
+      background: var(--hil-surface); border: 1px solid var(--hil-border);
+      padding: 14px 16px; cursor: pointer; transition: all 0.15s;
+    }
+    .vb-card:hover { border-color: var(--hil-green); }
+    .vb-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .vb-card-name { font-family: var(--font-ui); font-size: 15px; font-weight: 600; color: var(--hil-text); }
+    .vb-card-id { font-family: var(--font-mono); font-size: 10px; color: var(--hil-green); letter-spacing: 1px; margin-top: 2px; }
+    .vb-card-meta { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .vb-tag {
+      font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.5px;
+      padding: 2px 7px; border: 1px solid var(--hil-border); color: var(--hil-text-muted); text-transform: uppercase;
+    }
+    .vb-tag.zone { border-color: var(--hil-amber); color: var(--hil-amber); }
+    .vb-tag.fill-full   { border-color: var(--hil-green); color: var(--hil-green); }
+    .vb-tag.fill-medium { border-color: var(--hil-amber); color: var(--hil-amber); }
+    .vb-tag.fill-low, .vb-tag.fill-empty { border-color: var(--hil-danger); color: var(--hil-danger); }
+
+    .vb-empty { font-family: var(--font-mono); font-size: 12px; color: var(--hil-text-muted); padding: 40px 0; text-align: center; }
+
+    /* ── MODAL ── */
+    .vb-modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 500; align-items: center; justify-content: center; padding: 20px;
+    }
+    .vb-modal-overlay.open { display: flex; }
+    .vb-modal {
+      background: var(--hil-surface); border: 1px solid var(--hil-green);
+      width: 520px; max-width: 100%; max-height: 88vh; display: flex; flex-direction: column;
+    }
+    .vb-modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; border-bottom: 1px solid var(--hil-border);
+      font-family: var(--font-display); font-size: 12px; letter-spacing: 2px; color: var(--hil-green); text-transform: uppercase;
+    }
+    .vb-modal-close { background: none; border: none; color: var(--hil-text-muted); font-size: 16px; cursor: pointer; }
+    .vb-modal-close:hover { color: var(--hil-danger); }
+    .vb-modal-body { padding: 18px; overflow-y: auto; flex: 1; }
+    .vb-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--hil-border); }
+
+    .vb-field { margin-bottom: 14px; }
+    .vb-field label {
+      display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+      color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 5px;
+    }
+    .vb-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .vb-input, .vb-select, .vb-textarea {
+      width: 100%; padding: 9px 10px; background: var(--hil-bg); border: 1px solid var(--hil-border);
+      color: var(--hil-text); font-family: var(--font-mono); font-size: 12px; outline: none; transition: border-color 0.15s;
+    }
+    .vb-input:focus, .vb-select:focus, .vb-textarea:focus { border-color: var(--hil-green); }
+    .vb-textarea { min-height: 56px; resize: vertical; }
+    .vb-checkbox-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 13px; color: var(--hil-text); }
+    .vb-icon-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .vb-icon-opt {
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; background: var(--hil-bg); border: 1px solid var(--hil-border);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .vb-icon-opt:hover { border-color: var(--hil-text-muted); }
+    .vb-icon-opt.selected { border-color: var(--hil-green); background: var(--hil-green-dim); }
+    .vb-type-icon { display: inline-block; margin-right: 6px; }
+    .vb-hint { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); margin-top: 4px; }
+
+    /* ── DETAIL PANEL ── */
+    .vb-detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+    .vb-back { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); cursor: pointer; letter-spacing: 1px; }
+    .vb-back:hover { color: var(--hil-green); }
+    .vb-detail-title { font-family: var(--font-display); font-size: 18px; color: var(--hil-text); margin: 6px 0 2px; }
+    .vb-detail-id { font-family: var(--font-mono); font-size: 12px; color: var(--hil-green); letter-spacing: 1.5px; }
+    .vb-detail-actions { display: flex; gap: 8px; }
+
+    .vb-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+    .vb-info-cell { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 10px 12px; }
+    .vb-info-label { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1px; color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .vb-info-value { font-family: var(--font-ui); font-size: 14px; color: var(--hil-text); }
+
+    /* ── SLOTS ── */
+    .vb-slots-header { display: flex; justify-content: space-between; align-items: center; margin: 26px 0 12px; }
+    .vb-slots-table { width: 100%; border-collapse: collapse; }
+    .vb-slots-table th {
+      text-align: left; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px;
+      color: var(--hil-text-muted); text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--hil-border);
+    }
+    .vb-slots-table td { padding: 8px 10px; border-bottom: 1px solid var(--hil-border); font-family: var(--font-ui); font-size: 13px; color: var(--hil-text); }
+    .vb-slots-table tr:hover td { background: var(--hil-surface-2); }
+    .vb-slot-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+    .vb-no-slots-note {
+      font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted);
+      padding: 14px; border: 1px dashed var(--hil-border); text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .vb-shell { grid-template-columns: 1fr; }
+      .vb-sidebar { position: static; height: auto; display: flex; overflow-x: auto; padding: 10px; }
+      .vb-nav-item { margin: 0 4px; white-space: nowrap; }
+      .vb-field-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="vb-shell">
+  <div class="vb-sidebar">
+    <div class="vb-nav-item active" data-view="types" id="nav-types">
+      <span>▦</span><span>Vessel Types</span><span class="vb-nav-count" id="count-types">0</span>
+    </div>
+    <div class="vb-nav-item" data-view="vessels" id="nav-vessels">
+      <span>▣</span><span>Vessels</span><span class="vb-nav-count" id="count-vessels">0</span>
+    </div>
+  </div>
+
+  <div class="vb-main">
+
+    <!-- ── VESSEL TYPES VIEW ── -->
+    <div id="view-types">
+      <div class="vb-header-row">
+        <div>
+          <div class="vb-page-title">Vessel Types</div>
+          <div class="vb-page-sub">Templates — build once, stamp out matching instances</div>
+        </div>
+        <button class="vb-btn primary" id="new-type-btn">+ New Vessel Type</button>
+      </div>
+      <div class="vb-grid" id="types-grid"></div>
+      <div class="vb-empty" id="types-empty" style="display:none;">No vessel types yet. Create one to define a reusable structure (MOS case, tote, MFB unit, etc.)</div>
+    </div>
+
+    <!-- ── VESSELS LIST VIEW ── -->
+    <div id="view-vessels" style="display:none;">
+      <div class="vb-header-row">
+        <div>
+          <div class="vb-page-title">Vessels</div>
+          <div class="vb-page-sub">Physical containers — instances stamped from a type, or standalone</div>
+        </div>
+        <button class="vb-btn primary" id="new-vessel-btn">+ New Vessel</button>
+      </div>
+      <div class="vb-grid" id="vessels-grid"></div>
+      <div class="vb-empty" id="vessels-empty" style="display:none;">No vessels yet.</div>
+    </div>
+
+    <!-- ── VESSEL DETAIL VIEW (with slots) ── -->
+    <div id="view-vessel-detail" style="display:none;">
+      <div class="vb-back" id="back-to-vessels">&larr; BACK TO VESSELS</div>
+      <div class="vb-detail-header">
+        <div>
+          <div class="vb-detail-title" id="vd-name">—</div>
+          <div class="vb-detail-id" id="vd-id">—</div>
+        </div>
+        <div class="vb-detail-actions">
+          <button class="vb-btn" id="vd-edit-btn">Edit</button>
+          <button class="vb-btn danger" id="vd-delete-btn">Delete</button>
+        </div>
+      </div>
+
+      <div id="vd-photo-container" style="display:none;margin-bottom:16px;">
+        <img id="vd-photo-img" style="max-width:100%;max-height:340px;border:1px solid var(--hil-border);display:block;">
+      </div>
+
+      <div class="vb-info-grid" id="vd-info-grid"></div>
+
+      <div class="vb-slots-header">
+        <div class="vb-page-title" style="font-size:12px;">Slots</div>
+        <button class="vb-btn small primary" id="add-slot-btn" style="display:none;">+ Add Slot</button>
+      </div>
+      <div id="vd-slots-container"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── VESSEL TYPE MODAL ── -->
+<div class="vb-modal-overlay" id="type-modal">
+  <div class="vb-modal">
+    <div class="vb-modal-header">
+      <span id="type-modal-title">New Vessel Type</span>
+      <button class="vb-modal-close" data-close="type-modal">✕</button>
+    </div>
+    <div class="vb-modal-body">
+      <div class="vb-field-row">
+        <div class="vb-field">
+          <label>Type ID</label>
+          <input class="vb-input" id="t-type-id" placeholder="MOS-20">
+        </div>
+        <div class="vb-field">
+          <label>Prefix</label>
+          <input class="vb-input" id="t-prefix" placeholder="MS" maxlength="4" style="text-transform:uppercase;">
+        </div>
+      </div>
+      <div class="vb-field">
+        <label>Name</label>
+        <input class="vb-input" id="t-name" placeholder="Max-O-Sort 20-Drawer Case">
+      </div>
+      <div class="vb-field-row">
+        <div class="vb-field">
+          <label>Structure Shape</label>
+          <select class="vb-select" id="t-shape">
+            <option value="single_blob">single_blob — no internal structure</option>
+            <option value="grid">grid — fixed rows × cols</option>
+            <option value="compartmented">compartmented — fixed dividers</option>
+            <option value="shelf_unit">shelf_unit — multi-level / work surface</option>
+          </select>
+        </div>
+        <div class="vb-field">
+          <label>Slot Count</label>
+          <input class="vb-input" id="t-slot-count" type="number" min="0" placeholder="20">
+        </div>
+      </div>
+      <div class="vb-field-row" id="t-grid-row">
+        <div class="vb-field">
+          <label>Grid Rows</label>
+          <input class="vb-input" id="t-rows" type="number" min="0" placeholder="4">
+        </div>
+        <div class="vb-field">
+          <label>Grid Cols</label>
+          <input class="vb-input" id="t-cols" type="number" min="0" placeholder="5">
+        </div>
+      </div>
+      <div class="vb-field">
+        <label>Icon</label>
+        <div class="vb-icon-picker" id="t-icon-picker"></div>
+        <input class="vb-input" id="t-icon" placeholder="Custom emoji (optional)" maxlength="4" style="max-width:120px;">
+        <div class="vb-hint">Pick a preset above or type/paste any emoji. Shown on this type's cards and every vessel stamped from it.</div>
+      </div>
+      <div class="vb-field">
+        <label>Slot Numbering Notes <span style="opacity:0.6;">(reference only — slots are entered manually in v1)</span></label>
+        <input class="vb-input" id="t-slot-pattern" placeholder="e.g. left-to-right, top-to-bottom, 001-020">
+      </div>
+      <div class="vb-field">
+        <div class="vb-checkbox-row">
+          <input type="checkbox" id="t-zone-defining">
+          <label style="margin:0;text-transform:none;font-size:13px;" for="t-zone-defining">Zone-defining (e.g. MFB — arrangement visually forms the zone)</label>
+        </div>
+      </div>
+      <div class="vb-field">
+        <label>Source Notes</label>
+        <textarea class="vb-textarea" id="t-notes" placeholder="Harbor Freight MOS clone, etc."></textarea>
+      </div>
+    </div>
+    <div class="vb-modal-footer">
+      <button class="vb-btn" data-close="type-modal">Cancel</button>
+      <button class="vb-btn primary" id="save-type-btn">Save Type</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── VESSEL MODAL ── -->
+<div class="vb-modal-overlay" id="vessel-modal">
+  <div class="vb-modal">
+    <div class="vb-modal-header">
+      <span id="vessel-modal-title">New Vessel</span>
+      <button class="vb-modal-close" data-close="vessel-modal">✕</button>
+    </div>
+    <div class="vb-modal-body">
+      <div class="vb-field">
+        <label>Vessel Type <span style="opacity:0.6;">(optional)</span></label>
+        <select class="vb-select" id="v-type-id"><option value="">— No type / standalone —</option></select>
+      </div>
+      <div class="vb-field-row">
+        <div class="vb-field">
+          <label>Vessel ID</label>
+          <input class="vb-input" id="v-vessel-id" placeholder="MS-013">
+        </div>
+        <div class="vb-field">
+          <label>Prefix</label>
+          <input class="vb-input" id="v-prefix" placeholder="MS" maxlength="4" style="text-transform:uppercase;">
+        </div>
+      </div>
+      <div class="vb-field">
+        <label>Name</label>
+        <input class="vb-input" id="v-name" placeholder="Metal Shop Cart 013">
+      </div>
+      <div class="vb-field">
+        <label>Photo <span style="opacity:0.6;">(optional)</span></label>
+        <input type="file" id="v-photo-input" accept="image/*">
+        <div id="v-photo-preview" style="display:none;margin-top:8px;">
+          <img id="v-photo-img" style="max-width:100%;max-height:180px;border:1px solid var(--hil-border);">
+        </div>
+      </div>
+      <div class="vb-field-row">
+        <div class="vb-field">
+          <label>HL Address (current)</label>
+          <input class="vb-input" id="v-hl-address" placeholder="SH-MM-N3-A0">
+        </div>
+        <div class="vb-field">
+          <label>Home Address</label>
+          <input class="vb-input" id="v-home-address" placeholder="SH-MM-N3-A0">
+        </div>
+      </div>
+      <div class="vb-field-row">
+        <div class="vb-field" id="v-kit-field">
+          <label>Kit ID <span style="opacity:0.6;">(optional)</span></label>
+          <input class="vb-input" id="v-kit-id" placeholder="TK-REPAIR-SCREEN">
+        </div>
+        <div class="vb-field">
+          <label>Fill Level</label>
+          <select class="vb-select" id="v-fill-level">
+            <option value="empty">empty</option>
+            <option value="low">low</option>
+            <option value="medium" selected>medium</option>
+            <option value="full">full</option>
+          </select>
+        </div>
+      </div>
+      <div class="vb-hint" id="v-kit-hint" style="display:none;">This vessel type has slots — Kit IDs are assigned per slot instead (manage them below, after saving this vessel).</div>
+      <div class="vb-field-row">
+        <div class="vb-field">
+          <label>Capacity (gallons)</label>
+          <input class="vb-input" id="v-capacity" type="number" min="0" step="0.1" placeholder="18">
+        </div>
+        <div class="vb-field">
+          <label>Size Class</label>
+          <select class="vb-select" id="v-size-class">
+            <option value="">— unset —</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large">large</option>
+          </select>
+        </div>
+      </div>
+      <div class="vb-hint">Capacity and size class are independent labels — no formula derives one from the other.</div>
+    </div>
+    <div class="vb-modal-footer">
+      <button class="vb-btn" data-close="vessel-modal">Cancel</button>
+      <button class="vb-btn primary" id="save-vessel-btn">Save Vessel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SLOT MODAL ── -->
+<div class="vb-modal-overlay" id="slot-modal">
+  <div class="vb-modal">
+    <div class="vb-modal-header">
+      <span id="slot-modal-title">New Slot</span>
+      <button class="vb-modal-close" data-close="slot-modal">✕</button>
+    </div>
+    <div class="vb-modal-body">
+      <div class="vb-field">
+        <label>Slot ID</label>
+        <input class="vb-input" id="s-slot-id" placeholder="013">
+      </div>
+      <div class="vb-field">
+        <label>Label <span style="opacity:0.6;">(optional)</span></label>
+        <input class="vb-input" id="s-label" placeholder="RFID/NFC/RF">
+      </div>
+      <div class="vb-field">
+        <label>Kit ID <span style="opacity:0.6;">(optional)</span></label>
+        <input class="vb-input" id="s-kit-id" placeholder="TK-ROTARY-01">
+      </div>
+      <div class="vb-field">
+        <label>Fill Level <span style="opacity:0.6;">(optional, macro only)</span></label>
+        <select class="vb-select" id="s-fill-level">
+          <option value="">— unset —</option>
+          <option value="empty">empty</option>
+          <option value="low">low</option>
+          <option value="medium">medium</option>
+          <option value="full">full</option>
+        </select>
+      </div>
+    </div>
+    <div class="vb-modal-footer">
+      <button class="vb-btn" data-close="slot-modal">Cancel</button>
+      <button class="vb-btn primary" id="save-slot-btn">Save Slot</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let currentUser   = null;
+let allTypes      = [];
+let allVessels    = [];
+let currentVessel = null;   // vessel object shown in detail view
+let currentSlots  = [];
+let editingTypeId    = null;
+let editingVesselId  = null;
+let editingSlotId    = null;
+let pendingVesselPhotoFile = null;
+
+const R2_WORKER = 'https://hilsystem-r2-signer.dvo77.workers.dev';
+
+// Firestore SDK refs (populated on auth)
+let _collection, _doc, _addDoc, _updateDoc, _deleteDoc, _onSnapshot, _serverTimestamp, _getDocs, _getDoc;
+
+// ── SHELL INIT ──
+HILShell.init({
+  toolId:      'vessel-builder',
+  toolName:    'Vessel Builder',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  currentUser = user;
+  if (!user) { allTypes = []; allVessels = []; renderTypes(); renderVessels(); return; }
+
+  const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _updateDoc       = fsdk.updateDoc;
+  _deleteDoc       = fsdk.deleteDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+  _getDocs         = fsdk.getDocs;
+  _getDoc          = fsdk.getDoc;
+
+  const db = window.db;
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'vessel_types'), snap => {
+    allTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderTypes();
+    populateTypeDropdown();
+    // Keep vessel cards' type badges fresh if types change after vessels rendered
+    renderVessels();
+    if (currentVessel) renderVesselDetail();
+  });
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'vessels'), snap => {
+    allVessels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderVessels();
+    // keep detail view in sync if the open vessel changed/was deleted elsewhere
+    if (currentVessel) {
+      const updated = allVessels.find(v => v.id === currentVessel.id);
+      if (updated) { currentVessel = updated; renderVesselDetail(); }
+    }
+  });
+}
+
+// ── NAV ──
+document.getElementById('nav-types').onclick    = () => switchView('types');
+document.getElementById('nav-vessels').onclick  = () => switchView('vessels');
+document.getElementById('back-to-vessels').onclick = () => switchView('vessels');
+
+function switchView(view) {
+  document.getElementById('view-types').style.display          = view === 'types' ? '' : 'none';
+  document.getElementById('view-vessels').style.display         = view === 'vessels' ? '' : 'none';
+  document.getElementById('view-vessel-detail').style.display   = view === 'detail' ? '' : 'none';
+  document.getElementById('nav-types').classList.toggle('active', view === 'types');
+  document.getElementById('nav-vessels').classList.toggle('active', view === 'vessels' || view === 'detail');
+}
+
+// ── HELPERS ──
+function typeById(id) { return allTypes.find(t => t.id === id) || null; }
+function slotsAllowed(type) { return !!type && type.structure_shape !== 'single_blob'; }
+function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function gv(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function gvNum(id) { const v = gv(id); return v === '' ? null : Number(v); }
+
+// ── R2 PHOTO UPLOAD — same single-step base64 contract as Vault/Museum/Room Visualizer ──
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.slice(reader.result.indexOf(',') + 1));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhoto(file, uid, context, itemId, slot = 'hero') {
+  const data = await fileToBase64(file);
+  const res = await fetch(R2_WORKER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename: file.name, contentType: file.type, data, context, uid, itemId, slot }),
+  });
+  if (!res.ok) throw new Error(`Signer ${res.status}: ${await res.text()}`);
+  const { publicUrl } = await res.json();
+  return publicUrl;
+}
+
+document.getElementById('v-photo-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  pendingVesselPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('v-photo-img').src = ev.target.result;
+    document.getElementById('v-photo-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── MODAL OPEN/CLOSE ──
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.onclick = () => closeModal(btn.dataset.close);
+});
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.getElementById('t-shape').addEventListener('change', e => {
+  document.getElementById('t-grid-row').style.display = e.target.value === 'grid' ? '' : 'none';
+});
+
+// ── ICON PICKER ──
+const ICON_PRESETS = ['🗄','🧰','🧺','📦','🎒','💼','🧴','🧱','🪣','🗃','🧊','🧵','⚙️','🔧','🪛','🧯'];
+const ICON_SUGGEST_BY_PREFIX = { MS:'🗄', MF:'🧱', TB:'🧺', BX:'📦', BG:'🎒', TX:'🧰', OC:'💼', SP:'🧴' };
+
+function renderIconPicker(selected) {
+  const picker = document.getElementById('t-icon-picker');
+  picker.innerHTML = ICON_PRESETS.map(icon => `
+    <div class="vb-icon-opt${icon === selected ? ' selected' : ''}" data-icon="${icon}">${icon}</div>
+  `).join('');
+  picker.querySelectorAll('.vb-icon-opt').forEach(el => {
+    el.onclick = () => {
+      document.getElementById('t-icon').value = el.dataset.icon;
+      picker.querySelectorAll('.vb-icon-opt').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+    };
+  });
+}
+// Keep picker highlight in sync if the person types/pastes a custom emoji that matches a preset
+document.getElementById('t-icon').addEventListener('input', e => {
+  const picker = document.getElementById('t-icon-picker');
+  picker.querySelectorAll('.vb-icon-opt').forEach(o => o.classList.toggle('selected', o.dataset.icon === e.target.value));
+});
+
+// ══════════════════════════════════════════════════════════════
+// VESSEL TYPES
+// ══════════════════════════════════════════════════════════════
+
+function renderTypes() {
+  const grid  = document.getElementById('types-grid');
+  const empty = document.getElementById('types-empty');
+  document.getElementById('count-types').textContent = allTypes.length;
+
+  if (!allTypes.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  grid.innerHTML = allTypes.map(t => `
+    <div class="vb-card" data-id="${t.id}" onclick="openTypeEdit('${t.id}')">
+      <div class="vb-card-top">
+        <div>
+          <div class="vb-card-name"><span class="vb-type-icon">${escapeHtml(t.icon || '📦')}</span>${escapeHtml(t.name || 'Untitled Type')}</div>
+          <div class="vb-card-id">${escapeHtml(t.type_id || t.id)}</div>
+        </div>
+      </div>
+      <div class="vb-card-meta">
+        <span class="vb-tag">${escapeHtml(t.prefix || '—')}</span>
+        <span class="vb-tag">${escapeHtml(t.structure_shape || '—')}</span>
+        ${t.slot_count ? `<span class="vb-tag">${t.slot_count} slots</span>` : ''}
+        ${t.zone_defining ? `<span class="vb-tag zone">zone-defining</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('new-type-btn').onclick = () => {
+  editingTypeId = null;
+  document.getElementById('type-modal-title').textContent = 'New Vessel Type';
+  ['t-type-id','t-prefix','t-name','t-slot-count','t-rows','t-cols','t-slot-pattern','t-notes','t-icon']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('t-shape').value = 'single_blob';
+  document.getElementById('t-zone-defining').checked = false;
+  document.getElementById('t-grid-row').style.display = 'none';
+  renderIconPicker('');
+  openModal('type-modal');
+};
+
+// Suggest an icon when a prefix is typed on a brand-new type with no icon chosen yet
+document.getElementById('t-prefix').addEventListener('input', e => {
+  if (editingTypeId) return; // don't override an existing type's saved icon
+  if (gv('t-icon')) return;  // don't override a manual pick
+  const suggestion = ICON_SUGGEST_BY_PREFIX[e.target.value.trim().toUpperCase()];
+  if (suggestion) { document.getElementById('t-icon').value = suggestion; renderIconPicker(suggestion); }
+});
+
+window.openTypeEdit = function(id) {
+  const t = typeById(id);
+  if (!t) return;
+  editingTypeId = id;
+  document.getElementById('type-modal-title').textContent = 'Edit Vessel Type';
+  document.getElementById('t-type-id').value      = t.type_id || '';
+  document.getElementById('t-prefix').value       = t.prefix || '';
+  document.getElementById('t-name').value         = t.name || '';
+  document.getElementById('t-shape').value        = t.structure_shape || 'single_blob';
+  document.getElementById('t-slot-count').value   = t.slot_count ?? '';
+  document.getElementById('t-rows').value         = t.slot_layout?.rows ?? '';
+  document.getElementById('t-cols').value         = t.slot_layout?.cols ?? '';
+  document.getElementById('t-slot-pattern').value = t.slot_id_pattern || '';
+  document.getElementById('t-zone-defining').checked = !!t.zone_defining;
+  document.getElementById('t-notes').value        = t.source_notes || '';
+  document.getElementById('t-icon').value         = t.icon || '';
+  renderIconPicker(t.icon || '');
+  document.getElementById('t-grid-row').style.display = t.structure_shape === 'grid' ? '' : 'none';
+  openModal('type-modal');
+};
+
+document.getElementById('save-type-btn').onclick = async () => {
+  if (!currentUser) return;
+  const typeId = gv('t-type-id');
+  const name   = gv('t-name');
+  if (!typeId || !name) { HILShell.toast('Type ID and Name are required', 'error'); return; }
+
+  const shape = gv('t-shape');
+  const data = {
+    type_id:         typeId,
+    prefix:          gv('t-prefix').toUpperCase(),
+    name,
+    structure_shape: shape,
+    slot_count:      gvNum('t-slot-count'),
+    slot_layout:     shape === 'grid' ? { rows: gvNum('t-rows') || 0, cols: gvNum('t-cols') || 0 } : null,
+    slot_id_pattern: gv('t-slot-pattern') || null,
+    zone_defining:   document.getElementById('t-zone-defining').checked,
+    icon:            gv('t-icon') || null,
+    source_notes:    gv('t-notes'),
+    owner_uid:       currentUser.uid,
+    updated_at:      _serverTimestamp(),
+  };
+
+  try {
+    if (editingTypeId) {
+      await _updateDoc(_doc(window.db, 'users', currentUser.uid, 'vessel_types', editingTypeId), data);
+      HILShell.toast('Vessel type updated', 'success');
+    } else {
+      data.created_at = _serverTimestamp();
+      await _addDoc(_collection(window.db, 'users', currentUser.uid, 'vessel_types'), data);
+      HILShell.toast('Vessel type created', 'success');
+    }
+    closeModal('type-modal');
+  } catch (err) {
+    console.error(err);
+    HILShell.toast('Save failed: ' + err.message, 'error');
+  }
+};
+
+// Delete type from within the edit modal via a long-press-free simple confirm button injected once
+(function addTypeDeleteButton() {
+  const footer = document.querySelector('#type-modal .vb-modal-footer');
+  const delBtn = document.createElement('button');
+  delBtn.className = 'vb-btn danger';
+  delBtn.textContent = 'Delete';
+  delBtn.style.marginRight = 'auto';
+  delBtn.style.display = 'none';
+  delBtn.id = 'delete-type-btn';
+  delBtn.onclick = async () => {
+    if (!editingTypeId) return;
+    if (!confirm('Delete this vessel type? Existing vessels using it will keep their vessel_type_id but the template will be gone.')) return;
+    try {
+      await _deleteDoc(_doc(window.db, 'users', currentUser.uid, 'vessel_types', editingTypeId));
+      HILShell.toast('Vessel type deleted', 'success');
+      closeModal('type-modal');
+    } catch (err) {
+      HILShell.toast('Delete failed: ' + err.message, 'error');
+    }
+  };
+  footer.prepend(delBtn);
+})();
+// Show/hide the delete button based on whether we're editing
+const origOpenTypeEdit = window.openTypeEdit;
+window.openTypeEdit = function(id) {
+  origOpenTypeEdit(id);
+  document.getElementById('delete-type-btn').style.display = '';
+};
+document.getElementById('new-type-btn').addEventListener('click', () => {
+  document.getElementById('delete-type-btn').style.display = 'none';
+});
+
+// ══════════════════════════════════════════════════════════════
+// VESSELS (list)
+// ══════════════════════════════════════════════════════════════
+
+function populateTypeDropdown() {
+  const sel = document.getElementById('v-type-id');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— No type / standalone —</option>' +
+    allTypes.map(t => `<option value="${t.id}">${escapeHtml(t.name)} (${escapeHtml(t.type_id || t.id)})</option>`).join('');
+  sel.value = current;
+}
+
+function renderVessels() {
+  const grid  = document.getElementById('vessels-grid');
+  const empty = document.getElementById('vessels-empty');
+  document.getElementById('count-vessels').textContent = allVessels.length;
+
+  if (!allVessels.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  grid.innerHTML = allVessels.map(v => {
+    const t = v.vessel_type_id ? typeById(v.vessel_type_id) : null;
+    return `
+    <div class="vb-card" onclick="openVesselDetail('${v.id}')">
+      ${v.hero_photo ? `<img src="${escapeHtml(v.hero_photo)}" style="width:100%;height:120px;object-fit:cover;border:1px solid var(--hil-border);margin-bottom:10px;">` : ''}
+      <div class="vb-card-top">
+        <div>
+          <div class="vb-card-name"><span class="vb-type-icon">${escapeHtml((t && t.icon) || '📦')}</span>${escapeHtml(v.name || 'Untitled Vessel')}</div>
+          <div class="vb-card-id">${escapeHtml(v.vessel_id || v.id)}</div>
+        </div>
+      </div>
+      <div class="vb-card-meta">
+        <span class="vb-tag fill-${v.fill_level || 'medium'}">${escapeHtml(v.fill_level || '—')}</span>
+        ${t ? `<span class="vb-tag">${escapeHtml(t.name)}</span>` : ''}
+        ${v.size_class ? `<span class="vb-tag">${escapeHtml(v.size_class)}</span>` : ''}
+        ${t && t.zone_defining ? `<span class="vb-tag zone">zone-defining</span>` : ''}
+      </div>
+      <div class="hil-address" style="margin-top:8px;font-size:10px;">${escapeHtml(v.hl_address || 'no address set')}</div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('new-vessel-btn').onclick = () => {
+  editingVesselId = null;
+  document.getElementById('vessel-modal-title').textContent = 'New Vessel';
+  ['v-vessel-id','v-prefix','v-name','v-hl-address','v-home-address','v-kit-id','v-capacity']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('v-type-id').value = '';
+  document.getElementById('v-fill-level').value = 'medium';
+  document.getElementById('v-size-class').value = '';
+  document.getElementById('v-photo-input').value = '';
+  document.getElementById('v-photo-preview').style.display = 'none';
+  pendingVesselPhotoFile = null;
+  updateKitFieldVisibility();
+  openModal('vessel-modal');
+};
+
+// Show Kit ID on the vessel only for types with no internal slots (single_blob / standalone).
+// Slotted vessel types (grid/compartmented/shelf_unit) hold kits per-slot instead.
+function updateKitFieldVisibility() {
+  const t = typeById(gv('v-type-id'));
+  const hasSlots = slotsAllowed(t);
+  document.getElementById('v-kit-field').style.display = hasSlots ? 'none' : '';
+  document.getElementById('v-kit-hint').style.display  = hasSlots ? '' : 'none';
+  if (hasSlots) document.getElementById('v-kit-id').value = '';
+}
+
+// Autofill prefix from selected type, and toggle Kit ID vs. per-slot hint
+document.getElementById('v-type-id').addEventListener('change', e => {
+  const t = typeById(e.target.value);
+  if (t && t.prefix && !gv('v-prefix')) document.getElementById('v-prefix').value = t.prefix;
+  updateKitFieldVisibility();
+});
+
+document.getElementById('save-vessel-btn').onclick = async () => {
+  if (!currentUser) return;
+  const vesselId = gv('v-vessel-id');
+  const name = gv('v-name');
+  if (!vesselId || !name) { HILShell.toast('Vessel ID and Name are required', 'error'); return; }
+
+  const selectedType = typeById(gv('v-type-id'));
+  const vesselHasSlots = slotsAllowed(selectedType);
+
+  const data = {
+    vessel_id:        vesselId,
+    prefix:           gv('v-prefix').toUpperCase(),
+    name,
+    vessel_type_id:   gv('v-type-id') || null,
+    kit_id:           vesselHasSlots ? null : (gv('v-kit-id') || null),
+    hl_address:       gv('v-hl-address'),
+    home_address:     gv('v-home-address'),
+    fill_level:       gv('v-fill-level'),
+    capacity_gallons: gvNum('v-capacity'),
+    size_class:       gv('v-size-class') || null,
+    owner_uid:        currentUser.uid,
+    updated_at:       _serverTimestamp(),
+  };
+
+  if (pendingVesselPhotoFile) {
+    try {
+      data.hero_photo = await uploadPhoto(pendingVesselPhotoFile, currentUser.uid, 'vessel', vesselId, 'hero');
+    } catch (e) {
+      HILShell.toast('Photo upload failed: ' + e.message, 'error');
+      return;
+    }
+  }
+
+  try {
+    if (editingVesselId) {
+      await _updateDoc(_doc(window.db, 'users', currentUser.uid, 'vessels', editingVesselId), data);
+      HILShell.toast('Vessel updated', 'success');
+    } else {
+      data.created_at = _serverTimestamp();
+      await _addDoc(_collection(window.db, 'users', currentUser.uid, 'vessels'), data);
+      HILShell.toast('Vessel created', 'success');
+    }
+    closeModal('vessel-modal');
+    pendingVesselPhotoFile = null;
+  } catch (err) {
+    console.error(err);
+    HILShell.toast('Save failed: ' + err.message, 'error');
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+// VESSEL DETAIL + SLOTS
+// ══════════════════════════════════════════════════════════════
+
+let slotsUnsubscribe = null;
+
+window.openVesselDetail = async function(id) {
+  const v = allVessels.find(x => x.id === id);
+  if (!v) return;
+  currentVessel = v;
+  switchView('detail');
+  renderVesselDetail();
+
+  if (slotsUnsubscribe) { slotsUnsubscribe(); slotsUnsubscribe = null; }
+  slotsUnsubscribe = _onSnapshot(
+    _collection(window.db, 'users', currentUser.uid, 'vessels', id, 'slots'),
+    snap => {
+      currentSlots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSlots();
+    }
+  );
+};
+
+function renderVesselDetail() {
+  const v = currentVessel;
+  const t = v.vessel_type_id ? typeById(v.vessel_type_id) : null;
+
+  document.getElementById('vd-name').textContent = (t && t.icon ? t.icon + ' ' : '') + (v.name || 'Untitled Vessel');
+  document.getElementById('vd-id').textContent   = v.vessel_id || v.id;
+
+  if (v.hero_photo) {
+    document.getElementById('vd-photo-img').src = v.hero_photo;
+    document.getElementById('vd-photo-container').style.display = 'block';
+  } else {
+    document.getElementById('vd-photo-container').style.display = 'none';
+  }
+
+  const cells = [
+    ['HL Address', v.hl_address || '—'],
+    ['Home Address', v.home_address || '—'],
+    ['Fill Level', v.fill_level || '—'],
+    ['Vessel Type', t ? `${t.icon || ''} ${t.name}`.trim() : '— standalone —'],
+    ['Kit ID', slotsAllowed(t) ? 'see slots below' : (v.kit_id || '—')],
+    ['Capacity (gal)', v.capacity_gallons ?? '—'],
+    ['Size Class', v.size_class || '—'],
+    ['Structure Shape', t ? t.structure_shape : '—'],
+  ];
+  document.getElementById('vd-info-grid').innerHTML = cells.map(([label, value]) => `
+    <div class="vb-info-cell">
+      <div class="vb-info-label">${escapeHtml(label)}</div>
+      <div class="vb-info-value">${escapeHtml(String(value))}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('add-slot-btn').style.display = slotsAllowed(t) ? '' : 'none';
+  renderSlots();
+}
+
+function renderSlots() {
+  const container = document.getElementById('vd-slots-container');
+  const t = currentVessel.vessel_type_id ? typeById(currentVessel.vessel_type_id) : null;
+
+  if (!slotsAllowed(t)) {
+    container.innerHTML = `<div class="vb-no-slots-note">This vessel's type is "single_blob" (or has no type set) — no internal slot structure. Macro fill-level tracking only.</div>`;
+    return;
+  }
+
+  if (!currentSlots.length) {
+    container.innerHTML = `<div class="vb-no-slots-note">No slots entered yet. Add slots manually as you label drawers/compartments.</div>`;
+    return;
+  }
+
+  const sorted = [...currentSlots].sort((a, b) => (a.slot_id || '').localeCompare(b.slot_id || '', undefined, { numeric: true }));
+  container.innerHTML = `
+    <table class="vb-slots-table">
+      <thead><tr><th>Slot ID</th><th>Label</th><th>Kit ID</th><th>Fill</th><th></th></tr></thead>
+      <tbody>
+        ${sorted.map(s => `
+          <tr>
+            <td>${escapeHtml(s.slot_id)}</td>
+            <td>${escapeHtml(s.label || '—')}</td>
+            <td>${s.kit_id ? `<span class="vb-tag">${escapeHtml(s.kit_id)}</span>` : '—'}</td>
+            <td>${s.fill_level ? `<span class="vb-tag fill-${s.fill_level}">${escapeHtml(s.fill_level)}</span>` : '—'}</td>
+            <td>
+              <div class="vb-slot-actions">
+                <button class="vb-btn small" onclick="openSlotEdit('${s.id}')">Edit</button>
+                <button class="vb-btn small danger" onclick="deleteSlot('${s.id}')">Del</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+document.getElementById('add-slot-btn').onclick = () => {
+  editingSlotId = null;
+  document.getElementById('slot-modal-title').textContent = 'New Slot';
+  document.getElementById('s-slot-id').value = '';
+  document.getElementById('s-label').value = '';
+  document.getElementById('s-kit-id').value = '';
+  document.getElementById('s-fill-level').value = '';
+  openModal('slot-modal');
+};
+
+window.openSlotEdit = function(id) {
+  const s = currentSlots.find(x => x.id === id);
+  if (!s) return;
+  editingSlotId = id;
+  document.getElementById('slot-modal-title').textContent = 'Edit Slot';
+  document.getElementById('s-slot-id').value = s.slot_id || '';
+  document.getElementById('s-label').value = s.label || '';
+  document.getElementById('s-kit-id').value = s.kit_id || '';
+  document.getElementById('s-fill-level').value = s.fill_level || '';
+  openModal('slot-modal');
+};
+
+document.getElementById('save-slot-btn').onclick = async () => {
+  if (!currentUser || !currentVessel) return;
+  const slotId = gv('s-slot-id');
+  if (!slotId) { HILShell.toast('Slot ID is required', 'error'); return; }
+
+  const data = {
+    slot_id:    slotId,
+    label:      gv('s-label') || null,
+    kit_id:     gv('s-kit-id') || null,
+    fill_level: gv('s-fill-level') || null,
+  };
+
+  try {
+    const base = ['users', currentUser.uid, 'vessels', currentVessel.id, 'slots'];
+    if (editingSlotId) {
+      await _updateDoc(_doc(window.db, ...base, editingSlotId), data);
+      HILShell.toast('Slot updated', 'success');
+    } else {
+      await _addDoc(_collection(window.db, ...base), data);
+      HILShell.toast('Slot added', 'success');
+    }
+    closeModal('slot-modal');
+  } catch (err) {
+    console.error(err);
+    HILShell.toast('Save failed: ' + err.message, 'error');
+  }
+};
+
+window.deleteSlot = async function(id) {
+  if (!confirm('Delete this slot?')) return;
+  try {
+    await _deleteDoc(_doc(window.db, 'users', currentUser.uid, 'vessels', currentVessel.id, 'slots', id));
+    HILShell.toast('Slot deleted', 'success');
+  } catch (err) {
+    HILShell.toast('Delete failed: ' + err.message, 'error');
+  }
+};
+
+document.getElementById('vd-edit-btn').onclick = () => {
+  const v = currentVessel;
+  editingVesselId = v.id;
+  document.getElementById('vessel-modal-title').textContent = 'Edit Vessel';
+  document.getElementById('v-type-id').value      = v.vessel_type_id || '';
+  document.getElementById('v-vessel-id').value    = v.vessel_id || '';
+  document.getElementById('v-prefix').value       = v.prefix || '';
+  document.getElementById('v-name').value         = v.name || '';
+  document.getElementById('v-hl-address').value   = v.hl_address || '';
+  document.getElementById('v-home-address').value = v.home_address || '';
+  document.getElementById('v-kit-id').value       = v.kit_id || '';
+  document.getElementById('v-fill-level').value   = v.fill_level || 'medium';
+  document.getElementById('v-capacity').value     = v.capacity_gallons ?? '';
+  document.getElementById('v-size-class').value   = v.size_class || '';
+  document.getElementById('v-photo-input').value  = '';
+  pendingVesselPhotoFile = null;
+  if (v.hero_photo) {
+    document.getElementById('v-photo-img').src = v.hero_photo;
+    document.getElementById('v-photo-preview').style.display = 'block';
+  } else {
+    document.getElementById('v-photo-preview').style.display = 'none';
+  }
+  updateKitFieldVisibility();
+  openModal('vessel-modal');
+};
+
+document.getElementById('vd-delete-btn').onclick = async () => {
+  if (!currentVessel) return;
+  if (!confirm(`Delete vessel "${currentVessel.name}"? This does not delete its slots automatically visible items — slots subcollection will be orphaned in Firestore and should be cleaned up separately if needed.`)) return;
+  try {
+    await _deleteDoc(_doc(window.db, 'users', currentUser.uid, 'vessels', currentVessel.id));
+    HILShell.toast('Vessel deleted', 'success');
+    switchView('vessels');
+  } catch (err) {
+    HILShell.toast('Delete failed: ' + err.message, 'error');
+  }
+};
+</script>
+</body>
+</html>
