@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Learning Log — Adult Attestation Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hil-green:#00cc66; --hil-green-glow:rgba(0,204,102,0.15);
+    --hil-amber:#cc8800; --hil-danger:#cc3333;
+    --hil-bg:#0a0c0b; --hil-surface:#141816; --hil-surface-2:#1c201e;
+    --hil-border:#2a302c; --hil-border-lt:#3a453e; --hil-text:#dde8e2; --hil-text-muted:#6b7d72;
+    --font-display:'Orbitron',sans-serif; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+    --blue:#38bdf8; 
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--hil-bg);color:var(--hil-text);font-family:var(--font-ui);}
+  .wrap{max-width:720px;margin:0 auto;padding:22px 18px 50px;}
+  header.moduleheader{border-bottom:2px solid var(--hil-border);padding-bottom:12px;margin-bottom:16px;}
+  h1{font-family:var(--font-display);font-weight:900;font-size:28px;letter-spacing:0.04em;margin:0;}
+  h1 span{color:var(--hil-amber);}
+  .subtitle{font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);letter-spacing:0.5px;text-transform:uppercase;}
+
+  .panel{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:4px;padding:18px;margin-top:14px;}
+  .typegroup{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  @media (max-width:560px){.typegroup{grid-template-columns:1fr;}}
+  .typegroup button{font-family:var(--font-ui);font-size:17px;font-weight:600;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:12px 8px;border-radius:4px;cursor:pointer;text-align:left;line-height:1.15;}
+  .typegroup button .small{display:block;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-top:3px;}
+  .typegroup button.active{border-color:var(--hil-amber);color:var(--hil-amber);}
+
+  label{display:block;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;}
+  input[type=text], input[type=date], input[type=number], textarea, select{
+    width:100%;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text);
+    font-family:var(--font-ui);padding:9px 10px;border-radius:3px;font-size:14px;
+  }
+  textarea{min-height:70px;resize:vertical;font-family:var(--font-ui);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:560px){.row2{grid-template-columns:1fr;}}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .chip{font-family:var(--font-mono);font-size:12px;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:6px 12px;border-radius:16px;cursor:pointer;}
+  .chip.active{border-color:var(--hil-green);color:var(--hil-green);background:rgba(73,199,141,0.1);}
+
+  .hint{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);margin-top:6px;line-height:1.5;}
+  .creditline{margin-top:16px;padding:10px 14px;border-radius:4px;background:rgba(255,201,60,0.1);border:1px solid rgba(255,201,60,0.4);font-family:var(--font-ui);font-size:20px;font-weight:600;color:var(--hil-amber);}
+  .creditline .sub{display:block;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);font-weight:400;margin-top:2px;}
+
+  .signrow{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+  @media (max-width:560px){.signrow{grid-template-columns:1fr;}}
+
+  button.submit{margin-top:18px;width:100%;font-family:var(--font-ui);font-size:22px;font-weight:600;background:var(--hil-amber);color:#1a1a1a;border:none;border-radius:4px;padding:12px;cursor:pointer;}
+  button.submit:hover{background:#ffd86b;}
+
+  .log{margin-top:22px;}
+  .logentry{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:4px;padding:12px 14px;margin-bottom:10px;font-size:13px;}
+  .logentry .top{display:flex;justify-content:space-between;font-family:var(--font-ui);font-size:18px;font-weight:600;}
+  .logentry .top .hrs{color:var(--hil-amber);}
+  .logentry .meta{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);margin-top:2px;}
+  .logentry .desc{margin-top:6px;color:var(--hil-text);}
+  .logentry .tags{margin-top:6px;}
+  .logentry .tags span{font-family:var(--font-mono);font-size:10px;color:var(--hil-green);border:1px solid var(--hil-border);padding:2px 8px;border-radius:10px;margin-right:5px;}
+  .totalbar{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);margin-top:10px;}
+  .totalbar b{color:var(--hil-amber);font-family:var(--font-ui);font-size:22px;}
+  .exportbtn{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;background:transparent;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:6px 12px;border-radius:3px;cursor:pointer;margin-top:10px;}
+  .exportbtn:hover{border-color:var(--hil-amber);color:var(--hil-amber);}
+
+  .hil-shell-header{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:2px solid var(--hil-green);background:var(--hil-surface);}
+  .hil-hex{width:34px;height:34px;border:2px solid var(--hil-green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--hil-green);}
+  .hil-word .t{font-family:var(--font-display);font-size:13px;font-weight:900;color:var(--hil-green);letter-spacing:3px;}
+  .hil-word .s{font-family:var(--font-mono);font-size:8px;color:var(--hil-text-muted);letter-spacing:2px;text-transform:uppercase;}
+  .gms-topbar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
+  .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-crumb b{color:var(--hil-green);}
+  .gms-member{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-member .name{color:var(--hil-text);font-weight:700;}
+  .gms-member .pill{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:10px;padding:3px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;}
+  .gms-status{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .gms-status .dot{width:10px;height:10px;border-radius:50%;background:var(--hil-green);box-shadow:0 0 10px var(--hil-green-glow);transition:background 0.2s,box-shadow 0.2s;}
+  .gms-status .label{font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .wrapup-panel{text-align:center;}
+  .btn-wrapup{font-family:var(--font-display);font-size:12px;letter-spacing:0.05em;background:var(--hil-green);color:#04140a;border:none;padding:10px 18px;border-radius:20px;cursor:pointer;font-weight:700;}
+  .btn-wrapup:hover{background:#00e673;}
+  .ledger-panel{border:1px solid var(--hil-border);border-radius:8px;background:var(--hil-surface);margin-top:14px;}
+  .ledger-header{padding:10px 16px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .ledger-pre{margin:0;padding:16px;font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--hil-green);overflow-x:auto;}
+  .ledger-pre .k{color:var(--blue);} .ledger-pre .s{color:var(--hil-amber);}
+</style>
+</head>
+<body>
+
+  <div class="hil-shell-header">
+    <div class="hil-hex">HIL</div>
+    <div class="hil-word"><div class="t">HIL SYSTEM</div><div class="s">Home Inventory Locator</div></div>
+  </div>
+
+  <div class="gms-topbar">
+    <div class="gms-crumb">Guild &nbsp;&rsaquo;&nbsp; Electric Forge &nbsp;&rsaquo;&nbsp; <b>Learning Log</b></div>
+    <div class="gms-status" id="botStatus">
+      <div class="dot"></div>
+      <div class="label" id="statusLabel">Patch: calm</div>
+    </div>
+    <div class="gms-member">
+      <span class="name">Daniel Ray DeVoy</span>
+      <span class="pill">inherited — no picker</span>
+    </div>
+  </div>
+
+<div class="wrap">
+  <header class="moduleheader">
+    <h1>LEARNING LOG <span>//</span> Adult Attestation</h1>
+    <div class="subtitle">for museums, historical markers, family visits, and hands-on projects</div>
+  </header>
+
+  <div class="panel">
+    <label style="margin-top:0;">What kind of learning was this?</label>
+    <div class="typegroup" id="typeGroup">
+      <button data-type="full" class="active">Full visit
+        <span class="small">museum, campus, an afternoon somewhere</span></button>
+      <button data-type="micro">Quick stop
+        <span class="small">roadside marker, sign, a conversation</span></button>
+      <button data-type="project">Hands-on project
+        <span class="small">Legos, building, multi-subject</span></button>
+    </div>
+
+    <label>What was it?</label>
+    <input type="text" id="activity" placeholder="e.g. Science museum, Route 12 historical marker, Lego castle build">
+
+    <div class="row2">
+      <div>
+        <label>Date</label>
+        <input type="date" id="date">
+      </div>
+      <div id="durationWrap">
+        <label>Hours present</label>
+        <input type="number" id="hours" step="0.25" min="0" placeholder="e.g. 2.5">
+      </div>
+    </div>
+
+    <label>What did they actually learn or do? (this is the part a reviewer reads)</label>
+    <textarea id="description" placeholder="Read the marker aloud and talked about why the battle happened here. / Explored the pendulum exhibit and asked about gravity. / Built a castle with a working drawbridge and talked about load-bearing walls."></textarea>
+
+    <label>Subjects covered (pick all that honestly apply)</label>
+    <div class="chips" id="subjectChips">
+      <span class="chip" data-s="history">History</span>
+      <span class="chip" data-s="math">Math</span>
+      <span class="chip" data-s="science">Science</span>
+      <span class="chip" data-s="engineering">Engineering</span>
+      <span class="chip" data-s="art">Art</span>
+      <span class="chip" data-s="reading">Reading/Writing</span>
+      <span class="chip" data-s="social_studies">Social Studies</span>
+      <span class="chip" data-s="pe_health">PE / Health</span>
+    </div>
+
+    <div class="creditline" id="creditLine">Pick a type and fill in the details above.</div>
+
+    <div class="signrow">
+      <div>
+        <label>Adult's name</label>
+        <input type="text" id="adultName" placeholder="e.g. Mom, Dad, Grandpa">
+      </div>
+      <div>
+        <label>Relationship</label>
+        <select id="relationship">
+          <option>Parent</option>
+          <option>Grandparent</option>
+          <option>Chaperone</option>
+          <option>Coach</option>
+          <option>Instructor</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="submit" id="submitBtn">Add to Learning Log</button>
+  </div>
+
+  <div class="panel log">
+    <div class="subtitle">Logged entries (this session)</div>
+    <div id="logList"></div>
+    <div class="totalbar">
+      <span>Total credited so far</span>
+      <b id="totalHours">0.0 hrs</b>
+    </div>
+    <button class="exportbtn" id="exportBtn">Export as JSON</button>
+  </div>
+</div>
+
+<script>
+let type = 'full';
+let selectedSubjects = new Set();
+let entries = [];
+
+const typeGroup = document.getElementById('typeGroup');
+const durationWrap = document.getElementById('durationWrap');
+const hoursInput = document.getElementById('hours');
+const activityInput = document.getElementById('activity');
+const dateInput = document.getElementById('date');
+const descInput = document.getElementById('description');
+const subjectChips = document.getElementById('subjectChips');
+const creditLine = document.getElementById('creditLine');
+const adultNameInput = document.getElementById('adultName');
+const relationshipInput = document.getElementById('relationship');
+const submitBtn = document.getElementById('submitBtn');
+const logList = document.getElementById('logList');
+const totalHoursEl = document.getElementById('totalHours');
+const exportBtn = document.getElementById('exportBtn');
+
+dateInput.value = new Date().toISOString().slice(0,10);
+
+typeGroup.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  type = btn.dataset.type;
+  [...typeGroup.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  durationWrap.style.display = type === 'micro' ? 'none' : 'block';
+  updateCreditLine();
+});
+
+subjectChips.addEventListener('click', (e)=>{
+  const chip = e.target.closest('.chip'); if(!chip) return;
+  const s = chip.dataset.s;
+  if(selectedSubjects.has(s)){ selectedSubjects.delete(s); chip.classList.remove('active'); }
+  else { selectedSubjects.add(s); chip.classList.add('active'); }
+});
+
+[hoursInput].forEach(el=>el.addEventListener('input', updateCreditLine));
+
+function updateCreditLine(){
+  if(type === 'micro'){
+    creditLine.innerHTML = '15 minutes credited <span class="sub">flat award for a brief but real learning moment — no stopwatch needed</span>';
+  } else {
+    const h = parseFloat(hoursInput.value) || 0;
+    creditLine.innerHTML = `${h.toFixed(2)} hours credited <span class="sub">full time credited — this was the point of the visit</span>`;
+  }
+}
+updateCreditLine();
+
+submitBtn.addEventListener('click', ()=>{
+  if(!activityInput.value.trim()){ activityInput.focus(); return; }
+  if(!adultNameInput.value.trim()){ adultNameInput.focus(); return; }
+  if(selectedSubjects.size === 0){ subjectChips.scrollIntoView({behavior:'smooth'}); return; }
+
+  let creditedHours;
+  let entryType;
+  if(type === 'micro'){
+    creditedHours = 15/60;
+    entryType = 'attestation_micro';
+  } else if(type === 'full'){
+    creditedHours = parseFloat(hoursInput.value) || 0;
+    entryType = 'attestation_full';
+  } else {
+    creditedHours = parseFloat(hoursInput.value) || 0;
+    entryType = 'attestation_project';
+  }
+
+  const entry = {
+    type: entryType,
+    activity: activityInput.value.trim(),
+    date: dateInput.value,
+    creditedHours: Math.round(creditedHours*100)/100,
+    subjectsTagged: [...selectedSubjects],
+    description: descInput.value.trim(),
+    attestedBy: { name: adultNameInput.value.trim(), relationship: relationshipInput.value }
+  };
+  entries.push(entry);
+  renderLog();
+
+  // reset for next entry
+  activityInput.value = '';
+  hoursInput.value = '';
+  descInput.value = '';
+  selectedSubjects.clear();
+  [...subjectChips.children].forEach(c=>c.classList.remove('active'));
+  updateCreditLine();
+  activityInput.focus();
+});
+
+function renderLog(){
+  logList.innerHTML = '';
+  let total = 0;
+  entries.slice().reverse().forEach(en=>{
+    total += en.creditedHours;
+    const div = document.createElement('div');
+    div.className = 'logentry';
+    div.innerHTML = `
+      <div class="top"><span>${en.activity}</span><span class="hrs">${en.creditedHours.toFixed(2)} hrs</span></div>
+      <div class="meta">${en.date} · logged by ${en.attestedBy.name} (${en.attestedBy.relationship})</div>
+      ${en.description ? `<div class="desc">${en.description}</div>` : ''}
+      <div class="tags">${en.subjectsTagged.map(s=>`<span>${s.replace('_',' ')}</span>`).join('')}</div>
+    `;
+    logList.appendChild(div);
+  });
+  totalHoursEl.textContent = total.toFixed(2) + ' hrs';
+}
+
+exportBtn.addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'learning-log-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
