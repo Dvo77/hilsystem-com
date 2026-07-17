@@ -117,6 +117,7 @@ const NAV_TOOLS = [
   { id: 'library-hub',   label: 'Library',      icon: '📚', href: './hil-library-hub.html' },
   { id: 'smart-home',    label: 'Smart Home',   icon: '🏠', href: './hil-smart-home.html' },
   { id: 'admin',         label: 'Admin',        icon: '⚙',   href: './hil-admin.html' },
+  { id: 'import-export', label: 'Import/Export', icon: '📤', href: './hil-import-export.html' },
 ];
   // ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
   const SHELL_CSS = `
