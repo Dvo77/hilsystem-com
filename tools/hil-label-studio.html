@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Label Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&family=Cinzel:wght@700;900&family=Bebas+Neue&family=Permanent+Marker&family=Architects+Daughter&family=Special+Elite&family=Rajdhani:wght@600;700&family=Kalam:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="./hil-shell.js"></script>
+<style>
+/* ── TOOL TABS (top-level: Labels / Signs / Starter Pack) ── */
+.tool-tabs {
+  display: flex; border-bottom: 2px solid var(--hil-border);
+  background: var(--hil-surface); padding: 0 20px; gap: 0;
+}
+.tool-tab {
+  font-family: var(--font-display); font-size: 11px; letter-spacing: 2px;
+  padding: 14px 20px; color: var(--hil-text-muted); cursor: pointer;
+  border: none; border-bottom: 2px solid transparent; background: none;
+  margin-bottom: -2px; transition: all 0.15s; text-transform: uppercase;
+}
+.tool-tab:hover { color: var(--hil-text); }
+.tool-tab.active { color: var(--hil-green); border-bottom-color: var(--hil-green); }
+
+.tool-panel { display: none; }
+.tool-panel.active { display: block; }
+
+/* ── SHARED FORM STYLES ── */
+.ls-container { max-width: 900px; margin: 0 auto; padding: 24px 20px 64px; }
+.ls-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.ls-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--hil-green); text-transform: uppercase; }
+.ls-input, .ls-select {
+  background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+  font-family: var(--font-mono); font-size: 13px; padding: 9px 11px; outline: none; width: 100%;
+  transition: border-color 0.15s;
+}
+.ls-input:focus, .ls-select:focus { border-color: var(--hil-green); }
+.ls-select option { background: var(--hil-surface-2); }
+.ls-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ls-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+@media (max-width: 600px) { .ls-grid-2, .ls-grid-3 { grid-template-columns: 1fr; } }
+
+.ls-section { font-family: var(--font-display); font-size: 9px; letter-spacing: 3px; color: var(--hil-text-muted); border-bottom: 1px solid var(--hil-border); padding-bottom: 6px; margin: 16px 0 12px; }
+
+.ls-addr-preview {
+  background: var(--hil-bg); border: 1px solid var(--hil-green);
+  font-family: var(--font-mono); font-size: 18px; color: var(--hil-green);
+  text-align: center; padding: 10px; letter-spacing: 4px; margin-bottom: 12px;
+  min-height: 46px; display: flex; align-items: center; justify-content: center;
+}
+
+/* toggle rows */
+.ls-toggle-row { display: flex; gap: 6px; margin-bottom: 12px; }
+.ls-toggle-btn {
+  flex: 1; padding: 8px; background: var(--hil-surface-2);
+  border: 1px solid var(--hil-border); color: var(--hil-text-muted);
+  font-family: var(--font-mono); font-size: 10px; cursor: pointer;
+  border-radius: 2px; transition: all 0.15s; text-align: center; letter-spacing: 1px;
+}
+.ls-toggle-btn.active { border-color: var(--hil-amber, #cc8800); color: var(--hil-amber, #cc8800); background: rgba(204,136,0,0.08); }
+
+/* action buttons */
+.ls-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.ls-btn {
+  padding: 13px; border: none; font-family: var(--font-display);
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  cursor: pointer; text-transform: uppercase; transition: all 0.15s;
+}
+.ls-btn.primary { background: var(--hil-green); color: #000; }
+.ls-btn.primary:hover { background: var(--hil-green-dim); }
+.ls-btn.secondary { background: var(--hil-surface-2); color: var(--hil-text); border: 1px solid var(--hil-border); }
+.ls-btn.secondary:hover { border-color: var(--hil-text-muted); }
+
+/* ── LABEL PREVIEW AREA ── */
+.ls-preview { margin-top: 20px; border-top: 1px solid var(--hil-border); padding-top: 16px; display: none; }
+.ls-preview.visible { display: block; }
+.ls-preview-label { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+
+/* ── ACTUAL LABEL CARD STYLES (white background, print-ready) ── */
+.label-card { background: #fff; color: #000; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+
+/* Zone placard */
+.lc-zone .lc-header { background: #1a1a2e; color: #00e5ff; padding: 7px 12px; font-size: 8px; letter-spacing: 3px; text-align: center; border-bottom: 3px solid #00e5ff; font-family: 'Space Mono', monospace; }
+.lc-zone .lc-body { display: flex; align-items: center; padding: 10px 12px; gap: 10px; }
+.lc-zone .lc-info { flex: 1; }
+.lc-zone .lc-addr-big { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 900; color: #000; letter-spacing: 2px; line-height: 1; }
+.lc-zone .lc-desc { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; color: #333; font-weight: 600; margin-top: 2px; }
+.lc-zone .lc-meta { font-family: 'Space Mono', monospace; font-size: 8px; color: #666; margin-top: 3px; }
+.lc-zone .lc-footer { background: #f0f0f0; padding: 4px 12px; font-size: 8px; color: #888; display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; border-top: 1px solid #ddd; }
+
+/* Shelf label */
+.lc-shelf .lc-body { display: flex; align-items: center; padding: 6px 10px; gap: 8px; border-left: 5px solid #ff6b00; }
+.lc-shelf .lc-addr-big { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: #000; letter-spacing: 2px; }
+.lc-shelf .lc-desc { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; color: #444; font-weight: 600; }
+.lc-shelf .lc-kit { font-family: 'Space Mono', monospace; font-size: 8px; color: #888; }
+
+/* Electrical label */
+.lc-elec .lc-elec-hdr { background: #cc0000; color: #fff; padding: 4px 8px; font-size: 8px; letter-spacing: 2px; display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; }
+.lc-elec .lc-body { display: flex; align-items: center; padding: 6px 8px; gap: 8px; }
+.lc-elec .lc-addr-big { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: #000; letter-spacing: 1px; }
+.lc-elec .lc-detail { font-family: 'Space Mono', monospace; font-size: 8px; color: #555; }
+.lc-elec .lc-elec-ftr { background: #1a1a2e; color: #00e5ff; padding: 3px 8px; font-size: 8px; letter-spacing: 1px; display: flex; justify-content: space-between; font-family: 'Space Mono', monospace; }
+
+/* raw text */
+.ls-raw { background: var(--hil-bg); border: 1px solid var(--hil-border); padding: 12px; font-family: var(--font-mono); font-size: 11px; color: var(--hil-green); white-space: pre; overflow-x: auto; line-height: 1.5; }
+.ls-copy-btn { width: 100%; margin-top: 6px; padding: 9px; background: rgba(0,204,102,0.08); border: 1px solid var(--hil-green); color: var(--hil-green); font-family: var(--font-mono); font-size: 11px; cursor: pointer; letter-spacing: 1px; }
+
+/* ── SIGN STUDIO STYLES ── */
+.sign-theme-row { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 16px; padding-bottom: 4px; scrollbar-width: none; }
+.sign-theme-row::-webkit-scrollbar { display: none; }
+.sign-tc { flex-shrink: 0; padding: 7px 14px; background: var(--hil-surface); border: 1px solid var(--hil-border); color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap; letter-spacing: 1px; }
+.sign-tc:hover { border-color: var(--hil-text-muted); }
+.sign-tc.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-glow, rgba(0,204,102,0.08)); }
+
+/* compass grid */
+.cmp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; max-width: 150px; }
+.cmp-btn { padding: 8px; background: var(--hil-surface-2); border: 1px solid var(--hil-border); color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 13px; cursor: pointer; transition: all 0.15s; text-align: center; }
+.cmp-btn.active { border-color: #cc8800; color: #cc8800; background: rgba(204,136,0,0.1); }
+.cmp-center { background: rgba(0,204,102,0.04) !important; }
+
+/* ── SIGN THEMES (same as sign studio) ── */
+.s-deco{background:linear-gradient(145deg,#c8a84b,#e8c96a,#a07828,#c8a84b);border-radius:8px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.7);font-family:'Cinzel',serif;color:#1a1208;position:relative;}
+.s-deco::before{content:'';position:absolute;inset:5px;border:2px solid rgba(26,18,8,.35);border-radius:4px;pointer-events:none;z-index:1;}
+.deco-hdr{background:rgba(26,18,8,.85);color:#c8a84b;padding:7px 14px;font-size:8px;letter-spacing:4px;text-align:center;border-bottom:1px solid rgba(200,168,75,.3);display:flex;align-items:center;justify-content:center;gap:8px;}
+.deco-body{display:flex;align-items:center;padding:12px 14px;gap:12px;position:relative;z-index:2;}
+.deco-main{flex:1;text-align:center;}
+.deco-zn{font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;line-height:1;color:#1a1208;text-shadow:0 1px 0 rgba(255,255,255,.4);}
+.deco-sub{font-family:'Space Mono',monospace;font-size:10px;color:rgba(26,18,8,.65);margin-top:3px;letter-spacing:2px;}
+.deco-ftr{background:rgba(26,18,8,.7);padding:5px 14px;display:flex;justify-content:space-between;font-size:8px;color:#c8a84b;letter-spacing:2px;border-top:1px solid rgba(200,168,75,.3);}
+
+.s-tin{background:linear-gradient(135deg,#f5f0e8,#e8dfc8,#f0e8d4);border-radius:6px;overflow:hidden;border:3px solid #8b6914;box-shadow:0 6px 24px rgba(0,0,0,.6);font-family:'Bebas Neue',sans-serif;position:relative;}
+.tin-rivet{position:absolute;width:9px;height:9px;background:#8b6914;border-radius:50%;box-shadow:0 0 0 2px #c8a84b;z-index:5;}
+.tin-rivet.tl{top:5px;left:5px;}.tin-rivet.tr{top:5px;right:5px;}.tin-rivet.bl{bottom:5px;left:5px;}.tin-rivet.br{bottom:5px;right:5px;}
+.tin-hdr{background:#1a3a5c;padding:5px 18px;font-size:10px;letter-spacing:3px;color:#f5f0e8;text-align:center;border-bottom:2px solid #8b6914;}
+.tin-body{padding:10px 14px;display:flex;align-items:center;gap:10px;}
+.tin-zn{font-size:28px;line-height:1;color:#1a3a5c;text-shadow:2px 2px 0 rgba(0,0,0,.12);}
+.tin-sub{font-family:'Space Mono',monospace;font-size:10px;color:#5a4010;margin-top:2px;}
+.tin-bnr{background:#cc2200;padding:4px 18px;font-size:9px;letter-spacing:3px;color:#f5f0e8;text-align:center;border-top:2px solid #8b6914;text-shadow:1px 1px 0 rgba(0,0,0,.4);}
+
+.s-ind{background:#111418;border:1px solid #2a3540;border-left:5px solid #00e5ff;border-radius:4px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.6);font-family:'Space Mono',monospace;}
+.ind-hdr{background:#0a0c10;padding:6px 12px;display:flex;justify-content:space-between;border-bottom:1px solid #1e2530;font-size:9px;}
+.ind-hdr-l{color:#00e5ff;letter-spacing:3px;}.ind-hdr-r{color:#4a5a6a;}
+.ind-body{display:flex;align-items:center;padding:12px;gap:12px;}
+.ind-zn{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;color:#fff;letter-spacing:2px;line-height:1;}
+.ind-sub{font-size:11px;color:#c8d8e8;margin-top:3px;}.ind-addr{font-size:10px;color:#00e5ff;margin-top:2px;letter-spacing:2px;}
+.ind-wtag{display:inline-block;background:#00e5ff;color:#000;font-size:8px;padding:2px 5px;border-radius:2px;margin-top:4px;letter-spacing:2px;}
+.ind-ftr{background:#0a0c10;padding:4px 12px;display:flex;justify-content:space-between;font-size:8px;color:#4a5a6a;letter-spacing:1px;border-top:1px solid #1e2530;}
+
+.s-chalk{background:#2d4a2d;border-radius:8px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.7);border:6px solid #5a3a1a;font-family:'Permanent Marker',cursive;position:relative;}
+.chalk-grain{position:absolute;inset:0;opacity:.04;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Ccircle cx='1' cy='1' r='.5' fill='%23fff'/%3E%3C/svg%3E");pointer-events:none;}
+.chalk-hdr{background:rgba(0,0,0,.3);padding:6px 14px;font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.5);text-align:center;border-bottom:1px dashed rgba(255,255,255,.2);font-family:'Space Mono',monospace;}
+.chalk-body{padding:14px;display:flex;align-items:center;gap:12px;position:relative;}
+.chalk-zn{font-size:24px;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,.5);line-height:1.1;}
+.chalk-sub{font-family:'Architects Daughter',cursive;font-size:13px;color:rgba(255,255,255,.7);margin-top:4px;}
+.chalk-addr{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:2px;}
+.chalk-ftr{background:rgba(0,0,0,.3);padding:4px 14px;display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:8px;color:rgba(255,255,255,.35);border-top:1px dashed rgba(255,255,255,.15);}
+
+.s-farm{background:linear-gradient(180deg,#f2ede4,#e8e0d0);border-radius:6px;overflow:hidden;border:4px solid #8b7355;box-shadow:0 6px 24px rgba(0,0,0,.5);font-family:'Special Elite',cursive;position:relative;}
+.farm-shiplap{position:absolute;inset:0;background:repeating-linear-gradient(180deg,transparent,transparent 22px,rgba(139,115,85,.12) 22px,rgba(139,115,85,.12) 24px);pointer-events:none;}
+.farm-hdr{background:#4a3728;padding:7px 16px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:#e8d5b0;text-align:center;border-bottom:3px solid #8b7355;}
+.farm-body{padding:14px 16px;display:flex;align-items:center;gap:12px;position:relative;}
+.farm-zn{font-size:22px;color:#2d1f0e;letter-spacing:1px;line-height:1.1;}
+.farm-sub{font-size:13px;color:#5a3a1a;margin-top:3px;}
+.farm-addr{font-family:'Space Mono',monospace;font-size:9px;color:#8b7355;margin-top:4px;letter-spacing:2px;}
+.farm-ftr{background:#4a3728;padding:5px 16px;display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:8px;color:#e8d5b0;border-top:3px solid #8b7355;letter-spacing:1px;}
+
+.s-kids{background:linear-gradient(135deg,#ff6b9d,#ff9f43,#ffd93d,#6bcb77,#4d9fff);border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.5),0 0 0 4px #fff;font-family:'Kalam',cursive;position:relative;}
+.kids-hdr{background:rgba(255,255,255,.25);padding:6px 14px;font-size:11px;letter-spacing:2px;color:#fff;text-align:center;text-shadow:1px 1px 0 rgba(0,0,0,.2);font-family:'Space Mono',monospace;border-bottom:2px dashed rgba(255,255,255,.4);}
+.kids-body{padding:14px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.15);}
+.kids-zn{font-size:26px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.2);line-height:1;}
+.kids-sub{font-size:13px;color:rgba(255,255,255,.9);margin-top:3px;}
+.kids-addr{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,.7);margin-top:3px;}
+.kids-ftr{background:rgba(0,0,0,.15);padding:5px 14px;font-family:'Space Mono',monospace;font-size:8px;color:rgba(255,255,255,.6);text-align:center;letter-spacing:1px;border-top:2px dashed rgba(255,255,255,.3);}
+
+.s-space{background:linear-gradient(160deg,#020818,#0a1428,#06102a);border-radius:8px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.8);border:1px solid #1a2a4a;font-family:'Orbitron',monospace;position:relative;}
+.space-stars{position:absolute;inset:0;background:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 60% 10%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 80% 60%,rgba(255,255,255,.6),transparent),radial-gradient(2px 2px at 40% 70%,rgba(255,255,255,.4),transparent);pointer-events:none;}
+.space-hdr{background:rgba(0,50,150,.4);padding:6px 14px;font-size:8px;letter-spacing:4px;color:#4d9fff;text-align:center;border-bottom:1px solid rgba(77,159,255,.2);display:flex;align-items:center;justify-content:center;gap:8px;}
+.space-body{display:flex;align-items:center;padding:12px 14px;gap:12px;position:relative;}
+.space-zn{font-size:18px;font-weight:900;color:#fff;letter-spacing:3px;line-height:1;text-shadow:0 0 20px rgba(77,159,255,.6);}
+.space-sub{font-family:'Rajdhani',sans-serif;font-size:12px;color:#4d9fff;margin-top:3px;letter-spacing:2px;}
+.space-addr{font-size:9px;color:rgba(77,159,255,.6);margin-top:3px;letter-spacing:3px;}
+.space-badge{display:inline-block;background:rgba(77,159,255,.15);border:1px solid rgba(77,159,255,.4);color:#4d9fff;font-size:8px;padding:2px 6px;margin-top:4px;letter-spacing:2px;}
+.space-ftr{background:rgba(0,20,60,.5);padding:4px 14px;display:flex;justify-content:space-between;font-size:8px;color:rgba(77,159,255,.5);letter-spacing:2px;border-top:1px solid rgba(77,159,255,.15);}
+
+.s-blue{background:#1a3a5c;border-radius:4px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.7);border:2px solid #2a5a8c;font-family:'Space Mono',monospace;position:relative;}
+.blue-grid{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 19px,rgba(255,255,255,.06) 19px,rgba(255,255,255,.06) 20px),repeating-linear-gradient(90deg,transparent,transparent 19px,rgba(255,255,255,.06) 19px,rgba(255,255,255,.06) 20px);pointer-events:none;}
+.blue-hdr{background:rgba(0,0,0,.35);padding:6px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.15);font-size:8px;color:rgba(255,255,255,.5);letter-spacing:2px;}
+.blue-body{display:flex;align-items:center;padding:12px 14px;gap:12px;position:relative;}
+.blue-zn{font-size:18px;color:#fff;letter-spacing:3px;line-height:1;text-transform:uppercase;}
+.blue-sub{font-size:11px;color:rgba(255,255,255,.65);margin-top:3px;letter-spacing:1px;}
+.blue-addr{font-size:10px;color:rgba(255,255,255,.45);margin-top:3px;letter-spacing:3px;}
+.blue-dim{display:inline-block;border:1px solid rgba(255,255,255,.25);padding:2px 6px;font-size:8px;color:rgba(255,255,255,.4);margin-top:4px;letter-spacing:2px;}
+.blue-ftr{background:rgba(0,0,0,.3);padding:5px 14px;display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,.35);letter-spacing:2px;border-top:1px solid rgba(255,255,255,.1);}
+
+/* sign preview wrapper */
+.sign-preview-wrap { margin-top: 20px; border-top: 1px solid var(--hil-border); padding-top: 16px; display: none; }
+.sign-preview-wrap.visible { display: block; }
+.sign-preview-name { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+.sign-action-btn { width: 100%; margin-top: 8px; padding: 10px; background: rgba(0,204,102,0.07); border: 1px solid var(--hil-green); color: var(--hil-green); font-family: var(--font-mono); font-size: 11px; cursor: pointer; letter-spacing: 1px; transition: all 0.15s; }
+
+/* ── STARTER PACK ── */
+.starter-actions { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.starter-desc { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); line-height: 1.8; margin-bottom: 20px; }
+.starter-page-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.starter-page-item { display: flex; align-items: center; gap: 12px; background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 12px 16px; }
+.sp-num { font-family: var(--font-display); font-size: 20px; color: var(--hil-green); min-width: 32px; }
+.sp-info { flex: 1; }
+.sp-title { font-family: var(--font-display); font-size: 11px; letter-spacing: 2px; color: var(--hil-text); margin-bottom: 2px; }
+.sp-desc { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+
+/* ── PRINTABLE PAGES (hidden on screen, visible on print) ── */
+.print-pages { display: none; }
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Source+Sans+3:wght@300;400;600&display=swap');
+
+@media print {
+  #hil-header, #hil-nav, .tool-tabs, .ls-container, .sign-preview-wrap { display: none !important; }
+  body { background: white !important; padding: 0 !important; }
+  .print-pages { display: block !important; }
+  .print-page { width: 8.5in; min-height: 11in; margin: 0; background: white; padding: 0.5in; page-break-after: always; }
+}
+
+/* ── TOAST ── */
+.ls-toast { position: fixed; bottom: 24px; right: 24px; background: var(--hil-green); color: #000; font-family: var(--font-mono); font-size: 10px; font-weight: 700; padding: 10px 18px; letter-spacing: 1px; opacity: 0; transform: translateY(8px); transition: all 0.2s; pointer-events: none; z-index: 3000; }
+.ls-toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── PRINT PAGE STYLES ── */
+.pp-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 4px solid #1a1a1a; margin-bottom: 24px; }
+.pp-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 4px; }
+.pp-header .sub { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: #888; letter-spacing: 2px; text-align: right; }
+
+.anchor-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.25in; height: 9.5in; }
+.anchor-sign { border: 4px solid #1a1a1a; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; position: relative; background: white; }
+.anchor-sign .dir-letter { font-family: 'Bebas Neue', sans-serif; font-size: 4.5rem; letter-spacing: 8px; color: #1a1a1a; line-height: 1; }
+.anchor-sign .dir-word { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 4px; color: #666; text-transform: uppercase; }
+.anchor-sign .cut-note { position: absolute; bottom: 8px; font-family: 'Share Tech Mono', monospace; font-size: 0.5rem; color: #ccc; letter-spacing: 2px; }
+
+.zone-grid-pp { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.2in; }
+.zone-sign-pp { border: 3px solid #1a1a1a; padding: 20px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; aspect-ratio: 1; justify-content: center; }
+.zone-sign-pp .zs-code { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; letter-spacing: 4px; line-height: 1; }
+.zone-sign-pp .zs-name { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; letter-spacing: 3px; color: #666; text-align: center; text-transform: uppercase; }
+.zone-sign-pp .zs-example { font-family: 'Share Tech Mono', monospace; font-size: 0.45rem; color: #aaa; letter-spacing: 1px; }
+
+.ref-card { border: 4px solid #1a1a1a; padding: 0.4in; height: 9.8in; display: flex; flex-direction: column; gap: 20px; }
+.ref-card h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 4px; }
+.ref-addr-breakdown { display: flex; gap: 0; align-items: stretch; margin: 10px 0; }
+.ref-addr-seg { flex: 1; border: 2px solid #1a1a1a; margin-right: -2px; padding: 10px 8px; text-align: center; }
+.ref-addr-seg .seg-code { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 4px; }
+.ref-addr-seg .seg-label { font-family: 'Share Tech Mono', monospace; font-size: 0.5rem; letter-spacing: 2px; color: #888; display: block; margin-top: 4px; }
+.ref-code-table { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+.ref-code-col h4 { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; letter-spacing: 2px; color: #888; margin-bottom: 5px; }
+.ref-code-row { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+.ref-code-key { font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; letter-spacing: 2px; min-width: 36px; }
+.ref-code-val { font-family: 'Share Tech Mono', monospace; font-size: 0.55rem; color: #555; letter-spacing: 1px; }
+.iron-rule-pp { background: #1a1a1a; color: #e8c96d; padding: 14px 18px; margin-top: auto; }
+.iron-rule-pp p { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; letter-spacing: 2px; line-height: 1.6; }
+
+.avery-page-pp { padding: 0.5in 0.19in; }
+.avery-grid { display: grid; grid-template-columns: repeat(3,2.625in); grid-template-rows: repeat(10,1in); column-gap: 0.125in; row-gap: 0; }
+.avery-label { border: 1px dashed #ccc; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.avery-label .al-name { font-family: 'Bebas Neue', sans-serif; font-size: 0.85rem; letter-spacing: 1px; line-height: 1; color: #1a1a1a; }
+.avery-label .al-addr { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: #555; letter-spacing: 1px; }
+.avery-label .al-blank { border-bottom: 1px solid #ddd; height: 14px; margin: 2px 0; }
+.avery-label.template .al-name { color: #bbb; }
+
+.manual-step { display: flex; gap: 18px; align-items: flex-start; }
+.step-num-pp { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; color: #e8e8e8; line-height: 1; min-width: 44px; text-align: right; }
+.step-content-pp h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 3px; margin-bottom: 5px; }
+.step-content-pp p { font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; line-height: 1.6; color: #444; max-width: 5.5in; }
+.step-example { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; background: #f5f5f5; border-left: 3px solid #1a1a1a; padding: 7px 10px; margin-top: 7px; color: #333; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<!-- ── TOP-LEVEL TOOL TABS ── -->
+<div class="tool-tabs">
+  <button class="tool-tab active" data-ttab="labels">🏷 Labels</button>
+  <button class="tool-tab" data-ttab="signs">🪧 Signs</button>
+  <button class="tool-tab" data-ttab="starter">📋 Starter Pack</button>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TAB 1: LABELS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="tool-panel active" id="tp-labels">
+<div class="ls-container">
+
+  <!-- Label type sub-tabs -->
+  <div class="ls-toggle-row" style="margin-bottom:16px">
+    <button class="ls-toggle-btn active" id="ltype-zone" onclick="setLabelType('zone',this)">📍 Zone</button>
+    <button class="ls-toggle-btn" id="ltype-shelf" onclick="setLabelType('shelf',this)">📦 Shelf/Bin</button>
+    <button class="ls-toggle-btn" id="ltype-elec" onclick="setLabelType('elec',this)">⚡ Electrical</button>
+  </div>
+
+  <!-- ZONE FORM -->
+  <div id="lf-zone">
+    <div class="ls-addr-preview" id="zone-addr-preview">HIL-???</div>
+    <div class="ls-grid-3">
+      <div class="ls-field"><label class="ls-label">Structure</label>
+        <select class="ls-select" id="z-struct" onchange="onStructChange()">
+          <option value="">— select —</option>
+          <option value="__CUSTOM__">+ Custom / not listed…</option>
+        </select>
+        <input class="ls-input" type="text" id="z-struct-custom" placeholder="SH, HM, BN…" maxlength="4" style="display:none;margin-top:6px" oninput="this.value=this.value.toUpperCase();buildZoneAddr()"></div>
+      <div class="ls-field"><label class="ls-label">Zone</label>
+        <select class="ls-select" id="z-zone" onchange="onZoneSelectChange()">
+          <option value="">— select —</option>
+          <option value="__CUSTOM__">+ Custom / not listed…</option>
+        </select>
+        <input class="ls-input" type="text" id="z-zone-custom" placeholder="WS, OF…" maxlength="4" style="display:none;margin-top:6px" oninput="this.value=this.value.toUpperCase();buildZoneAddr()"></div>
+      <div class="ls-field"><label class="ls-label">Wall</label>
+        <select class="ls-select" id="z-wall" onchange="buildZoneAddr()">
+          <option value="">—</option><option>N</option><option>S</option><option>E</option><option>W</option><option>C</option>
+        </select></div>
+    </div>
+    <div class="ls-field"><label class="ls-label">Zone Name / Description</label>
+      <input class="ls-input" type="text" id="z-desc" placeholder="Metal Shop Main Wall"></div>
+    <div class="ls-field"><label class="ls-label">Kits / Systems (optional)</label>
+      <input class="ls-input" type="text" id="z-kits" placeholder="TK-NET-01, TK-PWR-02"></div>
+    <div class="ls-field"><label class="ls-label">Notes (optional)</label>
+      <input class="ls-input" type="text" id="z-notes" placeholder="Primary tool zone"></div>
+  </div>
+
+  <!-- SHELF FORM -->
+  <div id="lf-shelf" style="display:none">
+    <div class="ls-addr-preview" id="shelf-addr-preview">HIL-???</div>
+    <div class="ls-grid-3">
+      <div class="ls-field"><label class="ls-label">System</label>
+        <select class="ls-select" id="s-sys" onchange="onSysChange()">
+          <optgroup label="Your Vessel Types" id="s-sys-vessel-types"></optgroup>
+          <optgroup label="Permanent Systems">
+            <option value="WOS">WOS — Wall-O-Sort (fixed)</option>
+            <option value="MOS">MOS — generic</option>
+            <option value="OGD">OGD</option><option value="MX">MX</option>
+          </optgroup>
+        </select></div>
+      <div class="ls-field"><label class="ls-label">Unit/ID</label>
+        <input class="ls-input" type="text" id="s-unit" list="s-unit-datalist" placeholder="A, Rk1…" maxlength="12" oninput="this.value=this.value.toUpperCase();buildShelfAddr()">
+        <datalist id="s-unit-datalist"></datalist></div>
+      <div class="ls-field"><label class="ls-label">Color (MOS)</label>
+        <select class="ls-select" id="s-color" onchange="buildShelfAddr()">
+          <option value="">—</option><option value="E">E – Yellow (Electronics)</option>
+          <option value="P">P – Red (Power)</option><option value="F">F – Green (Fasteners)</option>
+          <option value="B">B – Blue (Plumbing)</option><option value="S">S – Magenta (Specialty)</option>
+        </select></div>
+    </div>
+    <div class="ls-grid-2">
+      <div class="ls-field"><label class="ls-label">Row (A=bottom)</label>
+        <input class="ls-input" type="text" id="s-row" placeholder="A, B, C…" maxlength="2" oninput="this.value=this.value.toUpperCase();buildShelfAddr()"></div>
+      <div class="ls-field"><label class="ls-label">Column (left→right)</label>
+        <input class="ls-input" type="text" id="s-col" placeholder="01, 02…" maxlength="3" oninput="buildShelfAddr()"></div>
+    </div>
+    <div class="ls-field"><label class="ls-label">Contents Description</label>
+      <input class="ls-input" type="text" id="s-desc" placeholder="M4 Hex Bolts / Machine Screws"></div>
+    <div class="ls-field"><label class="ls-label">Kit ID (optional)</label>
+      <input class="ls-input" type="text" id="s-kit" placeholder="TK-FAB-03"></div>
+  </div>
+
+  <!-- ELECTRICAL FORM -->
+  <div id="lf-elec" style="display:none">
+    <div class="ls-addr-preview" id="elec-addr-preview">HIL-???</div>
+    <div class="ls-grid-3">
+      <div class="ls-field"><label class="ls-label">Zone</label>
+        <input class="ls-input" type="text" id="e-zone" placeholder="MM, WS…" maxlength="4" oninput="this.value=this.value.toUpperCase();buildElecAddr()"></div>
+      <div class="ls-field"><label class="ls-label">Wall</label>
+        <select class="ls-select" id="e-wall" onchange="buildElecAddr()">
+          <option value="">—</option><option>N</option><option>S</option><option>E</option><option>W</option>
+        </select></div>
+      <div class="ls-field"><label class="ls-label">Position #</label>
+        <input class="ls-input" type="number" id="e-pos" placeholder="1" min="1" max="99" oninput="buildElecAddr()"></div>
+    </div>
+    <div class="ls-grid-2">
+      <div class="ls-field"><label class="ls-label">Port Type</label>
+        <select class="ls-select" id="e-type" onchange="buildElecAddr()">
+          <option value="E">E – Electrical</option><option value="KS">KS – Keystone/Data</option><option value="PS">PS – Power Strip</option>
+        </select></div>
+      <div class="ls-field"><label class="ls-label">Sub-port</label>
+        <select class="ls-select" id="e-sub" onchange="buildElecAddr()">
+          <option value="">None</option><option value="A">A – Top/Upper</option><option value="B">B – Bottom/Lower</option>
+        </select></div>
+    </div>
+    <div class="ls-grid-2">
+      <div class="ls-field"><label class="ls-label">Circuit / Breaker</label>
+        <input class="ls-input" type="text" id="e-circuit" placeholder="CKT-14, BR-07"></div>
+      <div class="ls-field"><label class="ls-label">Runs To</label>
+        <input class="ls-input" type="text" id="e-dest" placeholder="Panel / KT-N-3KS"></div>
+    </div>
+    <div class="ls-field"><label class="ls-label">VLAN / Network (KS ports)</label>
+      <input class="ls-input" type="text" id="e-vlan" placeholder="VLAN-20 / LAB"></div>
+    <div class="ls-field"><label class="ls-label">Notes</label>
+      <input class="ls-input" type="text" id="e-notes" placeholder="15A, shared with shop lights"></div>
+  </div>
+
+  <!-- QR + Output format -->
+  <div class="ls-section">QR CODE CONTENT</div>
+  <div class="ls-toggle-row">
+    <button class="ls-toggle-btn active" onclick="setQRMode('address',this)">HIL Address</button>
+    <button class="ls-toggle-btn" onclick="setQRMode('url',this)">Wiki URL</button>
+  </div>
+  <div id="url-field" style="display:none;margin-bottom:10px">
+    <input class="ls-input" type="text" id="wiki-url" placeholder="http://wiki.local/zone/...">
+  </div>
+
+  <div class="ls-section">OUTPUT FORMAT</div>
+  <div class="ls-toggle-row">
+    <button class="ls-toggle-btn active" onclick="setLabelOutput('visual',this)">🖼 Visual Label</button>
+    <button class="ls-toggle-btn" onclick="setLabelOutput('raw',this)">📋 Raw Text</button>
+    <button class="ls-toggle-btn" onclick="setLabelOutput('both',this)">Both</button>
+  </div>
+
+  <div class="ls-btn-row">
+    <button class="ls-btn primary" onclick="generateLabel()">GENERATE</button>
+    <button class="ls-btn secondary" onclick="clearLabel()">CLEAR</button>
+  </div>
+
+  <!-- Preview -->
+  <div class="ls-preview" id="label-preview">
+    <div class="ls-preview-label">▸ LABEL PREVIEW</div>
+    <div id="label-visual-out"></div>
+    <div id="label-raw-out" style="display:none">
+      <div class="ls-raw" id="label-raw-text"></div>
+      <button class="ls-copy-btn" onclick="copyRaw()">📋 COPY FOR RAWBT / THERMAL PRINTER</button>
+    </div>
+  </div>
+
+</div><!-- /ls-container labels -->
+</div><!-- /tp-labels -->
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TAB 2: SIGNS                                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="tool-panel" id="tp-signs">
+<div class="ls-container">
+
+  <div class="sign-theme-row">
+    <button class="sign-tc active" onclick="setSignTheme('deco',this)">🏛 Art Deco</button>
+    <button class="sign-tc" onclick="setSignTheme('tin',this)">🔩 Vintage Tin</button>
+    <button class="sign-tc" onclick="setSignTheme('ind',this)">⚙ Industrial</button>
+    <button class="sign-tc" onclick="setSignTheme('chalk',this)">🍀 Workshop</button>
+    <button class="sign-tc" onclick="setSignTheme('farm',this)">🌾 Farmhouse</button>
+    <button class="sign-tc" onclick="setSignTheme('kids',this)">🎨 Kids Room</button>
+    <button class="sign-tc" onclick="setSignTheme('space',this)">🚀 Space Explorer</button>
+    <button class="sign-tc" onclick="setSignTheme('blue',this)">📐 Blueprint</button>
+  </div>
+
+  <div class="ls-field"><label class="ls-label">Zone / Area Name</label>
+    <input class="ls-input" type="text" id="sg-zone" placeholder="Metal Shop South Wall"></div>
+  <div class="ls-grid-2">
+    <div class="ls-field"><label class="ls-label">HIL Address</label>
+      <input class="ls-input" type="text" id="sg-addr" placeholder="SH-MM-S"></div>
+    <div class="ls-field"><label class="ls-label">Tagline / Sub-text</label>
+      <input class="ls-input" type="text" id="sg-tag" placeholder="Power Tools Zone"></div>
+  </div>
+
+  <div class="ls-section">WALL ORIENTATION</div>
+  <div class="cmp-grid">
+    <div></div>
+    <button class="cmp-btn" onclick="setSignWall('N',this)">N</button>
+    <div></div>
+    <button class="cmp-btn" onclick="setSignWall('W',this)">W</button>
+    <button class="cmp-btn cmp-center" onclick="setSignWall('C',this)">·</button>
+    <button class="cmp-btn" onclick="setSignWall('E',this)">E</button>
+    <div></div>
+    <button class="cmp-btn" onclick="setSignWall('S',this)">S</button>
+    <div></div>
+  </div>
+
+  <div class="ls-section" style="margin-top:16px">QR CODE</div>
+  <div class="ls-toggle-row">
+    <button class="ls-toggle-btn active" onclick="setSgnQR('addr',this)">HIL Address</button>
+    <button class="ls-toggle-btn" onclick="setSgnQR('url',this)">Wiki URL</button>
+    <button class="ls-toggle-btn" onclick="setSgnQR('none',this)">No QR</button>
+  </div>
+  <div id="sgn-url-wrap" style="display:none;margin-bottom:10px">
+    <input class="ls-input" type="text" id="sg-url" placeholder="http://wiki.local/zone/...">
+  </div>
+
+  <div class="ls-btn-row">
+    <button class="ls-btn primary" onclick="generateSign()">GENERATE SIGN</button>
+    <button class="ls-btn secondary" onclick="clearSign()">CLEAR</button>
+  </div>
+
+  <div class="sign-preview-wrap" id="sign-preview">
+    <div class="sign-preview-name">▸ SIGN PREVIEW — <span id="sign-theme-name">Art Deco</span></div>
+    <div id="sign-out"></div>
+    <button class="sign-action-btn" onclick="lsToast('Use Ctrl+P or screenshot to save your sign')">🖨 PRINT / SAVE</button>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- TAB 3: STARTER PACK                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="tool-panel" id="tp-starter">
+<div class="ls-container">
+
+  <div class="starter-desc">
+    Print all 5 pages. Cut the signs. Stick them up. Your space is now addressed.<br>
+    No app required. No internet. No account. Just labels and logic.
+  </div>
+
+  <div class="starter-actions">
+    <button class="ls-btn primary" onclick="window.print()" style="padding:13px 32px">🖨 PRINT ALL 5 PAGES</button>
+    <button class="ls-btn secondary" style="padding:13px 32px" onclick="lsToast('Open in new tab and Ctrl+P')">PRINT PREVIEW</button>
+  </div>
+
+  <div class="starter-page-list">
+    <div class="starter-page-item">
+      <div class="sp-num">1</div>
+      <div class="sp-info">
+        <div class="sp-title">CARDINAL ANCHOR SIGNS</div>
+        <div class="sp-desc">N, S, E, W — cut and mount on your walls. These are the anchor system.</div>
+      </div>
+    </div>
+    <div class="starter-page-item">
+      <div class="sp-num">2</div>
+      <div class="sp-info">
+        <div class="sp-title">ZONE SIGNS</div>
+        <div class="sp-desc">GR, LR, KT, WS, UT, OF and more — cut and post in each area.</div>
+      </div>
+    </div>
+    <div class="starter-page-item">
+      <div class="sp-num">3</div>
+      <div class="sp-info">
+        <div class="sp-title">ADDRESS REFERENCE CARD</div>
+        <div class="sp-desc">Full grammar breakdown: Structure → Zone → Anchor+Col → Level+Depth. The iron rule.</div>
+      </div>
+    </div>
+    <div class="starter-page-item">
+      <div class="sp-num">4</div>
+      <div class="sp-info">
+        <div class="sp-title">AVERY 5160 LABEL TEMPLATES</div>
+        <div class="sp-desc">30 per sheet. 3 sample labels pre-filled. 27 blanks. Print on Avery 5160 or write by hand.</div>
+      </div>
+    </div>
+    <div class="starter-page-item">
+      <div class="sp-num">5</div>
+      <div class="sp-info">
+        <div class="sp-title">MANUAL SETUP INSTRUCTIONS</div>
+        <div class="sp-desc">5 steps. No AI. No app. No internet. Start with one shelf. One label. One address.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- PRINT PAGES (hidden on screen)              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="print-pages">
+
+  <!-- PAGE 1: CARDINAL SIGNS -->
+  <div class="print-page">
+    <div class="anchor-grid">
+      <div class="anchor-sign">
+        <svg width="60" height="60" viewBox="0 0 100 100"><polygon points="50,2 93,26 93,74 50,98 7,74 7,26" fill="none" stroke="#1a1a1a" stroke-width="4"/><polygon points="50,22 44,50 50,46 56,50" fill="#1a1a1a"/><circle cx="50" cy="50" r="4" fill="#1a1a1a"/></svg>
+        <div class="dir-letter">N</div><div class="dir-word">North</div>
+        <div class="cut-note">— CUT AND MOUNT ON NORTH WALL —</div>
+      </div>
+      <div class="anchor-sign">
+        <svg width="60" height="60" viewBox="0 0 100 100"><polygon points="50,2 93,26 93,74 50,98 7,74 7,26" fill="none" stroke="#1a1a1a" stroke-width="4"/><polygon points="50,78 44,50 50,54 56,50" fill="#1a1a1a"/><circle cx="50" cy="50" r="4" fill="#1a1a1a"/></svg>
+        <div class="dir-letter">S</div><div class="dir-word">South</div>
+        <div class="cut-note">— CUT AND MOUNT ON SOUTH WALL —</div>
+      </div>
+      <div class="anchor-sign">
+        <svg width="60" height="60" viewBox="0 0 100 100"><polygon points="50,2 93,26 93,74 50,98 7,74 7,26" fill="none" stroke="#1a1a1a" stroke-width="4"/><polygon points="78,50 50,44 54,50 50,56" fill="#1a1a1a"/><circle cx="50" cy="50" r="4" fill="#1a1a1a"/></svg>
+        <div class="dir-letter">E</div><div class="dir-word">East</div>
+        <div class="cut-note">— CUT AND MOUNT ON EAST WALL —</div>
+      </div>
+      <div class="anchor-sign">
+        <svg width="60" height="60" viewBox="0 0 100 100"><polygon points="50,2 93,26 93,74 50,98 7,74 7,26" fill="none" stroke="#1a1a1a" stroke-width="4"/><polygon points="22,50 50,44 46,50 50,56" fill="#1a1a1a"/><circle cx="50" cy="50" r="4" fill="#1a1a1a"/></svg>
+        <div class="dir-letter">W</div><div class="dir-word">West</div>
+        <div class="cut-note">— CUT AND MOUNT ON WEST WALL —</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: ZONE SIGNS -->
+  <div class="print-page">
+    <div style="text-align:center;margin-bottom:0.2in;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:4px;color:#888">HL ZONE SIGNS — CUT AND POST IN EACH AREA</div>
+    <div class="zone-grid-pp">
+      <div class="zone-sign-pp"><div class="zs-code">GR</div><div class="zs-name">Garage</div><div class="zs-example">GR-WS-N1-M0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">LR</div><div class="zs-name">Living Room</div><div class="zs-example">HM-LR-N1-M0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">KT</div><div class="zs-name">Kitchen</div><div class="zs-example">HM-KT-C1-F0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">BR</div><div class="zs-name">Bedroom</div><div class="zs-example">HM-BR-N1-T0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">WS</div><div class="zs-name">Workshop</div><div class="zs-example">SH-WS-S2-B0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">MM</div><div class="zs-name">Metal Shop</div><div class="zs-example">SH-MM-N1-M0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">UT</div><div class="zs-name">Utility</div><div class="zs-example">HM-UT-W1-F0</div></div>
+      <div class="zone-sign-pp"><div class="zs-code">OF</div><div class="zs-name">Office</div><div class="zs-example">HM-OF-E1-M0</div></div>
+      <div class="zone-sign-pp" style="border-style:dashed;border-color:#ccc"><div class="zs-code" style="color:#ccc;font-size:1.4rem">YOUR CODE</div><div class="zs-name" style="color:#ccc">Custom Zone</div></div>
+    </div>
+  </div>
+
+  <!-- PAGE 3: REFERENCE CARD -->
+  <div class="print-page">
+    <div class="ref-card">
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:4px;color:#aaa;margin-bottom:4px">HL SYSTEM — HUMAN LAYER</div>
+        <h2>Address Reference Card</h2>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;color:#888;margin-top:8px">Nothing is lost. Everything is logic.</div>
+      </div>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:3px;color:#888;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">THE ADDRESS FORMAT</div>
+        <div class="ref-addr-breakdown">
+          <div class="ref-addr-seg"><div class="seg-code">SH</div><span class="seg-label">[STRUCTURE]</span></div>
+          <div class="ref-addr-seg"><div class="seg-code">MM</div><span class="seg-label">[ZONE]</span></div>
+          <div class="ref-addr-seg"><div class="seg-code">N2</div><span class="seg-label">[WALL+COL]</span></div>
+          <div class="ref-addr-seg"><div class="seg-code">M0</div><span class="seg-label">[LEVEL+DEPTH]</span></div>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:#888;text-align:center;letter-spacing:2px;margin-top:4px">EXAMPLE: SH-MM-N2-M0 = Shop, Metal Shop, North Wall Col 2, Middle Shelf, Surface</div>
+      </div>
+      <div class="ref-code-table">
+        <div class="ref-code-col">
+          <h4>Structure Codes</h4>
+          <div class="ref-code-row"><span class="ref-code-key">SH</span><span class="ref-code-val">Shop</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">HM</span><span class="ref-code-val">House</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">GR</span><span class="ref-code-val">Garage</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">BN</span><span class="ref-code-val">Barn</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">SD</span><span class="ref-code-val">Shed</span></div>
+          <h4 style="margin-top:10px">Level Codes</h4>
+          <div class="ref-code-row"><span class="ref-code-key">T</span><span class="ref-code-val">Top shelf</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">M</span><span class="ref-code-val">Middle shelf</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">B</span><span class="ref-code-val">Bottom shelf</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">F</span><span class="ref-code-val">Floor level</span></div>
+        </div>
+        <div class="ref-code-col">
+          <h4>Zone Codes</h4>
+          <div class="ref-code-row"><span class="ref-code-key">MM</span><span class="ref-code-val">Metal Shop</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">WS</span><span class="ref-code-val">Workshop</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">OF</span><span class="ref-code-val">Office</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">LR</span><span class="ref-code-val">Living Room</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">KT</span><span class="ref-code-val">Kitchen</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">BR</span><span class="ref-code-val">Bedroom</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">BA</span><span class="ref-code-val">Bathroom</span></div>
+          <div class="ref-code-row"><span class="ref-code-key">BM</span><span class="ref-code-val">Basement</span></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:3px;color:#888;border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:8px">ITEM NAMING — NOUN FIRST, ALWAYS</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;line-height:2;color:#444">
+          TOOL-DRILL-CORDLESS-18V | SH-MM-S2-M0<br>
+          FASTENER-SCREW-WOOD-PHILLIPS-2IN | SH-WS-N1-B1<br>
+          HEIRLOOM-TRACTOR-FORD-9N-1939 | SH-MM-S2-F0<br>
+          CONSUMABLE-TAPE-ELECTRICAL-BLACK | HM-UT-W2-M0
+        </div>
+      </div>
+      <div class="iron-rule-pp">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:4px;color:#aaa;display:block;margin-bottom:5px">THE IRON RULE</div>
+        <p>No rule can make the system more complicated than no system at all.<br>Start with one shelf. One label. One address. The rest follows.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: AVERY LABELS -->
+  <div class="print-page avery-page-pp">
+    <div style="text-align:center;margin-bottom:0.15in;padding-bottom:10px;border-bottom:1px solid #ddd">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:3px">HL Item Labels — Avery 5160 Compatible</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:0.5rem;color:#888;letter-spacing:2px;margin-top:3px">1" × 2-5/8" · 30 per sheet · Fill in or edit before printing</div>
+    </div>
+    <div class="avery-grid">
+      <div class="avery-label"><div class="al-name">TOOL-DRILL-CORDLESS-18V</div><div class="al-addr">SH-MM-S2-M0</div></div>
+      <div class="avery-label"><div class="al-name">FASTENER-SCREW-WOOD-2IN</div><div class="al-addr">SH-WS-N1-B1</div></div>
+      <div class="avery-label"><div class="al-name">HEIRLOOM-TRACTOR-FORD-9N</div><div class="al-addr">SH-MM-S2-F0</div></div>
+      <!-- 27 blank labels -->
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+      <div class="avery-label template"><div class="al-blank"></div><div class="al-blank"></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: MANUAL INSTRUCTIONS -->
+  <div class="print-page">
+    <div class="pp-header">
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:4px;color:#aaa;margin-bottom:4px">HL SYSTEM — HUMAN LAYER</div><h2>Set Up Without AI</h2></div>
+      <div class="sub"><div>No app. No internet.</div><div>No account required.</div><div style="margin-top:5px">Just labels and logic.</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div class="manual-step"><div class="step-num-pp">1</div><div class="step-content-pp">
+        <h3>Pick Your Structure Code</h3>
+        <p>What building or area are you organizing? Choose a 2-letter code. Common ones on the reference card. Or make your own.</p>
+        <div class="step-example">Shop → SH &nbsp;&nbsp; House → HM &nbsp;&nbsp; Garage → GR &nbsp;&nbsp; Barn → BN</div>
+      </div></div>
+      <div class="manual-step"><div class="step-num-pp">2</div><div class="step-content-pp">
+        <h3>Post Your Cardinal Signs</h3>
+        <p>Cut out the N, S, E, W signs from Page 1. Tape to the corresponding walls. Every address references these walls.</p>
+        <div class="step-example">North sign → North wall &nbsp;&nbsp; Phone compass works fine if unsure.</div>
+      </div></div>
+      <div class="manual-step"><div class="step-num-pp">3</div><div class="step-content-pp">
+        <h3>Name Your Zones</h3>
+        <p>Divide your space into areas. Each gets a 2-letter zone code. Post the zone sign from Page 2.</p>
+        <div class="step-example">Workshop → WS &nbsp;&nbsp; SH-WS = Shop, Workshop zone</div>
+      </div></div>
+      <div class="manual-step"><div class="step-num-pp">4</div><div class="step-content-pp">
+        <h3>Number Your Wall Columns</h3>
+        <p>Standing at the anchor wall, number shelf columns left to right: N1, N2, N3. Every position now has a unique address.</p>
+        <div class="step-example">SH-WS-N2 = Shop, Workshop zone, North wall, column 2</div>
+      </div></div>
+      <div class="manual-step"><div class="step-num-pp">5</div><div class="step-content-pp">
+        <h3>Add Level and Write Your Labels</h3>
+        <p>Add shelf level: T (top), M (middle), B (bottom), F (floor). Name items noun-first on the Avery labels. Stick them on.</p>
+        <div class="step-example">TOOL-DRILL-CORDLESS → SH-WS-N2-M0<br>FASTENER-SCREW-WOOD → SH-WS-S1-B1<br>Item name first. Address second. That's the whole system.</div>
+      </div></div>
+    </div>
+    <div style="margin-top:auto;border-top:2px solid #1a1a1a;padding-top:14px;display:flex;justify-content:space-between;margin-top:20px">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:0.5rem;color:#aaa;letter-spacing:2px">HL SYSTEM — FREE AND OPEN SOURCE</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:0.5rem;color:#aaa;letter-spacing:2px">github.com/Dvo77/spatial-vector-grammar</span>
+    </div>
+  </div>
+
+</div><!-- /print-pages -->
+
+<!-- hidden QR temp -->
+<div id="qr-temp-ls" style="display:none"></div>
+<div class="ls-toast" id="ls-toast"></div>
+
+<script>
+// ── SHELL INIT ──
+HILShell.init({ toolId: 'labels', toolName: 'Label Studio', requireAuth: false, onAuth: handleAuth });
+
+// ══════════════════════════════════════
+// OPTIONAL LIVE-DATA HOOKUP
+// Label Studio works fully offline/logged-out (free-typed codes, as always).
+// When signed in, Structure/Zone/System/Unit fields upgrade to real data from
+// this user's properties, zones, vessel_types, and vessels — less friction,
+// fewer typos, addresses that actually match what's registered elsewhere.
+// ══════════════════════════════════════
+let lsDb, lsUser;
+let lsProperties = [];   // [{id, ...data, zones:[{code,label,struct_code}]}]
+let lsVesselTypes = [];  // users/{uid}/vessel_types
+let lsVessels = [];      // users/{uid}/vessels
+
+async function handleAuth(user) {
+  if (!user) return;
+  lsUser = user;
+  const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  const { collection, doc, getDocs, onSnapshot } = fsdk;
+  lsDb = window.db;
+
+  try {
+    const propSnap = await getDocs(collection(lsDb, 'users', user.uid, 'properties'));
+    lsProperties = [];
+    for (const propDoc of propSnap.docs) {
+      const zonesSnap = await getDocs(collection(lsDb, 'users', user.uid, 'properties', propDoc.id, 'zones'));
+      lsProperties.push({
+        id: propDoc.id, ...propDoc.data(),
+        zones: zonesSnap.docs.map(z => ({ id: z.id, ...z.data() })),
+      });
+    }
+  } catch (e) { /* fail quiet — falls back to free-typed structure/zone */ }
+  populateStructDropdown();
+
+  onSnapshot(collection(lsDb, 'users', user.uid, 'vessel_types'), snap => {
+    lsVesselTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    populateSysDropdown();
+  }, () => { /* fail quiet — WOS/MOS/OGD/MX presets still work */ });
+
+  onSnapshot(collection(lsDb, 'users', user.uid, 'vessels'), snap => {
+    lsVessels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    populateUnitDatalist();
+  }, () => { /* fail quiet — Unit/ID still free-typed */ });
+}
+
+function allStructCodes() {
+  const set = new Set();
+  lsProperties.forEach(p => (p.struct_codes || []).forEach(c => set.add(c)));
+  lsProperties.forEach(p => (p.zones || []).forEach(z => { if (z.struct_code) set.add(z.struct_code); }));
+  return [...set].sort();
+}
+
+function populateStructDropdown() {
+  const sel = document.getElementById('z-struct');
+  const prev = sel.value;
+  const codes = allStructCodes();
+  sel.innerHTML = '<option value="">— select —</option>'
+    + codes.map(c => `<option value="${c}">${c}</option>`).join('')
+    + '<option value="__CUSTOM__">+ Custom / not listed…</option>';
+  if (codes.includes(prev)) sel.value = prev;
+  populateZoneDropdown();
+}
+
+function populateZoneDropdown() {
+  const structVal = document.getElementById('z-struct').value;
+  const sel = document.getElementById('z-zone');
+  const prev = sel.value;
+  const zones = lsProperties.flatMap(p => p.zones || [])
+    .filter(z => !structVal || structVal === '__CUSTOM__' || z.struct_code === structVal);
+  sel.innerHTML = '<option value="">— select —</option>'
+    + zones.map(z => `<option value="${escapeHtml(z.code)}">${escapeHtml(z.code)} — ${escapeHtml(z.label || '')}</option>`).join('')
+    + '<option value="__CUSTOM__">+ Custom / not listed…</option>';
+  if (zones.some(z => z.code === prev)) sel.value = prev;
+}
+
+function onStructChange() {
+  const val = document.getElementById('z-struct').value;
+  document.getElementById('z-struct-custom').style.display = (val === '__CUSTOM__') ? 'block' : 'none';
+  populateZoneDropdown();
+  buildZoneAddr();
+}
+function onZoneSelectChange() {
+  const val = document.getElementById('z-zone').value;
+  document.getElementById('z-zone-custom').style.display = (val === '__CUSTOM__') ? 'block' : 'none';
+  buildZoneAddr();
+}
+
+function populateSysDropdown() {
+  const sel = document.getElementById('s-sys');
+  const prev = sel.value;
+  const grp = document.getElementById('s-sys-vessel-types');
+  grp.innerHTML = lsVesselTypes.map(t =>
+    `<option value="${escapeHtml(t.prefix || '')}" data-type-id="${t.id}">${escapeHtml((t.icon ? t.icon + ' ' : '') + t.name)} (${escapeHtml(t.type_id || t.id)})</option>`
+  ).join('');
+  grp.style.display = lsVesselTypes.length ? '' : 'none';
+  const stillValid = [...sel.options].some(o => o.value === prev);
+  if (stillValid) sel.value = prev;
+  onSysChange();
+}
+
+function onSysChange() {
+  populateUnitDatalist();
+  buildShelfAddr();
+}
+
+function populateUnitDatalist() {
+  const selEl = document.getElementById('s-sys');
+  const opt = selEl.selectedOptions[0];
+  const typeId = opt ? opt.dataset.typeId : null;
+  const dl = document.getElementById('s-unit-datalist');
+  if (!typeId) { dl.innerHTML = ''; return; }
+  const matches = lsVessels.filter(v => v.vessel_type_id === typeId);
+  dl.innerHTML = matches.map(v => `<option value="${escapeHtml(v.vessel_id)}">${escapeHtml(v.name || '')}</option>`).join('');
+}
+
+function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// ── TOOL TAB SWITCHING ──
+document.querySelectorAll('.tool-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tp-' + tab.dataset.ttab).classList.add('active');
+  });
+});
+
+// ══ LABELS ══
+let currentLabelType = 'zone';
+let labelQRMode = 'address';
+let labelOutputMode = 'visual';
+
+function setLabelType(type, btn) {
+  currentLabelType = type;
+  document.querySelectorAll('#tp-labels .ls-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('lf-zone').style.display  = type === 'zone'  ? 'block' : 'none';
+  document.getElementById('lf-shelf').style.display = type === 'shelf' ? 'block' : 'none';
+  document.getElementById('lf-elec').style.display  = type === 'elec'  ? 'block' : 'none';
+}
+
+function setQRMode(mode, btn) {
+  labelQRMode = mode;
+  document.querySelectorAll('#tp-labels .ls-toggle-row:nth-of-type(1) .ls-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('url-field').style.display = mode === 'url' ? 'block' : 'none';
+}
+
+function setLabelOutput(mode, btn) {
+  labelOutputMode = mode;
+  btn.closest('.ls-toggle-row').querySelectorAll('.ls-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function buildZoneAddr() {
+  let s = document.getElementById('z-struct').value;
+  if (s === '__CUSTOM__') s = document.getElementById('z-struct-custom').value; s = (s||'').toUpperCase();
+  let z = document.getElementById('z-zone').value;
+  if (z === '__CUSTOM__') z = document.getElementById('z-zone-custom').value; z = (z||'').toUpperCase();
+  const w = document.getElementById('z-wall').value;
+  let addr = 'HIL'; if(s) addr+='-'+s; if(z) addr+='-'+z; if(w) addr+='-'+w;
+  document.getElementById('zone-addr-preview').textContent = addr;
+}
+function buildShelfAddr() {
+  const sys=document.getElementById('s-sys').value, unit=(document.getElementById('s-unit').value||'').toUpperCase();
+  const color=document.getElementById('s-color').value, row=(document.getElementById('s-row').value||'').toUpperCase();
+  const col=document.getElementById('s-col').value;
+  let addr=sys; if(color) addr+='-'+color; if(unit) addr+='-'+unit;
+  if(row) addr+='-R'+row; if(col) addr+='-C'+col.padStart(2,'0');
+  document.getElementById('shelf-addr-preview').textContent = addr;
+}
+function buildElecAddr() {
+  const zone=(document.getElementById('e-zone').value||'').toUpperCase();
+  const wall=document.getElementById('e-wall').value, pos=document.getElementById('e-pos').value;
+  const type=document.getElementById('e-type').value, sub=document.getElementById('e-sub').value;
+  let addr='HIL'; if(zone) addr+='-'+zone; if(wall) addr+='-'+wall;
+  if(pos) addr+='-'+pos; addr+=type; if(sub) addr+=sub;
+  document.getElementById('elec-addr-preview').textContent = addr;
+}
+
+function getAddr() {
+  if(currentLabelType==='zone')  return document.getElementById('zone-addr-preview').textContent;
+  if(currentLabelType==='shelf') return document.getElementById('shelf-addr-preview').textContent;
+  return document.getElementById('elec-addr-preview').textContent;
+}
+function getQRData() {
+  if(labelQRMode==='url') return document.getElementById('wiki-url').value || getAddr();
+  return getAddr();
+}
+
+function generateLabel() {
+  const addr = getAddr();
+  if(addr==='HIL-???' || addr==='HIL') { lsToast('Fill in address fields first'); return; }
+  const preview = document.getElementById('label-preview');
+  preview.classList.add('visible');
+  const show = labelOutputMode;
+  const visOut = document.getElementById('label-visual-out');
+  const rawWrap = document.getElementById('label-raw-out');
+  visOut.innerHTML = '';
+  rawWrap.style.display = 'none';
+  if(show==='visual'||show==='both') { buildLabelVisual(addr, visOut); }
+  if(show==='raw'||show==='both') { document.getElementById('label-raw-text').textContent = buildLabelRaw(addr); rawWrap.style.display = 'block'; }
+  if(show==='visual'||show==='both') {
+    setTimeout(() => {
+      visOut.querySelectorAll('.qr-target').forEach(el => {
+        new QRCode(el, {text: el.dataset.qr, width:60, height:60, colorDark:'#000', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.M});
+      });
+    }, 60);
+  }
+}
+
+function buildLabelVisual(addr, container) {
+  const qrData = getQRData();
+  const date = new Date().toLocaleDateString();
+  let html = '';
+  if(currentLabelType==='zone') {
+    const desc = document.getElementById('z-desc').value || '—';
+    const kits = document.getElementById('z-kits').value;
+    const notes = document.getElementById('z-notes').value;
+    const wall = document.getElementById('z-wall').value;
+    html = `<div class="label-card lc-zone">
+      <div class="lc-header">▸ HIL MASTER SYSTEM &nbsp;|&nbsp; HOME INVENTORY LOCATOR</div>
+      <div class="lc-body">
+        <div class="qr-target" data-qr="${qrData}" style="flex-shrink:0;"></div>
+        <div class="lc-info">
+          <div class="lc-addr-big">${addr}</div>
+          <div class="lc-desc">${desc}</div>
+          <div class="lc-meta">${wall?'WALL: '+wall:''}${kits?' | '+kits:''}${notes?' | '+notes:''}</div>
+        </div>
+      </div>
+      <div class="lc-footer"><span>HIL Label Studio</span><span>${date}</span></div>
+    </div>`;
+  } else if(currentLabelType==='shelf') {
+    const desc = document.getElementById('s-desc').value || '—';
+    const kit = document.getElementById('s-kit').value;
+    const colorMap = {E:'#ffcc00',P:'#cc0000',F:'#006600',B:'#0044cc',S:'#cc00cc'};
+    const bc = colorMap[document.getElementById('s-color').value] || '#ff6b00';
+    html = `<div class="label-card lc-shelf">
+      <div class="lc-body" style="border-left-color:${bc}">
+        <div class="qr-target" data-qr="${qrData}" style="flex-shrink:0;"></div>
+        <div><div class="lc-addr-big">${addr}</div><div class="lc-desc">${desc}</div><div class="lc-kit">${kit||''}</div></div>
+      </div>
+    </div>`;
+  } else {
+    const circuit = document.getElementById('e-circuit').value||'—';
+    const dest = document.getElementById('e-dest').value||'—';
+    const vlan = document.getElementById('e-vlan').value;
+    const notes = document.getElementById('e-notes').value;
+    const typeLabel = {E:'ELECTRICAL RECEPTACLE',KS:'KEYSTONE / DATA PORT',PS:'POWER STRIP'}[document.getElementById('e-type').value]||'ELECTRICAL';
+    html = `<div class="label-card lc-elec" style="max-width:260px">
+      <div class="lc-elec-hdr"><span>⚡ ${typeLabel}</span><span>HIL</span></div>
+      <div class="lc-body">
+        <div class="qr-target" data-qr="${qrData}" style="flex-shrink:0;"></div>
+        <div><div class="lc-addr-big">${addr}</div><div class="lc-detail">CKT: ${circuit}</div><div class="lc-detail">TO: ${dest}</div>${vlan?'<div class="lc-detail">VLAN: '+vlan+'</div>':''}${notes?'<div class="lc-detail">'+notes+'</div>':''}</div>
+      </div>
+      <div class="lc-elec-ftr"><span>HIL Label Studio</span><span>${date}</span></div>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function buildLabelRaw(addr) {
+  const L='================================\n', T='--------------------------------\n';
+  let o=L+'     HIL MASTER SYSTEM\n'+L;
+  if(currentLabelType==='zone') {
+    const desc=document.getElementById('z-desc').value, kits=document.getElementById('z-kits').value, notes=document.getElementById('z-notes').value;
+    o+='ZONE:  '+addr+'\n'; if(desc) o+='DESC:  '+desc+'\n'; o+=T; if(kits) o+='KITS:  '+kits+'\n'; if(notes) o+='NOTE:  '+notes+'\n';
+  } else if(currentLabelType==='shelf') {
+    const desc=document.getElementById('s-desc').value, kit=document.getElementById('s-kit').value;
+    o+='ADDR:  '+addr+'\n'+T; if(desc) o+='ITEM:  '+desc+'\n'; if(kit) o+='KIT:   '+kit+'\n';
+  } else {
+    const circuit=document.getElementById('e-circuit').value, dest=document.getElementById('e-dest').value;
+    const vlan=document.getElementById('e-vlan').value, notes=document.getElementById('e-notes').value;
+    o+='ELEC:  '+addr+'\n'+T; if(circuit) o+='CKT:   '+circuit+'\n'; if(dest) o+='TO:    '+dest+'\n'; if(vlan) o+='VLAN:  '+vlan+'\n'; if(notes) o+='NOTE:  '+notes+'\n';
+  }
+  o+=L+'[QR:'+getQRData()+']\n'+'DATE:  '+new Date().toLocaleDateString()+'\n'+L;
+  return o;
+}
+
+function copyRaw() {
+  navigator.clipboard.writeText(document.getElementById('label-raw-text').textContent).then(() => lsToast('Copied!'));
+}
+function clearLabel() {
+  document.querySelectorAll('#tp-labels input[type="text"], #tp-labels input[type="number"]').forEach(i=>i.value='');
+  document.querySelectorAll('#tp-labels select').forEach(s=>s.selectedIndex=0);
+  ['zone-addr-preview','shelf-addr-preview','elec-addr-preview'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent='HIL-???'; });
+  document.getElementById('label-preview').classList.remove('visible');
+}
+
+// ══ SIGNS ══
+let signTheme = 'deco';
+let signWall  = '';
+let signQRMode = 'addr';
+const SIGN_THEME_NAMES = {deco:'Art Deco',tin:'Vintage Tin',ind:'Industrial',chalk:'Workshop',farm:'Farmhouse',kids:'Kids Room',space:'Space Explorer',blue:'Blueprint'};
+
+function setSignTheme(t, btn) {
+  signTheme = t;
+  document.querySelectorAll('.sign-tc').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sign-theme-name').textContent = SIGN_THEME_NAMES[t]||t;
+}
+function setSignWall(w, btn) {
+  signWall = w;
+  document.querySelectorAll('.cmp-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setSgnQR(m, btn) {
+  signQRMode = m;
+  btn.closest('.ls-toggle-row').querySelectorAll('.ls-toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('sgn-url-wrap').style.display = m === 'url' ? 'block' : 'none';
+}
+
+function getSgnQRData() {
+  if(signQRMode==='none') return null;
+  if(signQRMode==='url') return document.getElementById('sg-url').value || document.getElementById('sg-addr').value || 'HIL';
+  return document.getElementById('sg-addr').value || 'HIL';
+}
+
+function compassSVG(w,c,f) {
+  const stroke=c||'#c8a84b', fill=f||'rgba(0,0,0,.1)', hi=w||'';
+  const dim='rgba(180,180,180,0.2)';
+  return `<svg width="54" height="54" viewBox="0 0 60 60" fill="none">
+    <circle cx="30" cy="30" r="26" stroke="${stroke}" stroke-width="1.5" fill="${fill}" stroke-dasharray="3 3" opacity=".6"/>
+    <polygon points="30,5 33,27 30,31 27,27" fill="${hi==='N'?stroke:dim}"/>
+    <polygon points="55,30 33,27 29,30 33,33" fill="${hi==='E'?stroke:dim}"/>
+    <polygon points="30,55 27,33 30,29 33,33" fill="${hi==='S'?stroke:dim}"/>
+    <polygon points="5,30 27,33 31,30 27,27" fill="${hi==='W'?stroke:dim}"/>
+    <circle cx="30" cy="30" r="4" fill="${stroke}" stroke="#fff" stroke-width="1" opacity=".9"/>
+    <text x="30" y="14" text-anchor="middle" font-size="7" fill="${hi==='N'?stroke:dim}" font-family="Space Mono,monospace" font-weight="700">N</text>
+    <text x="47" y="33" text-anchor="middle" font-size="7" fill="${hi==='E'?stroke:dim}" font-family="Space Mono,monospace">E</text>
+    <text x="30" y="49" text-anchor="middle" font-size="7" fill="${hi==='S'?stroke:dim}" font-family="Space Mono,monospace">S</text>
+    <text x="13" y="33" text-anchor="middle" font-size="7" fill="${hi==='W'?stroke:dim}" font-family="Space Mono,monospace">W</text>
+  </svg>`;
+}
+
+function generateSign() {
+  const zone = document.getElementById('sg-zone').value || 'MY ZONE';
+  const addr = document.getElementById('sg-addr').value || 'HIL-???';
+  const tag  = document.getElementById('sg-tag').value || '';
+  const date = new Date().toLocaleDateString();
+  const qrData = getSgnQRData();
+  const builders = {deco:buildDecoSign,tin:buildTinSign,ind:buildIndSign,chalk:buildChalkSign,farm:buildFarmSign,kids:buildKidsSign,space:buildSpaceSign,blue:buildBlueSign};
+  const html = (builders[signTheme]||buildDecoSign)(zone,addr,tag,date);
+  document.getElementById('sign-out').innerHTML = html;
+  document.getElementById('sign-preview').classList.add('visible');
+  if(qrData) {
+    setTimeout(() => {
+      const el = document.getElementById('sgn-qr');
+      if(el) new QRCode(el, {text:qrData,width:62,height:62,colorDark:'#000',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.M});
+    }, 60);
+  }
+}
+
+const qrBox = (id,bg,border) => `<div id="${id}" style="background:${bg||'#fff'};padding:3px;border-radius:3px;flex-shrink:0;${border?'border:'+border:''}"></div>`;
+const qrSlot = () => signQRMode!=='none' ? qrBox('sgn-qr') : '';
+
+function buildDecoSign(z,a,t,d){return`<div class="s-deco"><div class="deco-hdr"><span>◈</span><span>HIL ∙ HOME INVENTORY LOCATOR</span><span>◈</span></div><div class="deco-body">${compassSVG(signWall,'#c8a84b','rgba(26,18,8,.12)')}<div class="deco-main"><div class="deco-zn">${z}</div>${t?'<div class="deco-sub">'+t+'</div>':''}<div class="deco-sub" style="margin-top:4px">${a}${signWall?' ∙ '+signWall+' WALL':''}</div></div>${qrSlot()}</div><div class="deco-ftr"><span>◆ HL SYSTEM v1.0 ◆</span><span>${d}</span></div></div>`;}
+function buildTinSign(z,a,t,d){return`<div class="s-tin"><div class="tin-rivet tl"></div><div class="tin-rivet tr"></div><div class="tin-rivet bl"></div><div class="tin-rivet br"></div><div class="tin-hdr">▸ HIL MASTER SYSTEM ◂</div><div class="tin-body"><div style="flex:1"><div class="tin-zn">${z}</div>${t?'<div class="tin-sub">'+t+'</div>':''}<div class="tin-sub" style="color:#8b6914">${a}${signWall?' · '+signWall+' WALL':''}</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'#1a3a5c','rgba(26,58,92,.1)')}${qrSlot()}</div></div><div class="tin-bnr">NOTHING IS LOST · EVERYTHING IS LOGIC</div></div>`;}
+function buildIndSign(z,a,t,d){return`<div class="s-ind"><div class="ind-hdr"><span class="ind-hdr-l">▸ HIL MASTER SYSTEM</span><span class="ind-hdr-r">${d}</span></div><div class="ind-body"><div style="flex:1"><div class="ind-zn">${z}</div>${t?'<div class="ind-sub">'+t+'</div>':''}<div class="ind-addr">${a}</div>${signWall?'<div class="ind-wtag">WALL: '+signWall+'</div>':''}</div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'#00e5ff','rgba(0,229,255,.05)')}${qrSlot()}</div></div><div class="ind-ftr"><span>HL GRAMMAR v1.0</span><span>EVERYTHING IS ADDRESSABLE</span></div></div>`;}
+function buildChalkSign(z,a,t,d){return`<div class="s-chalk"><div class="chalk-grain"></div><div class="chalk-hdr">✦ HIL SYSTEM ✦</div><div class="chalk-body"><div style="flex:1"><div class="chalk-zn">${z}</div>${t?'<div class="chalk-sub">'+t+'</div>':''}<div class="chalk-addr">${a}${signWall?' · '+signWall+' WALL':''}</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'rgba(255,255,255,.6)','rgba(255,255,255,.05)')}${qrSlot()}</div></div><div class="chalk-ftr"><span>HL v1.0</span><span>${d}</span></div></div>`;}
+function buildFarmSign(z,a,t,d){return`<div class="s-farm"><div class="farm-shiplap"></div><div class="farm-hdr">✦ HIL HOME INVENTORY LOCATOR ✦</div><div class="farm-body"><div style="flex:1"><div class="farm-zn">${z}</div>${t?'<div class="farm-sub">'+t+'</div>':''}<div class="farm-addr">${a}${signWall?' · '+signWall+' WALL':''}</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'#5a3a1a','rgba(90,58,26,.1)')}${qrSlot()}</div></div><div class="farm-ftr"><span>HL SYSTEM v1.0</span><span>${d}</span></div></div>`;}
+function buildKidsSign(z,a,t,d){return`<div class="s-kids"><div class="kids-hdr">🏠 HIL HOME SYSTEM 🏠</div><div class="kids-body"><div style="flex:1"><div class="kids-zn">${z}</div>${t?'<div class="kids-sub">'+t+'</div>':''}<div class="kids-addr">${a}${signWall?' · '+signWall+' WALL':''}</div></div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'rgba(255,255,255,.8)','rgba(255,255,255,.1)')}${qrSlot()}</div></div><div class="kids-ftr">✨ Everything has a place ✨</div></div>`;}
+function buildSpaceSign(z,a,t,d){return`<div class="s-space"><div class="space-stars"></div><div class="space-hdr"><span>◈</span><span style="letter-spacing:4px">HIL · SECTOR DESIGNATION</span><span>◈</span></div><div class="space-body"><div style="flex:1"><div class="space-zn">${z}</div>${t?'<div class="space-sub">'+t+'</div>':''}<div class="space-addr">${a}</div>${signWall?'<div class="space-badge">SECTOR: '+signWall+'</div>':''}</div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'#4d9fff','rgba(0,50,150,.15)')}${qrSlot()}</div></div><div class="space-ftr"><span>HL GRAMMAR v1.0</span><span>STARDATE: ${d}</span></div></div>`;}
+function buildBlueSign(z,a,t,d){return`<div class="s-blue"><div class="blue-grid"></div><div class="blue-hdr"><span>┼──</span><span>HIL MASTER SYSTEM · ZONE</span><span>──┼</span></div><div class="blue-body"><div style="flex:1"><div class="blue-zn">${z}</div>${t?'<div class="blue-sub">'+t+'</div>':''}<div class="blue-addr">${a}</div>${signWall?'<div class="blue-dim">ORIENTATION: '+signWall+'</div>':''}</div><div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0">${compassSVG(signWall,'rgba(255,255,255,.55)','rgba(255,255,255,.03)')}${qrSlot()}</div></div><div class="blue-ftr"><span>DWG: ${a}</span><span>${d}</span><span>REV: A</span></div></div>`;}
+
+function clearSign() {
+  document.querySelectorAll('#tp-signs input[type="text"]').forEach(i=>i.value='');
+  document.getElementById('sign-preview').classList.remove('visible');
+  signWall='';
+  document.querySelectorAll('.cmp-btn').forEach(b=>b.classList.remove('active'));
+}
+
+// ── TOAST ──
+function lsToast(msg) {
+  const t = document.getElementById('ls-toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// init
+buildZoneAddr();
+</script>
+</body>
+</html>
