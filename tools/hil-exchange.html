@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Exchange</title>
+<style>
+/* ── EXCHANGE LAYER — maps to HIL Shell tokens ── */
+:root {
+  --amber:      var(--hil-amber, #cc8800);
+  --amber-l:    #e09a00;
+  --amber-dim:  rgba(204,136,0,0.12);
+  --moss:       #3d6b4a;
+  --moss-l:     var(--hil-green, #00cc66);
+  --moss-dim:   var(--hil-green-dim, #0a2614);
+  --green:      var(--hil-green, #00cc66);
+  --green-dim:  var(--hil-green-dim, #0a2614);
+  --blue:       #4a9bc8;
+  --blue-dim:   #1e3a4a;
+  --purple:     #b084e8;
+  --purple-dim: #1e1230;
+  --red:        var(--hil-danger, #cc3333);
+  --red-dim:    rgba(204,51,51,0.12);
+  --text:       var(--hil-text, #dde8e2);
+  --text2:      #9db5a5;
+  --text3:      var(--hil-text-muted, #6b7d72);
+  --bg2:        var(--hil-surface, #141816);
+  --bg3:        var(--hil-surface-2, #1c201e);
+  --bg4:        #222824;
+  --border:     var(--hil-border, #2a302c);
+  --border2:    #344d44;
+  --mono:       var(--font-mono, 'Space Mono', monospace);
+  --sans:       var(--font-body, 'Barlow', sans-serif);
+  --display:    var(--font-display, 'Orbitron', sans-serif);
+  --ui:         var(--font-ui, 'Barlow Condensed', sans-serif);
+}
+
+body { font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+
+/* ── LAYOUT ── */
+.exchange-wrap {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: calc(100vh - var(--hil-offset, 96px));
+}
+
+/* ── SIDEBAR ── */
+.ex-sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: var(--hil-offset, 96px);
+  height: calc(100vh - var(--hil-offset, 96px));
+  overflow-y: auto;
+}
+
+.nav-section {
+  padding: 6px 14px 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-top: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  font-family: var(--ui);
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--bg3); border-left-color: var(--amber); color: var(--text); }
+.nav-badge {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--amber-dim);
+  color: var(--amber);
+  border-radius: 10px;
+  padding: 1px 5px;
+}
+.nav-badge.green { background: var(--green-dim); color: var(--green); }
+
+/* ── MAIN ── */
+.ex-main { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+
+/* ── PAGE HEADER ── */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.page-title { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--text); letter-spacing: 0.04em; }
+.page-sub { font-size: 11px; color: var(--text3); margin-top: 3px; font-family: var(--mono); letter-spacing: 0.03em; }
+
+/* ── BUTTONS ── */
+.btn { font-family: var(--ui); font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 4px; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; letter-spacing: 0.04em; }
+.btn-amber { background: var(--amber); color: #000; }
+.btn-amber:hover { background: var(--amber-l); }
+.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+.btn-ghost:hover { background: var(--bg3); color: var(--text); }
+.btn-green { background: var(--green); color: #000; }
+.btn-green:hover { opacity: 0.85; }
+.btn:disabled, .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover, .btn-ghost:disabled:hover { background: transparent; color: var(--text2); }
+
+/* ── FILTER BAR ── */
+.filter-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.filter-chip {
+  font-family: var(--mono); font-size: 10px; padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border2); color: var(--text2); background: var(--bg2);
+  cursor: pointer; letter-spacing: 0.04em; transition: all 0.15s; user-select: none;
+}
+.filter-chip:hover { border-color: var(--amber); color: var(--amber); }
+.filter-chip.active { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.filter-chip.ring1.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.filter-chip.ring3.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+.filter-chip.brag-chip.active { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+.filter-sep { width: 1px; height: 18px; background: var(--border); }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text3); padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;
+}
+
+/* ── SUMMARY BAR ── */
+.summary-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.summary-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+}
+.summary-icon { font-size: 20px; flex-shrink: 0; }
+.summary-val { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--text); line-height: 1; }
+.summary-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.04em; margin-top: 3px; }
+.summary-card.auction { border-top: 2px solid var(--amber); }
+.summary-card.sell    { border-top: 2px solid var(--green); }
+.summary-card.barter  { border-top: 2px solid var(--blue); }
+.summary-card.brag    { border-top: 2px solid var(--purple); }
+
+/* ── CARDS GRID ── */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+
+/* ── ITEM CARD ── */
+.item-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; transition: border-color 0.2s; }
+.item-card:hover { border-color: var(--border2); }
+.item-card.mode-auction { border-top: 2px solid var(--amber); }
+.item-card.mode-sell    { border-top: 2px solid var(--green); }
+.item-card.mode-barter  { border-top: 2px solid var(--blue); }
+.item-card.mode-trade   { border-top: 2px solid #4a9bc8; }
+.item-card.mode-brag    { border-top: 2px solid var(--purple); }
+
+.card-top { padding: 12px 14px 8px; display: flex; gap: 10px; align-items: flex-start; }
+.card-thumb { width: 48px; height: 48px; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; overflow: hidden; }
+.card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.card-meta { flex: 1; min-width: 0; }
+.card-name { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-hl { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.06em; margin-top: 2px; }
+.card-cond { display: inline-flex; align-items: center; gap: 3px; font-family: var(--mono); font-size: 9px; padding: 2px 5px; border-radius: 3px; margin-top: 3px; }
+.cond-vg { background: var(--green-dim); color: var(--green); }
+.cond-g  { background: var(--moss-dim); color: var(--moss-l); }
+.cond-f  { background: var(--amber-dim); color: var(--amber); }
+.card-ring { font-family: var(--mono); font-size: 8px; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 10px; border: 1px solid; white-space: nowrap; }
+.ring-1 { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+.ring-2 { color: var(--amber); border-color: var(--amber); background: var(--amber-dim); }
+.ring-3 { color: var(--blue);  border-color: var(--blue);  background: var(--blue-dim); }
+
+/* ── MODE TABS ── */
+.mode-tabs { display: flex; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.mode-tab { flex: 1; padding: 6px 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em; text-align: center; color: var(--text3); }
+
+/* ── CARD BODY ── */
+.card-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+.ebay-baseline { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 7px 9px; }
+.ebay-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.06em; }
+.ebay-price { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); }
+.ebay-source { font-family: var(--mono); font-size: 8px; color: var(--text3); }
+
+/* ── SELL ── */
+.price-row { display: flex; align-items: center; gap: 6px; }
+.price-input-wrap { flex: 1; position: relative; }
+.price-prefix { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-size: 12px; color: var(--text3); }
+.price-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; padding: 7px 9px 7px 20px; font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); outline: none; transition: border-color 0.15s; }
+.price-input:focus { border-color: var(--green); }
+
+/* ── BARTER/TRADE ── */
+.trade-req { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 7px 9px; }
+
+/* ── BRAG ── */
+.brag-provenance { background: var(--purple-dim); border: 1px solid var(--purple); border-radius: 4px; padding: 9px 11px; font-size: 11px; color: #c4a8f0; line-height: 1.5; font-style: italic; }
+
+/* ── UPVOTE ── */
+.upvote-row { display: flex; align-items: center; gap: 6px; }
+.upvote-btn { display: flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 3px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text3); cursor: pointer; transition: all 0.15s; }
+.upvote-btn:hover { border-color: var(--amber); color: var(--amber); }
+.upvote-btn.voted { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.upvote-btn.voted-heart { background: rgba(204,51,51,0.1); border-color: var(--red); color: var(--red); }
+
+/* ── CARD FOOTER ── */
+.card-footer { padding: 8px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.provenance-tag { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.04em; }
+.provenance-tag span { color: var(--green); }
+
+/* ── PUSH-TO-MARKETPLACE PLACEHOLDER ── */
+.push-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 4px; padding: 7px 9px; }
+.push-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.04em; }
+.push-label span { color: var(--text2); }
+.btn-push { font-family: var(--mono); font-size: 9px; padding: 4px 9px; border-radius: 3px; border: 1px solid var(--border2); background: transparent; color: var(--text3); cursor: not-allowed; letter-spacing: 0.04em; }
+
+/* ── HISTORY WALL ── */
+.history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.history-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; opacity: 0.9; transition: opacity 0.2s, border-color 0.2s; }
+.history-card:hover { opacity: 1; border-color: var(--border2); }
+.history-card-top { padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
+.history-thumb { width: 44px; height: 44px; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; filter: grayscale(30%); }
+.history-meta { flex: 1; min-width: 0; }
+.history-name { font-family: var(--display); font-weight: 700; font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-hl { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.06em; margin-top: 2px; }
+.history-how { font-family: var(--mono); font-size: 8px; padding: 2px 6px; border-radius: 10px; border: 1px solid var(--border2); color: var(--text3); margin-top: 3px; display: inline-block; }
+.history-body { padding: 8px 14px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 5px; }
+.history-provenance-line { font-size: 10px; color: var(--text3); font-style: italic; line-height: 1.5; border-left: 2px solid var(--border2); padding-left: 7px; }
+.history-tx-row { display: flex; align-items: center; justify-content: space-between; }
+.history-tx-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.04em; }
+.history-tx-val { font-family: var(--mono); font-size: 10px; color: var(--text2); font-weight: 700; }
+.history-tx-val.sold { color: var(--green); }
+.history-tx-val.donated { color: var(--green); }
+.history-tx-val.traded { color: var(--blue); }
+
+/* ── GENEROSITY PANEL ── */
+.gen-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.gen-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+.gen-icon { width: 36px; height: 36px; border-radius: 50%; background: var(--amber-dim); border: 2px solid var(--amber); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.gen-title { font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--text); }
+.gen-tier { font-family: var(--mono); font-size: 9px; color: var(--amber); letter-spacing: 0.06em; margin-top: 2px; }
+.gen-score-big { margin-left: auto; text-align: right; }
+.gen-score-num { font-family: var(--display); font-weight: 900; font-size: 28px; color: var(--amber-l); line-height: 1; }
+.gen-score-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.06em; }
+.gen-body { display: grid; grid-template-columns: repeat(3, 1fr); }
+.gen-stat { padding: 12px 16px; border-right: 1px solid var(--border); }
+.gen-stat:last-child { border-right: none; }
+.gen-stat-val { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--text); }
+.gen-stat-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: 0.04em; margin-top: 2px; }
+.gen-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.giver-bonus { display: flex; align-items: center; gap: 8px; background: var(--amber-dim); border: 1px solid var(--amber); border-radius: 6px; padding: 8px 12px; flex: 1; }
+.giver-icon { font-size: 14px; }
+.giver-val { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--amber-l); }
+.giver-label { font-family: var(--mono); font-size: 9px; color: var(--amber); letter-spacing: 0.04em; }
+.donation-list { border-top: 1px solid var(--border); }
+.donation-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.donation-row:last-child { border-bottom: none; }
+
+/* ── MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+.modal-overlay.hidden { display: none !important; }
+.modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; width: 100%; max-width: 500px; overflow: hidden; max-height: 90vh; display: flex; flex-direction: column; }
+.modal-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--text); }
+.modal-close { width: 26px; height: 26px; border-radius: 4px; background: var(--bg3); border: 1px solid var(--border); color: var(--text3); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+.modal-close:hover { background: var(--bg4); color: var(--text); }
+
+.step-bar { display: flex; padding: 12px 18px; border-bottom: 1px solid var(--border); gap: 0; }
+.step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; }
+.step::after { content: ''; position: absolute; top: 9px; left: 50%; width: 100%; height: 1px; background: var(--border2); }
+.step:last-child::after { display: none; }
+.step-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 8px; color: var(--text3); position: relative; z-index: 1; }
+.step.done .step-dot { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.step.active .step-dot { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.step-name { font-family: var(--mono); font-size: 8px; color: var(--text3); letter-spacing: 0.04em; text-align: center; }
+.step.active .step-name { color: var(--amber); }
+.step.done .step-name { color: var(--green); }
+
+.modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.field-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em; color: var(--text3); text-transform: uppercase; margin-bottom: 5px; }
+.field-hint { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 4px; line-height: 1.5; }
+
+.mode-pick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.mode-pick { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px; cursor: pointer; transition: all 0.15s; user-select: none; }
+.mode-pick:hover { border-color: var(--border2); }
+.mode-pick-icon { font-size: 18px; margin-bottom: 5px; }
+.mode-pick-name { font-family: var(--display); font-weight: 700; font-size: 11px; color: var(--text); margin-bottom: 2px; }
+.mode-pick-desc { font-size: 10px; color: var(--text3); line-height: 1.4; }
+.mode-pick.selected-auction { border-color: var(--amber); background: var(--amber-dim); }
+.mode-pick.selected-sell    { border-color: var(--green); background: var(--green-dim); }
+.mode-pick.selected-barter  { border-color: var(--blue);  background: var(--blue-dim); }
+.mode-pick.selected-trade   { border-color: var(--blue);  background: var(--blue-dim); }
+.mode-pick.selected-brag    { border-color: var(--purple); background: var(--purple-dim); }
+
+.ring-pick { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 10px; user-select: none; margin-bottom: 6px; }
+.ring-pick:hover { border-color: var(--border2); }
+.ring-pick.sel-r1 { border-color: var(--green); background: var(--green-dim); }
+.ring-pick.sel-r2 { border-color: var(--amber); background: var(--amber-dim); }
+.ring-pick.sel-r3 { border-color: var(--blue);  background: var(--blue-dim); }
+.ring-pick-num { font-family: var(--display); font-weight: 900; font-size: 16px; width: 28px; text-align: center; flex-shrink: 0; }
+.ring-pick-name { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--text); }
+.ring-pick-desc { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+.window-tabs { display: flex; gap: 6px; }
+.window-tab { flex: 1; padding: 7px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--text3); cursor: pointer; transition: all 0.15s; user-select: none; }
+.window-tab:hover { border-color: var(--amber); color: var(--amber); }
+.window-tab.active { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+.window-tab-days { font-family: var(--display); font-weight: 700; font-size: 16px; display: block; color: inherit; }
+
+.confirm-block { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+.confirm-row { display: flex; align-items: center; justify-content: space-between; font-size: 11px; }
+.confirm-key { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: 0.04em; }
+.confirm-val { font-size: 11px; color: var(--text); font-weight: 600; }
+.confirm-mode-badge { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 3px; }
+.tag-auction { background: var(--amber-dim); color: var(--amber); }
+.tag-sell    { background: var(--green-dim); color: var(--green); }
+.tag-barter  { background: var(--blue-dim);  color: var(--blue); }
+.tag-trade   { background: var(--blue-dim);  color: var(--blue); }
+.tag-brag    { background: var(--purple-dim); color: var(--purple); }
+.provenance-note { font-size: 10px; color: var(--text3); padding: 7px 10px; background: var(--bg4); border-radius: 4px; border-left: 2px solid var(--green); line-height: 1.5; }
+.broker-note { font-size: 10px; color: var(--text3); padding: 7px 10px; background: var(--bg4); border-radius: 4px; border-left: 2px solid var(--amber); line-height: 1.5; }
+
+.modal-footer { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+textarea.hil-tx { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; padding: 9px 10px; color: var(--text); font-family: var(--sans); font-size: 12px; resize: vertical; min-height: 70px; outline: none; transition: border-color 0.15s; }
+textarea.hil-tx:focus { border-color: var(--green); }
+
+/* ── AUTH PROMPT (inline, not full gate) ── */
+.auth-prompt { background: var(--amber-dim); border: 1px solid var(--amber); border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 10px; color: var(--amber); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 700px) {
+  .exchange-wrap { grid-template-columns: 1fr; }
+  .ex-sidebar { display: none; }
+  .summary-bar { grid-template-columns: repeat(2, 1fr); }
+  .cards-grid { grid-template-columns: 1fr; }
+  .gen-body { grid-template-columns: 1fr; }
+  .gen-stat { border-right: none; border-bottom: 1px solid var(--border); }
+  .mode-pick-grid { grid-template-columns: 1fr; }
+}
+
+.hidden { display: none !important; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HIL SHELL — canonical source of truth: Firebase init, auth, header/nav, design tokens, toast system -->
+<script src="hil-shell.js"></script>
+
+<div class="exchange-wrap">
+
+  <!-- SIDEBAR -->
+  <nav class="ex-sidebar">
+    <div class="nav-section">Exchange</div>
+    <div class="nav-item active" onclick="setView(this)"><span>◈</span> Active Listings <span class="nav-badge" id="nb-active">—</span></div>
+    <div class="nav-item" onclick="setView(this)"><span>⏱</span> Live Auctions <span class="nav-badge" id="nb-auctions">—</span></div>
+    <div class="nav-item" onclick="setView(this)"><span>★</span> Brag Wall <span class="nav-badge" style="background:rgba(176,132,232,.15);color:#b084e8;" id="nb-brag">—</span></div>
+    <div class="nav-item" onclick="setView(this)"><span>⇄</span> Trade Requests <span class="nav-badge green" id="nb-trades">—</span></div>
+    <div class="nav-item" onclick="setView(this)"><span>◎</span> History Wall</div>
+    <div class="nav-section">My Exchange</div>
+    <div class="nav-item" onclick="setView(this)"><span>▤</span> My Listings</div>
+    <div class="nav-item" onclick="setView(this)"><span>♡</span> Generosity Score</div>
+    <div class="nav-section">Rings</div>
+    <div class="nav-item"><span>①</span> Household Pod</div>
+    <div class="nav-item"><span>②</span> Maker Network</div>
+    <div class="nav-item"><span>③</span> Public / Estate</div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="ex-main">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div>
+        <div class="page-title">HIL Exchange</div>
+        <div class="page-sub" id="listing-sub">Loading listings…</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="openListingModal()">+ List Item</button>
+        <button class="btn btn-amber" onclick="openListingModal()">Quick List ⚡</button>
+      </div>
+    </div>
+
+    <!-- AUTH PROMPT (shown when not signed in) -->
+    <div class="auth-prompt hidden" id="auth-prompt">
+      <span>Sign in to list items, make offers, and upvote. Browsing is always free.</span>
+      <button class="btn btn-amber" onclick="triggerShellAuth()" style="font-size:11px;padding:5px 12px;">Sign In →</button>
+    </div>
+
+    <!-- SUMMARY BAR -->
+    <div class="summary-bar">
+      <div class="summary-card auction"><div class="summary-icon">⏱</div><div><div class="summary-val" id="sum-auction">0</div><div class="summary-label">Live Auctions</div></div></div>
+      <div class="summary-card sell"><div class="summary-icon">◈</div><div><div class="summary-val" id="sum-sell">0</div><div class="summary-label">Fixed Price</div></div></div>
+      <div class="summary-card barter"><div class="summary-icon">⇄</div><div><div class="summary-val" id="sum-barter">0</div><div class="summary-label">Barter Open</div></div></div>
+      <div class="summary-card brag"><div class="summary-icon">★</div><div><div class="summary-val" id="sum-brag">0</div><div class="summary-label">Brag Wall</div></div></div>
+    </div>
+
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="toggleFilter(this,'all')">All</div>
+      <div class="filter-chip ring1" onclick="toggleFilter(this,'ring1')">① Ring 1</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'ring2')">② Ring 2</div>
+      <div class="filter-chip ring3" onclick="toggleFilter(this,'ring3')">③ Ring 3</div>
+      <div class="filter-sep"></div>
+      <div class="filter-chip" onclick="toggleFilter(this,'auction')">Auction</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'sell')">Sell</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'barter')">Barter</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'trade')">Trade</div>
+      <div class="filter-chip brag-chip" onclick="toggleFilter(this,'brag')">★ Brag</div>
+      <div class="filter-sep"></div>
+      <div class="filter-chip" onclick="toggleFilter(this,'mine')">Mine Only</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'ending')">Ending Soon</div>
+    </div>
+
+    <!-- LIVE LISTINGS (from Firestore — this is the only listings source now, no demo cards) -->
+    <div id="live-listings-section">
+      <div class="section-label"><span>◈ Live Listings</span><span id="live-count" style="color:var(--green);">Loading…</span></div>
+      <div class="cards-grid" id="live-cards-grid">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:20px;text-align:center;grid-column:1/-1;">
+          Loading Exchange listings…
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY WALL -->
+    <div>
+      <div class="section-label"><span>◎ History Wall — Passed Through</span><span id="history-count" style="color:var(--text3);"></span></div>
+      <div class="history-grid" id="history-grid">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:20px;text-align:center;grid-column:1/-1;">
+          No completed transactions yet.
+        </div>
+      </div>
+    </div>
+
+    <!-- GENEROSITY SCORE -->
+    <div>
+      <div class="section-label"><span>♡ Generosity Score</span><span style="color:var(--amber);" id="gen-tier-label">Sign in to see yours</span></div>
+      <div class="gen-panel">
+        <div class="gen-header">
+          <div class="gen-icon">🌿</div>
+          <div>
+            <div class="gen-title" id="gen-name">—</div>
+            <div class="gen-tier" id="gen-tier">Sign in to load your score</div>
+          </div>
+          <div class="gen-score-big">
+            <div class="gen-score-num" id="gen-score">—</div>
+            <div class="gen-score-label">Generosity Score</div>
+          </div>
+        </div>
+        <div class="gen-body">
+          <div class="gen-stat"><div class="gen-stat-val" id="gen-donated" style="color:var(--green);">—</div><div class="gen-stat-label">Items Donated</div></div>
+          <div class="gen-stat"><div class="gen-stat-val" id="gen-value" style="color:var(--amber);">—</div><div class="gen-stat-label">Value Circulated</div></div>
+          <div class="gen-stat"><div class="gen-stat-val" id="gen-trades" style="color:var(--green);">—</div><div class="gen-stat-label">Trades Completed</div></div>
+        </div>
+        <div class="gen-footer">
+          <div class="giver-bonus">
+            <div class="giver-icon">✦</div>
+            <div>
+              <div class="giver-val" id="gen-bonus-val">—</div>
+              <div class="giver-label" id="gen-bonus-label">Sign in to see your tier</div>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--text3);">Next tier at</div>
+            <div style="font-family:var(--display);font-weight:700;font-size:14px;color:var(--text2);" id="gen-next">1,000 pts</div>
+          </div>
+        </div>
+        <div class="donation-list" id="donation-list">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:16px;text-align:center;">Sign in to see your donation history</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- LISTING FLOW MODAL -->
+<div class="modal-overlay hidden" id="listing-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">List Item — <span style="color:var(--amber);" id="modal-item-label">New Listing</span></div>
+      <div class="modal-close" onclick="closeModal()">✕</div>
+    </div>
+
+    <!-- Steps -->
+    <div class="step-bar">
+      <div class="step active" id="ms1"><div class="step-dot">1</div><div class="step-name">Item</div></div>
+      <div class="step" id="ms2"><div class="step-dot">2</div><div class="step-name">Mode</div></div>
+      <div class="step" id="ms3"><div class="step-dot">3</div><div class="step-name">Terms</div></div>
+      <div class="step" id="ms4"><div class="step-dot">4</div><div class="step-name">Ring</div></div>
+      <div class="step" id="ms5"><div class="step-dot">5</div><div class="step-name">Confirm</div></div>
+    </div>
+
+    <!-- Step 1: Item -->
+    <div class="modal-body" id="sc1">
+      <div class="field-label">Select an Item From Your Vault</div>
+      <input class="price-input" style="padding-left:9px;" id="item-search" type="text" placeholder="Search by name or HL address…" oninput="renderItemPicker()">
+      <div id="item-picker-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;margin-top:4px;">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:10px;text-align:center;">Loading your items…</div>
+      </div>
+      <div id="item-picked-banner" class="hidden" style="background:var(--green-dim);border:1px solid var(--green);border-radius:4px;padding:8px 10px;font-size:11px;color:var(--green);display:flex;align-items:center;justify-content:space-between;">
+        <span id="item-picked-label">—</span>
+        <button class="btn-sm btn-sm-red" onclick="clearItemPick()">Change</button>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+        <div class="field-label">Can't find it? List manually</div>
+        <div class="hil-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input class="price-input" style="padding-left:9px;" id="manual-name" type="text" placeholder="Item name" oninput="clearVaultPick()">
+          <input class="price-input" style="padding-left:9px;" id="manual-address" type="text" placeholder="HL address (optional)" oninput="clearVaultPick()">
+        </div>
+        <div class="field-hint">Manual listings aren't linked to a Vault record — no photo, no provenance log on the item itself. Better to inventory it first if you can.</div>
+      </div>
+    </div>
+
+    <!-- Step 2: Mode -->
+    <div class="modal-body hidden" id="sc2">
+      <div class="field-label">Select Transaction Mode</div>
+      <div class="mode-pick-grid">
+        <div class="mode-pick" id="mp-auction" onclick="selectMode('auction')"><div class="mode-pick-icon">⏱</div><div class="mode-pick-name">Auction</div><div class="mode-pick-desc">3/5/7 day silent window. Buy It Now optional. Unsold → Sell.</div></div>
+        <div class="mode-pick" id="mp-sell" onclick="selectMode('sell')"><div class="mode-pick-icon">◈</div><div class="mode-pick-name">Sell</div><div class="mode-pick-desc">Fixed price. Lists until sold.</div></div>
+        <div class="mode-pick" id="mp-barter" onclick="selectMode('barter')"><div class="mode-pick-icon">⇄</div><div class="mode-pick-name">Barter</div><div class="mode-pick-desc">Accept goods in exchange.</div></div>
+        <div class="mode-pick" id="mp-trade" onclick="selectMode('trade')"><div class="mode-pick-icon">↔</div><div class="mode-pick-name">Trade</div><div class="mode-pick-desc">Propose a specific swap. Request queue.</div></div>
+        <div class="mode-pick" id="mp-brag" onclick="selectMode('brag')" style="grid-column:1/-1;border-color:#3a1f5c;"><div class="mode-pick-icon">★</div><div class="mode-pick-name" style="color:var(--purple);">Brag</div><div class="mode-pick-desc">Display with pride. No price posted. Right offer converts to listing.</div></div>
+      </div>
+    </div>
+
+    <!-- Step 3: Terms -->
+    <div class="modal-body hidden" id="sc3">
+
+      <!-- Shared reference price — manual entry for now (eBay API price-lookup wiring pending) -->
+      <div id="t-refprice">
+        <div class="field-label">Reference Price (optional)</div>
+        <div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="ref-price" type="number" placeholder="Ballpark value"></div></div>
+        <div class="field-hint">Enter manually for now — automatic eBay price lookup is wired for later, not live yet.</div>
+      </div>
+
+      <!-- Auction -->
+      <div id="t-auction" class="hidden">
+        <div class="field-label" style="margin-bottom:7px;">Auction Window</div>
+        <div class="window-tabs">
+          <div class="window-tab" onclick="selWin(this,3)"><span class="window-tab-days">3</span>days</div>
+          <div class="window-tab active" onclick="selWin(this,5)"><span class="window-tab-days">5</span>days</div>
+          <div class="window-tab" onclick="selWin(this,7)"><span class="window-tab-days">7</span>days</div>
+        </div>
+        <div style="margin-top:12px;"><div class="field-label">Buy It Now Price (optional)</div><div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="bit-input" type="number" placeholder="Leave blank to skip"></div></div></div>
+        <div style="margin-top:10px;"><div class="field-label">Starting Bid</div><div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="start-bid" type="number" placeholder="0 for no reserve"></div></div></div>
+      </div>
+      <!-- Sell -->
+      <div id="t-sell" class="hidden">
+        <div class="field-label">Set Price</div>
+        <div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="sell-price" type="number" placeholder="Your asking price"></div></div>
+      </div>
+      <!-- Barter -->
+      <div id="t-barter" class="hidden">
+        <div class="field-label">What are you seeking?</div>
+        <textarea class="hil-tx" id="barter-text" placeholder="e.g. Brass hardware, vintage knobs, hand tools in working condition…"></textarea>
+      </div>
+      <!-- Trade -->
+      <div id="t-trade" class="hidden">
+        <div class="field-label">Specific Trade Request</div>
+        <textarea class="hil-tx" id="trade-text" placeholder="Describe the specific item(s) you want to trade for…"></textarea>
+      </div>
+      <!-- Brag -->
+      <div id="t-brag" class="hidden">
+        <div class="field-label">Provenance Hook (shown publicly)</div>
+        <textarea class="hil-tx" id="brag-text" style="border-color:#3a1f5c;color:#c4a8f0;" placeholder="Tell the story. Where did it come from? What would it take to let it go?"></textarea>
+        <div style="margin-top:10px;background:var(--purple-dim);border:1px solid #3a1f5c;border-radius:4px;padding:10px;">
+          <div class="field-label" style="color:#8a6abf;">Your Private Floor (not shown)</div>
+          <div class="price-row"><div class="price-input-wrap"><span class="price-prefix" style="color:#8a6abf;">$</span><input class="price-input" id="brag-floor" type="number" placeholder="What would it take?" style="border-color:#3a1f5c;background:var(--purple-dim);color:#c4a8f0;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Ring -->
+    <div class="modal-body hidden" id="sc4">
+      <div class="field-label">Set Visibility Ring</div>
+      <div id="ring-picks">
+        <div class="ring-pick" id="rp1" onclick="selectRing(1)"><div class="ring-pick-num" style="color:var(--green);">①</div><div><div class="ring-pick-name">Household & Pod</div><div class="ring-pick-desc">Trusted household members and approved pod participants only.</div></div></div>
+        <div class="ring-pick" id="rp2" onclick="selectRing(2)"><div class="ring-pick-num" style="color:var(--amber);">②</div><div><div class="ring-pick-name">Maker & Collector Network</div><div class="ring-pick-desc">Verified peers. Barter-first culture.</div></div></div>
+        <div class="ring-pick" id="rp3" onclick="selectRing(3)"><div class="ring-pick-num" style="color:var(--blue);">③</div><div><div class="ring-pick-name">Public / Estate</div><div class="ring-pick-desc">No login to browse. Clear Mode, Legacy Mode, estate auctions.</div></div></div>
+      </div>
+    </div>
+
+    <!-- Step 5: Confirm -->
+    <div class="modal-body hidden" id="sc5">
+      <div class="confirm-block">
+        <div class="confirm-row"><div class="confirm-key">Item</div><div class="confirm-val" id="cf-item">—</div></div>
+        <div class="confirm-row"><div class="confirm-key">Mode</div><div id="cf-mode" class="confirm-mode-badge tag-sell">—</div></div>
+        <div class="confirm-row"><div class="confirm-key">Ring</div><div id="cf-ring" class="card-ring ring-2">—</div></div>
+        <div class="confirm-row"><div class="confirm-key">Terms</div><div class="confirm-val" id="cf-terms">—</div></div>
+        <div class="confirm-row"><div class="confirm-key">Reference Price</div><div class="confirm-val" id="cf-refprice">—</div></div>
+      </div>
+      <div class="provenance-note">✦ Every completed transaction will be logged in Firestore with provenance. The record follows the object.</div>
+      <div class="broker-note">HIL brokers the introduction and listing only. Payment and shipping are arranged directly between the parties — HIL does not process money.</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost hidden" id="m-back" onclick="modalBack()">← Back</button>
+      <div style="flex:1;font-family:var(--mono);font-size:10px;color:var(--text3);" id="m-step-label">Step 1 of 5</div>
+      <button class="btn btn-amber" id="m-next" onclick="modalNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE LISTING MODAL -->
+<div class="modal-overlay hidden" id="manage-modal" onclick="if(event.target===this)closeManageModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">Manage Listing — <span style="color:var(--amber);" id="manage-item-label">—</span></div>
+      <div class="modal-close" onclick="closeManageModal()">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-label">Status</div>
+      <div class="mode-pick-grid" id="manage-status-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="mode-pick" data-status="active" onclick="pickManageStatus('active')"><div class="mode-pick-name">Active</div></div>
+        <div class="mode-pick" data-status="pending" onclick="pickManageStatus('pending')"><div class="mode-pick-name">Pending</div></div>
+        <div class="mode-pick" data-status="sold" onclick="pickManageStatus('sold')"><div class="mode-pick-name">Sold</div></div>
+        <div class="mode-pick" data-status="withdrawn" onclick="pickManageStatus('withdrawn')"><div class="mode-pick-name">Withdrawn</div></div>
+        <div class="mode-pick" data-status="expired" onclick="pickManageStatus('expired')"><div class="mode-pick-name">Expired</div></div>
+      </div>
+
+      <div id="manage-price-field" class="hidden">
+        <div class="field-label" style="margin-top:10px;">Price</div>
+        <div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="manage-price" type="number"></div></div>
+      </div>
+      <div id="manage-seeking-field" class="hidden">
+        <div class="field-label" style="margin-top:10px;">Seeking</div>
+        <textarea class="hil-tx" id="manage-seeking"></textarea>
+      </div>
+
+      <div class="field-label" style="margin-top:10px;">Reference Price</div>
+      <div class="price-row"><div class="price-input-wrap"><span class="price-prefix">$</span><input class="price-input" id="manage-refprice" type="number"></div></div>
+
+      <div class="broker-note" style="margin-top:6px;">Changing status here doesn't touch eBay or any other outside platform — this only updates the HIL Exchange record.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" style="border-color:var(--red);color:var(--red);" onclick="deleteManagedListing()">Delete Listing</button>
+      <div style="flex:1;"></div>
+      <button class="btn btn-ghost" onclick="closeManageModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveManagedListing()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── MANAGE LISTING ──
+let managingListingId = null, managingStatus = 'active';
+
+function openManageModal(listingId) {
+  const l = allListingsCache.find(x => x.id === listingId);
+  if (!l) { HILShell.toast('Listing not found — try refreshing','error'); return; }
+  managingListingId = listingId;
+  managingStatus = l.status || 'active';
+
+  document.getElementById('manage-item-label').textContent = l.display_name || 'Unlisted Item';
+  document.querySelectorAll('#manage-status-grid .mode-pick').forEach(el => {
+    el.classList.toggle('selected-sell', el.dataset.status === managingStatus);
+  });
+
+  const priceField = document.getElementById('manage-price-field');
+  const seekingField = document.getElementById('manage-seeking-field');
+  priceField.classList.toggle('hidden', !['sell','auction'].includes(l.mode));
+  seekingField.classList.toggle('hidden', !['barter','trade'].includes(l.mode));
+  document.getElementById('manage-price').value = l.sell?.price ?? l.auction?.buy_it_now ?? '';
+  document.getElementById('manage-seeking').value = l.barter?.seeking || l.trade?.seeking || '';
+  document.getElementById('manage-refprice').value = l.ebay_baseline ?? '';
+
+  document.getElementById('manage-modal').classList.remove('hidden');
+}
+function closeManageModal() {
+  document.getElementById('manage-modal').classList.add('hidden');
+  managingListingId = null;
+}
+function pickManageStatus(s) {
+  managingStatus = s;
+  document.querySelectorAll('#manage-status-grid .mode-pick').forEach(el => {
+    el.classList.toggle('selected-sell', el.dataset.status === s);
+  });
+}
+async function saveManagedListing() {
+  if (!managingListingId) return;
+  const user = window.currentUser, db = window.db;
+  if (!user || !db) { HILShell.toast('Sign in required','error'); return; }
+  const l = allListingsCache.find(x => x.id === managingListingId);
+  if (!l) return;
+
+  const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+  const updates = {
+    status: managingStatus,
+    updated_at: serverTimestamp(),
+    ebay_baseline: parseFloat(document.getElementById('manage-refprice').value) || null,
+  };
+  if (['sell','auction'].includes(l.mode)) {
+    const price = parseFloat(document.getElementById('manage-price').value) || null;
+    if (l.mode === 'sell') updates.sell = { ...(l.sell||{}), price };
+    if (l.mode === 'auction') updates.auction = { ...(l.auction||{}), buy_it_now: price };
+  }
+  if (['barter','trade'].includes(l.mode)) {
+    const seeking = document.getElementById('manage-seeking').value;
+    if (l.mode === 'barter') updates.barter = { ...(l.barter||{}), seeking };
+    if (l.mode === 'trade')  updates.trade  = { ...(l.trade||{}),  seeking };
+  }
+  if (managingStatus !== l.status) {
+    updates.provenance_log = [...(l.provenance_log||[]), {
+      date: new Date().toISOString(), event: `Status changed to ${managingStatus}`, actor_uid: user.uid, note: ''
+    }];
+  }
+
+  try {
+    await updateDoc(doc(db,'exchange_listings',managingListingId), updates);
+    HILShell.toast('✓ Listing updated','success');
+    closeManageModal();
+    loadListings();
+  } catch(err) {
+    HILShell.toast('Update failed: '+err.message,'error');
+  }
+}
+async function deleteManagedListing() {
+  if (!managingListingId) return;
+  if (!confirm('Delete this listing? This cannot be undone.')) return;
+  const db = window.db;
+  const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  try {
+    await deleteDoc(doc(db,'exchange_listings',managingListingId));
+    HILShell.toast('Listing deleted');
+    closeManageModal();
+    loadListings();
+  } catch(err) {
+    HILShell.toast('Delete failed: '+err.message,'error');
+  }
+}
+</script>
+
+<script>
+// ── STATE ──
+let mStep = 1, selMode = null, selRing = null, winDays = 5;
+let userItems = [], pickedItem = null;   // pickedItem: {id, display_name, hl_address, hero_photo, category} or null for manual
+let allListingsCache = [];
+
+// ── MODAL ──
+function openListingModal() {
+  if (!window.currentUser) { requireSignIn(); return; }
+  mStep = 1; selMode = null; selRing = null; pickedItem = null;
+  document.getElementById('item-search').value = '';
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-address').value = '';
+  document.getElementById('item-picked-banner').classList.add('hidden');
+  document.getElementById('listing-modal').classList.remove('hidden');
+  loadUserItemsForPicker();
+  updateModal();
+}
+function closeModal() { document.getElementById('listing-modal').classList.add('hidden'); }
+function modalNext() {
+  if (mStep === 5) { saveListing(); return; }
+  if (mStep === 1) {
+    const manualName = document.getElementById('manual-name').value.trim();
+    if (!pickedItem && !manualName) { flashRed('#item-search, #manual-name'); HILShell.toast('Pick an item or enter a name manually','error'); return; }
+  }
+  if (mStep === 2 && !selMode) { flashRed('.mode-pick'); return; }
+  if (mStep === 4 && !selRing) { flashRed('.ring-pick'); return; }
+  mStep++;
+  if (mStep === 3) showTerms();
+  if (mStep === 5) buildConfirm();
+  updateModal();
+}
+function modalBack() { mStep--; updateModal(); }
+function flashRed(sel) {
+  document.querySelectorAll(sel).forEach(el => { el.style.borderColor='var(--red)'; setTimeout(()=>el.style.borderColor='',600); });
+}
+function updateModal() {
+  for (let i=1;i<=5;i++) {
+    document.getElementById('sc'+i)?.classList.toggle('hidden', i!==mStep);
+    const s = document.getElementById('ms'+i);
+    if (s) { s.classList.remove('active','done'); if(i===mStep) s.classList.add('active'); if(i<mStep) s.classList.add('done'); }
+  }
+  const labels = {1:'Step 1 of 5 — Pick the item',2:'Step 2 of 5 — Select mode',3:'Step 3 of 5 — Set terms',4:'Step 4 of 5 — Visibility ring',5:'Step 5 of 5 — Confirm'};
+  document.getElementById('m-step-label').textContent = labels[mStep];
+  const back = document.getElementById('m-back');
+  const next = document.getElementById('m-next');
+  if (back) back.classList.toggle('hidden', mStep===1);
+  if (next) { next.textContent = mStep===5 ? 'Confirm Listing ✓' : 'Next →'; next.className = mStep===5 ? 'btn btn-green' : 'btn btn-amber'; }
+}
+
+// ── ITEM PICKER (Step 1) ──
+async function loadUserItemsForPicker() {
+  const user = window.currentUser, db = window.db;
+  if (!user || !db) return;
+  try {
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDocs(collection(db, 'users', user.uid, 'item_records'));
+    userItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderItemPicker();
+  } catch(err) {
+    document.getElementById('item-picker-list').innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--red);padding:10px;">Could not load items: ${err.message}</div>`;
+  }
+}
+function renderItemPicker() {
+  const q = document.getElementById('item-search').value.trim().toLowerCase();
+  const list = document.getElementById('item-picker-list');
+  const filtered = userItems.filter(i =>
+    !q || (i.display_name||i.name||'').toLowerCase().includes(q) || (i.hl_address||'').toLowerCase().includes(q)
+  );
+  if (!userItems.length) {
+    list.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:10px;text-align:center;">No items in your Vault yet — use manual entry below, or add it to Vault first.</div>`;
+    return;
+  }
+  if (!filtered.length) {
+    list.innerHTML = `<div style="font-family:var(--mono);font-size:10px;color:var(--text3);padding:10px;text-align:center;">No matches.</div>`;
+    return;
+  }
+  list.innerHTML = filtered.slice(0,25).map(i => `
+    <div class="trade-req" style="cursor:pointer;" onclick='pickItem(${JSON.stringify(i.id)})'>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="card-thumb" style="width:32px;height:32px;">${i.hero_photo ? `<img src="${i.hero_photo}" alt="">` : '📦'}</div>
+        <div>
+          <div class="trade-req-left">${(i.display_name||i.name||'Unnamed').replace(/</g,'&lt;')}</div>
+          <div class="trade-req-user">${i.hl_address||'No address'} ${i.category ? '· '+i.category : ''}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+function pickItem(id) {
+  const item = userItems.find(i => i.id === id);
+  if (!item) return;
+  pickedItem = { id: item.id, display_name: item.display_name||item.name||'Unnamed', hl_address: item.hl_address||'', hero_photo: item.hero_photo||'', category: item.category||'' };
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-address').value = '';
+  document.getElementById('item-picked-label').textContent = `✓ ${pickedItem.display_name} (${pickedItem.hl_address||'no address'})`;
+  document.getElementById('item-picked-banner').classList.remove('hidden');
+}
+
+// ── DEEP-LINK ENTRY (from Family Ledger "List on Exchange") ──
+// hilsystem.com/tools/hil-exchange.html?item=<item_record_id>&mode=<sell|barter|trade|auction|brag>
+async function openListingModalForItem(itemId, mode) {
+  if (!window.currentUser) { requireSignIn(); return; }
+  mStep = 1; selMode = null; selRing = null; pickedItem = null;
+  document.getElementById('item-search').value = '';
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-address').value = '';
+  document.getElementById('item-picked-banner').classList.add('hidden');
+  document.getElementById('listing-modal').classList.remove('hidden');
+  await loadUserItemsForPicker();
+  pickItem(itemId);
+  if (pickedItem) {
+    mStep = 2;
+    if (mode && ['auction','sell','barter','trade','brag'].includes(mode)) selectMode(mode);
+  } else {
+    HILShell.toast('Could not find that item in your Vault — pick it manually below','error');
+  }
+  updateModal();
+  // Clean the URL so a refresh doesn't re-trigger the deep link
+  history.replaceState(null, '', window.location.pathname);
+}
+function clearItemPick() {
+  pickedItem = null;
+  document.getElementById('item-picked-banner').classList.add('hidden');
+}
+function clearVaultPick() {
+  // Typing a manual name/address deselects any picked Vault item, to avoid mixed state
+  if (pickedItem) clearItemPick();
+}
+
+function selectMode(m) {
+  selMode = m;
+  document.querySelectorAll('.mode-pick').forEach(el => el.className='mode-pick');
+  document.getElementById('mp-'+m)?.classList.add('selected-'+m);
+}
+function selectRing(r) {
+  selRing = r;
+  [1,2,3].forEach(n => { const el=document.getElementById('rp'+n); el.className='ring-pick'; if(n===r) el.classList.add('sel-r'+n); });
+}
+function selWin(el, d) {
+  winDays = d;
+  el.closest('.window-tabs').querySelectorAll('.window-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function showTerms() {
+  ['auction','sell','barter','trade','brag'].forEach(m => { const el=document.getElementById('t-'+m); if(el) el.classList.toggle('hidden', m!==selMode); });
+}
+function buildConfirm() {
+  const modeLabels = {auction:`Auction · ${winDays} days`,sell:'Fixed Sell',barter:'Barter Open',trade:'Trade Request',brag:'★ Brag — Inquiries Open'};
+  const ringLabels = {1:'① Household',2:'② Maker Network',3:'③ Public'};
+  const ringClass  = {1:'ring-1',2:'ring-2',3:'ring-3'};
+  const iEl = document.getElementById('cf-item');
+  const mEl = document.getElementById('cf-mode');
+  const rEl = document.getElementById('cf-ring');
+  const tEl = document.getElementById('cf-terms');
+  const pEl = document.getElementById('cf-refprice');
+  if (iEl) {
+    const manualName = document.getElementById('manual-name').value.trim();
+    iEl.textContent = pickedItem ? `${pickedItem.display_name} (Vault)` : (manualName ? `${manualName} (manual)` : '—');
+  }
+  if (mEl) { mEl.textContent = modeLabels[selMode]||'—'; mEl.className='confirm-mode-badge tag-'+(selMode||'sell'); }
+  if (rEl) { rEl.textContent = ringLabels[selRing]||'—'; rEl.className='card-ring '+(ringClass[selRing]||'ring-2'); }
+  if (tEl) {
+    const terms = {
+      auction: `BIN: $${document.getElementById('bit-input')?.value||'—'} · Start: $${document.getElementById('start-bid')?.value||'0'}`,
+      sell: `Price: $${document.getElementById('sell-price')?.value||'—'}`,
+      barter: document.getElementById('barter-text')?.value?.slice(0,40)||'Open barter',
+      trade: document.getElementById('trade-text')?.value?.slice(0,40)||'Trade request',
+      brag: `Floor (private): $${document.getElementById('brag-floor')?.value||'—'}`,
+    };
+    tEl.textContent = terms[selMode]||'—';
+  }
+  if (pEl) {
+    const rp = document.getElementById('ref-price')?.value;
+    pEl.textContent = rp ? `$${rp} (manual)` : 'Not set';
+  }
+}
+
+// ── SAVE LISTING TO FIRESTORE ──
+async function saveListing() {
+  const user = window.currentUser;
+  const db   = window.db;
+  if (!user || !db) { HILShell.toast('Sign in to save listings','error'); return; }
+
+  const { collection, doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+
+  const id = crypto.randomUUID();
+  const refPrice = parseFloat(document.getElementById('ref-price')?.value) || null;
+  const manualName    = document.getElementById('manual-name').value.trim();
+  const manualAddress = document.getElementById('manual-address').value.trim();
+
+  const listing = {
+    id, owner_uid: user.uid, owner_name: user.displayName||user.email,
+    mode: selMode, ring: selRing,
+    // Item identity — either linked to a real Vault item_record, or a manual quick-listing
+    item_record_id: pickedItem ? pickedItem.id : null,
+    display_name:   pickedItem ? pickedItem.display_name : (manualName || 'Unlisted Item'),
+    hl_address:     pickedItem ? pickedItem.hl_address    : (manualAddress || null),
+    hero_photo:     pickedItem ? pickedItem.hero_photo    : null,
+    category:       pickedItem ? pickedItem.category      : null,
+    ebay_baseline: refPrice,
+    baseline_source: refPrice ? 'manual' : null,   // 'manual' | 'ebay_active' | 'ebay_sold_comp' once API wired
+    auction: { duration_days: winDays, buy_it_now: parseFloat(document.getElementById('bit-input')?.value)||null },
+    sell:    { price: parseFloat(document.getElementById('sell-price')?.value)||null, payment_note: 'Arranged directly between buyer and seller — HIL does not process payments.' },
+    barter:  { seeking: document.getElementById('barter-text')?.value||'', ebay_baseline: refPrice },
+    trade:   { seeking: document.getElementById('trade-text')?.value||'' },
+    brag:    { provenance_text: document.getElementById('brag-text')?.value||'', floor_price: parseFloat(document.getElementById('brag-floor')?.value)||null },
+    // Placeholder for auction-service push (eBay Sell/Inventory API) — not wired yet.
+    // Once live, entries look like: { platform: 'ebay', listing_id, url, pushed_at, status }
+    external_listings: [],
+    status: 'active',
+    provenance_log: [{ date: new Date().toISOString(), event:'Listed on HIL Exchange', actor_uid: user.uid, note:`Mode: ${selMode}, Ring: ${selRing}` }],
+    created_at: serverTimestamp(), updated_at: serverTimestamp(),
+  };
+
+  try {
+    await setDoc(doc(collection(db,'exchange_listings'), id), listing);
+    HILShell.toast('✓ Listing live on Exchange','success');
+    closeModal();
+    loadListings();
+  } catch(err) {
+    HILShell.toast('Save failed: '+err.message,'error');
+  }
+}
+
+// ── LOAD LISTINGS FROM FIRESTORE ──
+async function loadListings() {
+  const db = window.db;
+  if (!db) return;
+  try {
+    const { collection, getDocs, query } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    // No orderBy — some writers may omit created_at at first; sort client-side instead
+    // so listings missing the field aren't silently excluded from the snapshot.
+    const q = query(collection(db,'exchange_listings'));
+    const snap = await getDocs(q);
+    let listings = snap.docs.map(d => ({id:d.id,...d.data()}));
+    listings.sort((a,b) => {
+      const at = a.created_at?.toMillis ? a.created_at.toMillis() : 0;
+      const bt = b.created_at?.toMillis ? b.created_at.toMillis() : 0;
+      return bt - at;
+    });
+    allListingsCache = listings;
+
+    const counts = { auction:0, sell:0, barter:0, trade:0, brag:0 };
+    listings.forEach(l => { if(counts[l.mode]!==undefined) counts[l.mode]++; });
+
+    document.getElementById('sum-auction').textContent = counts.auction;
+    document.getElementById('sum-sell').textContent    = counts.sell;
+    document.getElementById('sum-barter').textContent  = counts.barter;
+    document.getElementById('sum-brag').textContent    = counts.brag;
+    document.getElementById('nb-active').textContent   = listings.length;
+    document.getElementById('nb-auctions').textContent = counts.auction;
+    document.getElementById('nb-brag').textContent     = counts.brag;
+    document.getElementById('nb-trades').textContent   = counts.barter + counts.trade;
+
+    const sub = document.getElementById('listing-sub');
+    const liveCount = document.getElementById('live-count');
+    if (sub) sub.textContent = `${listings.length} items in circulation`;
+    if (liveCount) liveCount.textContent = `${listings.length} active`;
+
+    const grid = document.getElementById('live-cards-grid');
+    if (grid) {
+      grid.innerHTML = listings.length > 0
+        ? listings.map(renderCard).join('')
+        : '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);padding:20px;text-align:center;grid-column:1/-1;">No live listings yet — be the first to list an item.</div>';
+    }
+  } catch(err) {
+    console.warn('Exchange load error:', err.message);
+    HILShell.toast('Could not load Exchange listings: '+err.message, 'error');
+  }
+}
+
+function renderCard(l) {
+  const modeColor = {auction:'var(--amber)',sell:'var(--green)',barter:'var(--blue)',trade:'var(--blue)',brag:'var(--purple)'};
+  const ringLabel = {1:'R1',2:'R2',3:'R3'};
+  const ringClass = {1:'ring-1',2:'ring-2',3:'ring-3'};
+  const hasBaseline = l.ebay_baseline != null;
+  const sourceLabel = l.baseline_source === 'manual' ? 'manual entry' : (l.baseline_source || 'unset');
+  const isMine = window.currentUser && l.owner_uid === window.currentUser.uid;
+  const statusLabel = (l.status||'active').toUpperCase();
+  const statusColor = l.status==='sold' ? 'var(--green)' : l.status==='withdrawn' ? 'var(--text3)' : l.status==='expired' ? 'var(--red)' : 'var(--amber)';
+  return `
+    <div class="item-card mode-${l.mode}">
+      <div class="card-top">
+        <div class="card-thumb">${l.hero_photo ? `<img src="${l.hero_photo}" alt="">` : '📦'}</div>
+        <div class="card-meta">
+          <div class="card-name">${l.display_name||'Unlisted Item'}</div>
+          <div class="card-hl">${l.hl_address||'No address'}</div>
+          ${l.status && l.status !== 'active' ? `<span class="card-cond" style="background:transparent;border:1px solid ${statusColor};color:${statusColor};">${statusLabel}</span>` : ''}
+        </div>
+        <div class="card-ring ${ringClass[l.ring]||'ring-2'}">${ringLabel[l.ring]||'R2'}</div>
+      </div>
+      <div class="mode-tabs">
+        <div class="mode-tab" style="color:${modeColor[l.mode]}">${(l.mode||'').toUpperCase()} ▸</div>
+      </div>
+      <div class="card-body">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);">
+          Listed by ${l.owner_name||'Anonymous'} · ${l.mode}
+        </div>
+        ${hasBaseline ? `<div class="ebay-baseline"><div><div class="ebay-label">Reference Price</div><div class="ebay-price">$${l.ebay_baseline}</div></div><div class="ebay-source">${sourceLabel}</div></div>` : ''}
+        ${l.brag?.provenance_text ? `<div class="brag-provenance">"${l.brag.provenance_text}"</div>` : ''}
+        ${l.sell?.price ? `<div class="ebay-baseline"><div><div class="ebay-label">Asking Price</div><div class="ebay-price">$${l.sell.price}</div></div></div>` : ''}
+        ${l.barter?.seeking ? `<div style="font-size:11px;color:var(--text2);">Seeking: ${l.barter.seeking}</div>` : ''}
+        <div class="push-row" title="Auction-service push (eBay Sell/Inventory API) — placeholder, not wired yet">
+          <div class="push-label">Push to <span>eBay</span></div>
+          <button class="btn-push" disabled>Coming soon</button>
+        </div>
+        <div class="upvote-row">
+          <button class="upvote-btn" onclick="castUpvote(this,'${l.id}','star')">⭐ ${l.star_count||0}</button>
+        </div>
+      </div>
+      <div class="card-footer">
+        <div class="provenance-tag">Mode: <span>${l.mode}</span></div>
+        ${isMine
+          ? `<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;" onclick="openManageModal('${l.id}')">Manage</button>`
+          : `<button class="btn btn-ghost" style="font-size:10px;padding:4px 8px;" onclick="makeOffer('${l.id}')">Inquire</button>`
+        }
+      </div>
+    </div>`;
+}
+
+// ── UPVOTES ──
+async function castUpvote(btn, listingId, type) {
+  const user = window.currentUser;
+  if (!user) { requireSignIn(); return; }
+  const db = window.db;
+  if (!db) return;
+  try {
+    const { doc, setDoc, deleteDoc, getDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const voteRef = doc(db,'exchange_listings',listingId,'upvotes',user.uid);
+    const existing = await getDoc(voteRef);
+    if (existing.exists()) {
+      await deleteDoc(voteRef);
+      btn.classList.remove('voted','voted-heart');
+      const icon = type==='heart'?'♡':'⭐';
+      const cur = parseInt(btn.textContent.replace(/\D/g,''))||0;
+      btn.textContent = `${icon} ${Math.max(0,cur-1)}`;
+      HILShell.toast('Vote removed');
+    } else {
+      await setDoc(voteRef,{uid:user.uid,type,created_at:serverTimestamp()});
+      btn.classList.add(type==='heart'?'voted-heart':'voted');
+      const icon = type==='heart'?'♡':'⭐';
+      const cur = parseInt(btn.textContent.replace(/\D/g,''))||0;
+      btn.textContent = `${icon} ${cur+1}`;
+      HILShell.toast(type==='heart'?'♡ Added to History Wall':'⭐ Starred');
+    }
+  } catch(err) { HILShell.toast('Error: '+err.message,'error'); }
+}
+
+// ── MAKE OFFER / INQUIRY ──
+async function makeOffer(listingId) {
+  const user = window.currentUser;
+  if (!user) { requireSignIn(); return; }
+  const msg = prompt('Describe your offer or inquiry:');
+  if (!msg) return;
+  const db = window.db;
+  if (!db) return;
+  try {
+    const { collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    await addDoc(collection(db,'exchange_listings',listingId,'trade_requests'),{
+      from_uid: user.uid, from_name: user.displayName||user.email,
+      offering_description: msg, status:'pending', created_at: serverTimestamp(),
+    });
+    HILShell.toast('✓ Inquiry sent','success');
+  } catch(err) { HILShell.toast('Error: '+err.message,'error'); }
+}
+
+// ── AUTH ──
+function requireSignIn() {
+  const prompt = document.getElementById('auth-prompt');
+  if (prompt) prompt.classList.remove('hidden');
+  HILShell.toast('Sign in to interact with listings');
+}
+
+function triggerShellAuth() {
+  // hil-shell.js now always builds #hil-auth-gate (see shell v2.5), so this
+  // opens the real Google/GitHub/Email sign-in modal — same one Vault uses.
+  const gate = document.getElementById('hil-auth-gate');
+  if (gate) { gate.classList.remove('hidden'); return; }
+  HILShell.toast('Sign-in isn\'t ready yet — try again in a moment', 'error');
+}
+
+// ── FILTER ──
+function toggleFilter(el, key) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── NAV ──
+function setView(el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── GENEROSITY SCORE ──
+async function loadGenerosityScore(user) {
+  const db = window.db;
+  if (!user || !db) return;
+  try {
+    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const snap = await getDoc(doc(db,'users',user.uid));
+    const data = snap.data() || {};
+    const score = data.stats?.generosity_score || 0;
+    document.getElementById('gen-name').textContent = user.displayName||user.email;
+    document.getElementById('gen-tier').textContent = score >= 500 ? '✦ GIVER · Circulation Badge' : 'Building your score…';
+    document.getElementById('gen-score').textContent = score;
+    document.getElementById('gen-tier-label').textContent = score >= 500 ? 'GIVER tier active' : 'Score: '+score;
+    document.getElementById('gen-donated').textContent = data.donated_count||0;
+    document.getElementById('gen-value').textContent = '$'+(data.value_circulated||0);
+    document.getElementById('gen-trades').textContent = data.trades_completed||0;
+    document.getElementById('gen-bonus-val').textContent = score >= 500 ? '+15% Listing Visibility' : 'Earn 500 pts for Giver tier';
+    document.getElementById('gen-bonus-label').textContent = score >= 500 ? 'Giver Bonus active' : `${500-score} pts to Giver`;
+    document.getElementById('gen-next').textContent = score >= 1000 ? 'Max tier ✓' : `${1000-score} to 1,000`;
+  } catch(err) { console.warn('Gen score load failed:', err.message); }
+}
+
+// ── INIT ──
+// hil-shell.js (loaded above) must define window.HILShell before this runs.
+if (typeof HILShell === 'undefined') {
+  console.error('HILShell not found — hil-shell.js failed to load or is missing from this deploy path.');
+} else {
+  HILShell.init({
+    toolId: 'exchange',
+    toolName: 'HIL Exchange',
+    requireAuth: false,
+    onAuth: (user) => {
+      document.getElementById('auth-prompt')?.classList.add('hidden');
+      loadListings();
+      loadGenerosityScore(user);
+      const params = new URLSearchParams(window.location.search);
+      const deepItem = params.get('item');
+      if (deepItem) openListingModalForItem(deepItem, params.get('mode'));
+    }
+  });
+}
+
+// Load listings on open (public — no auth needed)
+window.addEventListener('load', () => {
+  // Small delay to let Shell + Firebase init
+  setTimeout(loadListings, 1500);
+});
+</script>
+
+</body>
+</html>
