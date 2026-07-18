@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kit Builder · HIL System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+<style>
+  body { padding: 0 16px 80px; }
+
+  .kb-shell { max-width: 720px; margin: 0 auto; }
+
+  h1 {
+    font-family: var(--font-display, 'Orbitron', sans-serif);
+    color: var(--hil-green, #00cc66);
+    font-size: 1.6rem;
+    letter-spacing: 0.05em;
+    margin-top: 24px;
+  }
+
+  .kb-page-sub { color: #777; font-size: 0.85rem; margin-bottom: 16px; }
+
+  .kb-search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .kb-search-row input { flex: 1; }
+
+  .kb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .kb-card {
+    border: 1px solid #222;
+    border-radius: 4px;
+    background: #111;
+    padding: 12px;
+    cursor: pointer;
+  }
+  .kb-card:hover { border-color: var(--hil-green, #00cc66); }
+  .kb-card-id { font-family: var(--font-mono, 'Space Mono', monospace); color: var(--hil-amber, #cc8800); font-size: 0.75rem; }
+  .kb-card-name { color: #e0e0e0; font-weight: 600; margin: 4px 0 6px; }
+  .kb-card-meta { font-family: var(--font-mono, 'Space Mono', monospace); font-size: 0.7rem; color: #888; display: flex; gap: 6px; flex-wrap: wrap; }
+  .kb-tag { border: 1px solid #333; border-radius: 3px; padding: 1px 6px; }
+
+  .kb-empty { color: #666; font-family: var(--font-mono, 'Space Mono', monospace); font-size: 0.85rem; padding: 20px 0; }
+
+  .kb-form-header { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .kb-form-header button.secondary {
+    background: transparent; border: 1px solid #333; color: #aaa; padding: 8px 14px;
+    border-radius: 4px; font-family: var(--font-mono, 'Space Mono', monospace); font-size: 0.8rem; cursor: pointer;
+  }
+
+  .kit-id-preview {
+    font-family: var(--font-mono, 'Space Mono', monospace);
+    color: var(--hil-amber, #cc8800);
+    font-size: 1.1rem;
+    padding: 12px;
+    border: 1px solid var(--hil-border, #222);
+    border-radius: 4px;
+    background: var(--hil-surface, #111);
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-family: var(--font-condensed, 'Barlow Condensed', sans-serif);
+    font-size: 0.95rem;
+    color: #aaa;
+    margin: 16px 0 6px;
+  }
+
+  select, input[type="text"], textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--hil-surface, #111);
+    border: 1px solid var(--hil-border, #333);
+    color: var(--hil-text, #e0e0e0);
+    padding: 10px;
+    font-family: var(--font-mono, 'Space Mono', monospace);
+    font-size: 0.95rem;
+    border-radius: 4px;
+  }
+  textarea { resize: vertical; }
+
+  select:focus, input:focus, textarea:focus {
+    outline: 2px solid var(--hil-green, #00cc66);
+    border-color: var(--hil-green, #00cc66);
+  }
+
+  .field-row { display: flex; gap: 12px; }
+  .field-row > div { flex: 1; }
+
+  .tier-group { display: flex; gap: 8px; }
+
+  .tier-btn {
+    flex: 1;
+    padding: 10px;
+    background: var(--hil-surface, #111);
+    border: 1px solid var(--hil-border, #333);
+    color: #aaa;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 4px;
+    font-family: var(--font-mono, 'Space Mono', monospace);
+  }
+  .tier-btn[aria-pressed="true"] { border-color: var(--hil-green, #00cc66); color: var(--hil-green, #00cc66); }
+
+  .item-search { margin-top: 8px; }
+
+  .item-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--hil-border, #222);
+    border-radius: 4px;
+    margin-top: 10px;
+  }
+
+  .item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid #1a1a1a;
+    font-family: var(--font-mono, 'Space Mono', monospace);
+    font-size: 0.85rem;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .item-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--hil-green, #00cc66); }
+  .item-name { flex: 1; color: #ccc; }
+  .item-count { color: var(--hil-amber, #cc8800); font-family: var(--font-mono, 'Space Mono', monospace); font-size: 0.85rem; margin-top: 4px; }
+
+  .save-bar { position: sticky; bottom: 0; background: var(--hil-bg, #0a0c0b); border-top: 1px solid var(--hil-border, #222); padding: 16px 0; margin-top: 24px; display: flex; gap: 10px; }
+
+  button.save-kit {
+    flex: 1;
+    background: var(--hil-green, #00cc66);
+    color: #0a0c0b;
+    border: none;
+    padding: 14px;
+    font-family: var(--font-display, 'Orbitron', sans-serif);
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button.save-kit:disabled { background: #333; color: #777; cursor: not-allowed; }
+
+  button.delete-kit {
+    background: transparent; border: 1px solid #663333; color: #ff5555;
+    padding: 14px 18px; border-radius: 4px; font-family: var(--font-mono, 'Space Mono', monospace); cursor: pointer; display: none;
+  }
+
+  .error-text { color: #ff5555; font-family: var(--font-mono, 'Space Mono', monospace); font-size: 0.85rem; margin-top: 8px; display: none; }
+  .helper-text { color: #777; font-size: 0.8rem; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="kb-shell">
+
+<h1>Kit Builder</h1>
+<div class="kb-page-sub">Fuller kit workflow — item verification + vessel assignment. Writes to the same users/{uid}/kits collection as Vault's quick-add.</div>
+
+<div class="kb-search-row">
+  <input type="text" id="kitSearch" placeholder="Search kits…">
+</div>
+<div class="kb-grid" id="kitGrid"></div>
+<div class="kb-empty" id="kitEmpty" style="display:none;">No kits yet.</div>
+
+<div class="kb-form-header">
+  <h1 id="formTitle" style="margin-top:0;">New Kit</h1>
+  <button class="secondary" id="newKitBtn">+ New Kit</button>
+</div>
+
+<div class="kit-id-preview" id="kitIdPreview">TK-KIT-NAME</div>
+
+<label for="prefixSelect">Kit prefix</label>
+<select id="prefixSelect">
+  <option value="TK">TK — Tool Kit</option>
+  <option value="SK">SK — Supply Kit</option>
+  <option value="MK">MK — Material Kit</option>
+  <option value="CK">CK — Care Kit</option>
+  <option value="FC">FC — Family Kit</option>
+</select>
+
+<label for="nameInput">Kit name</label>
+<input type="text" id="nameInput" placeholder="Screen Repair Kit">
+<div class="helper-text">Kit ID is generated from this — noun-first, hyphen-separated, uppercase.</div>
+
+<div class="field-row">
+  <div>
+    <label for="domainSelect">Domain</label>
+    <select id="domainSelect">
+      <option value="domestic_culinary">Domestic / Culinary</option>
+      <option value="machining_metalwork">Machining / Metalwork</option>
+      <option value="woodcraft_restoration">Woodcraft / Restoration</option>
+      <option value="fine_arts_musical">Fine Arts / Musical</option>
+      <option value="materia_medica_lab">Materia Medica / Lab</option>
+      <option value="outdoor_homestead">Outdoor / Homestead</option>
+    </select>
+  </div>
+  <div>
+    <label for="statusSelect">Status</label>
+    <select id="statusSelect">
+      <option value="assembly" selected>Assembly</option>
+      <option value="active">Active</option>
+      <option value="shared">Shared</option>
+      <option value="archived">Archived</option>
+    </select>
+  </div>
+</div>
+
+<label>Tier</label>
+<div class="tier-group" role="group" aria-label="Kit tier">
+  <div class="tier-btn" data-tier="1" aria-pressed="true">1 — Domestic Base</div>
+  <div class="tier-btn" data-tier="2" aria-pressed="false">2 — Project</div>
+  <div class="tier-btn" data-tier="3" aria-pressed="false">3 — Capability</div>
+</div>
+
+<label for="vesselSelect">Vessel <span style="opacity:0.6;">(optional — where this kit lives)</span></label>
+<select id="vesselSelect"><option value="">— not assigned to a vessel —</option></select>
+<div class="helper-text">Sets this kit as the vessel's active kit_id (single_blob types only — slotted vessels assign kits per slot in Vessel Builder instead).</div>
+
+<label for="hlAddressInput">HL Address <span style="opacity:0.6;">(optional — only if not using a vessel)</span></label>
+<input type="text" id="hlAddressInput" placeholder="SH-MM-S3-A1">
+
+<label for="capabilitiesInput">Capabilities <span style="opacity:0.6;">(optional, one per line — feeds Capability Analyzer)</span></label>
+<textarea id="capabilitiesInput" rows="3" placeholder="repair window screen&#10;patch mesh fabric"></textarea>
+
+<label for="itemSearch">Verified owned items (optional)</label>
+<div class="helper-text">The kit name implies standard contents — only add items you want tracked as specifically verified in this kit.</div>
+<input type="text" id="itemSearch" class="item-search" placeholder="Search Vault items…">
+<div class="item-list" id="itemList">
+  <div class="item-row" style="color:#666;">Type to search your Vault items…</div>
+</div>
+<div class="item-count" id="itemCount">0 items selected</div>
+
+<div class="error-text" id="errorText"></div>
+
+<div class="save-bar">
+  <button class="save-kit" id="saveBtn">Save Kit</button>
+  <button class="delete-kit" id="deleteBtn">Delete</button>
+</div>
+
+</div>
+
+<script>
+// ── STATE ──
+let currentUser = null;
+let selectedItems = new Map();   // itemId -> displayName
+let selectedTier = 1;
+let allItemsCache = null;        // populated on first search, from item_records read
+let allVessels = [];
+let allKits = [];
+let editingKitId = null;         // Firestore doc ID, not kit_id field
+
+let _collection, _doc, _addDoc, _updateDoc, _deleteDoc, _onSnapshot, _serverTimestamp, _getDocs;
+
+const prefixSelect      = document.getElementById('prefixSelect');
+const nameInput          = document.getElementById('nameInput');
+const domainSelect       = document.getElementById('domainSelect');
+const statusSelect       = document.getElementById('statusSelect');
+const vesselSelect       = document.getElementById('vesselSelect');
+const hlAddressInput     = document.getElementById('hlAddressInput');
+const capabilitiesInput  = document.getElementById('capabilitiesInput');
+const kitIdPreview       = document.getElementById('kitIdPreview');
+const itemSearch         = document.getElementById('itemSearch');
+const itemList           = document.getElementById('itemList');
+const itemCount          = document.getElementById('itemCount');
+const saveBtn            = document.getElementById('saveBtn');
+const deleteBtn          = document.getElementById('deleteBtn');
+const errorText          = document.getElementById('errorText');
+const kitGrid            = document.getElementById('kitGrid');
+const kitEmpty           = document.getElementById('kitEmpty');
+const kitSearch          = document.getElementById('kitSearch');
+const formTitle          = document.getElementById('formTitle');
+
+function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+// ── SHELL INIT — same 3-line pattern as every other HIL tool ──
+HILShell.init({
+  toolId:      'kit-builder',
+  toolName:    'Kit Builder',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  currentUser = user;
+  if (!user) return;
+
+  const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _updateDoc       = fsdk.updateDoc;
+  _deleteDoc       = fsdk.deleteDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+  _getDocs         = fsdk.getDocs;
+
+  const db = window.db;
+
+  const vSnap = await _getDocs(_collection(db, 'users', user.uid, 'vessels'));
+  allVessels = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  populateVesselDropdown();
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'kits'), snap => {
+    allKits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderKitGrid();
+  });
+}
+
+function populateVesselDropdown() {
+  vesselSelect.innerHTML = '<option value="">— not assigned to a vessel —</option>' +
+    allVessels.map(v => `<option value="${v.id}">${escapeHtml(v.vessel_id || v.id)} — ${escapeHtml(v.name || '')}</option>`).join('');
+}
+
+// ── KIT LIST ──
+function renderKitGrid() {
+  const q = (kitSearch.value || '').toLowerCase();
+  const filtered = allKits.filter(k => !q || (k.name||'').toLowerCase().includes(q) || (k.kit_id||'').toLowerCase().includes(q));
+
+  if (!filtered.length) { kitGrid.innerHTML = ''; kitEmpty.style.display = ''; return; }
+  kitEmpty.style.display = 'none';
+
+  kitGrid.innerHTML = filtered.map(k => `
+    <div class="kb-card" onclick="loadKitForEdit('${k.id}')">
+      <div class="kb-card-id">${escapeHtml(k.kit_id || k.id)}</div>
+      <div class="kb-card-name">${escapeHtml(k.name || 'Untitled Kit')}</div>
+      <div class="kb-card-meta">
+        <span class="kb-tag">${escapeHtml(k.status || '—')}</span>
+        <span class="kb-tag">tier ${escapeHtml(String(k.tier ?? '—'))}</span>
+        ${k.vessel_id ? `<span class="kb-tag">vessel-linked</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+kitSearch.addEventListener('input', renderKitGrid);
+
+window.loadKitForEdit = function(docId) {
+  const k = allKits.find(x => x.id === docId);
+  if (!k) return;
+  editingKitId = docId;
+  formTitle.textContent = 'Edit Kit';
+  deleteBtn.style.display = '';
+
+  prefixSelect.value = k.prefix || 'TK';
+  nameInput.value = k.name || '';
+  domainSelect.value = k.domain || 'domestic_culinary';
+  statusSelect.value = k.status || 'assembly';
+  vesselSelect.value = k.vessel_id || '';
+  hlAddressInput.value = k.hl_address || '';
+  capabilitiesInput.value = (k.capabilities || []).join('\n');
+
+  selectedTier = k.tier || 1;
+  document.querySelectorAll('.tier-btn').forEach(b => b.setAttribute('aria-pressed', String(parseInt(b.dataset.tier,10) === selectedTier)));
+
+  selectedItems = new Map((k.special_items || []).map(id => [id, id])); // display names resolved lazily on search
+  updateItemCount();
+  itemList.innerHTML = '<div class="item-row" style="color:#666;">Search to review/change verified items…</div>';
+
+  updateKitIdPreview();
+  window.scrollTo({ top: document.querySelector('.kb-form-header').offsetTop - 10, behavior: 'smooth' });
+};
+
+document.getElementById('newKitBtn').onclick = resetForm;
+function resetForm() {
+  editingKitId = null;
+  formTitle.textContent = 'New Kit';
+  deleteBtn.style.display = 'none';
+  errorText.style.display = 'none';
+  nameInput.value = '';
+  hlAddressInput.value = '';
+  capabilitiesInput.value = '';
+  vesselSelect.value = '';
+  prefixSelect.value = 'TK';
+  domainSelect.value = 'domestic_culinary';
+  statusSelect.value = 'assembly';
+  selectedTier = 1;
+  document.querySelectorAll('.tier-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.tier === '1' ? 'true' : 'false'));
+  selectedItems.clear();
+  updateItemCount();
+  itemList.innerHTML = '<div class="item-row" style="color:#666;">Type to search your Vault items…</div>';
+  updateKitIdPreview();
+}
+
+// ── Kit ID generation: PREFIX-NOUN-DETAIL, noun-first uppercase ──
+function slugifyKitId(prefix, name) {
+  const cleaned = name.trim().toUpperCase().replace(/[^A-Z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+  return cleaned ? `${prefix}-${cleaned}` : `${prefix}-KIT-NAME`;
+}
+function updateKitIdPreview() { kitIdPreview.textContent = slugifyKitId(prefixSelect.value, nameInput.value); }
+prefixSelect.addEventListener('change', updateKitIdPreview);
+nameInput.addEventListener('input', updateKitIdPreview);
+
+// ── Tier selection ──
+document.querySelectorAll('.tier-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tier-btn').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    btn.setAttribute('aria-pressed', 'true');
+    selectedTier = parseInt(btn.dataset.tier, 10);
+  });
+});
+
+// ── Item search against item_records (read-only, v9 modular SDK) ──
+async function searchItems(query) {
+  if (!currentUser) {
+    itemList.innerHTML = '<div class="item-row" style="color:#666;">Sign in to search items…</div>';
+    return;
+  }
+
+  if (!allItemsCache) {
+    const snap = await _getDocs(_collection(window.db, 'users', currentUser.uid, 'item_records'));
+    allItemsCache = snap.docs.map(d => ({
+      id: d.id,
+      name: d.data().display_name || d.data().name || d.id,
+    }));
+    // Resolve display names for any items carried over from editing an existing kit
+    selectedItems.forEach((name, id) => {
+      const match = allItemsCache.find(i => i.id === id);
+      if (match) selectedItems.set(id, match.name);
+    });
+  }
+
+  const q = query.trim().toUpperCase();
+  const filtered = q ? allItemsCache.filter(i => i.name.toUpperCase().includes(q)) : allItemsCache.slice(0, 25);
+  renderItemList(filtered);
+}
+
+function renderItemList(items) {
+  if (!items.length) { itemList.innerHTML = '<div class="item-row" style="color:#666;">No matching items.</div>'; return; }
+  itemList.innerHTML = '';
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = selectedItems.has(item.id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selectedItems.set(item.id, item.name);
+      else selectedItems.delete(item.id);
+      updateItemCount();
+    });
+    const label = document.createElement('span');
+    label.className = 'item-name';
+    label.textContent = item.name;
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    itemList.appendChild(row);
+  });
+}
+
+function updateItemCount() { itemCount.textContent = `${selectedItems.size} item${selectedItems.size === 1 ? '' : 's'} selected`; }
+
+let searchDebounce;
+itemSearch.addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => searchItems(itemSearch.value), 250);
+});
+
+// ── Save — direct Firestore write, matching Vault's live kit modal exactly.
+// Kits are frontend-writable, same as vessels. No backend endpoint involved. ──
+saveBtn.addEventListener('click', async () => {
+  errorText.style.display = 'none';
+
+  if (!nameInput.value.trim()) {
+    errorText.textContent = 'Kit name is required.';
+    errorText.style.display = 'block';
+    return;
+  }
+
+  const capabilities = capabilitiesInput.value.split('\n').map(s => s.trim()).filter(Boolean);
+
+  const data = {
+    kit_id:         slugifyKitId(prefixSelect.value, nameInput.value),
+    prefix:         prefixSelect.value,
+    name:           nameInput.value.trim(),
+    domain:         domainSelect.value,
+    tier:           selectedTier,
+    status:         statusSelect.value,
+    hl_address:     hlAddressInput.value.trim() || null,
+    capabilities,
+    special_items:  Array.from(selectedItems.keys()),
+    vessel_id:      vesselSelect.value || null,
+    owner_uid:      currentUser.uid,
+    updated_at:     _serverTimestamp(),
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  try {
+    const col = _collection(window.db, 'users', currentUser.uid, 'kits');
+    if (editingKitId) {
+      await _updateDoc(_doc(window.db, 'users', currentUser.uid, 'kits', editingKitId), data);
+      HILShell.toast('Kit updated', 'success');
+    } else {
+      data.created_at = _serverTimestamp();
+      await _addDoc(col, data);
+      HILShell.toast(`Kit saved: ${data.kit_id}`, 'success');
+    }
+    resetForm();
+  } catch (err) {
+    errorText.textContent = err.message || 'Failed to save kit.';
+    errorText.style.display = 'block';
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Kit';
+  }
+});
+
+deleteBtn.addEventListener('click', async () => {
+  if (!editingKitId) return;
+  if (!confirm('Delete this kit? This does not affect the items or vessel it referenced.')) return;
+  try {
+    await _deleteDoc(_doc(window.db, 'users', currentUser.uid, 'kits', editingKitId));
+    HILShell.toast('Kit deleted', 'success');
+    resetForm();
+  } catch (err) {
+    HILShell.toast('Delete failed: ' + err.message, 'error');
+  }
+});
+
+updateKitIdPreview();
+</script>
+
+</body>
+</html>
