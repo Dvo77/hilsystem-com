@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AC vs DC — Motor Efficiency Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="../hil-shell.js"></script>
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     :root block here. --dc/--ac/--bldc are genuinely module-specific accent
+     colors (one per motor type, not platform tokens) so they stay local. */
+  :root{ --dc:#ffb454; --ac:#38bdf8; --bldc:#b48ce8; }
+  *{box-sizing:border-box;}
+  .wrap{max-width:1040px;margin:0 auto;padding:22px 18px 50px;}
+  header.moduleheader{border-bottom:2px solid var(--hil-border);padding-bottom:12px;margin-bottom:16px;}
+  h1{font-family:var(--font-display);font-weight:900;font-size:28px;letter-spacing:0.04em;margin:0;}
+  h1 span{color:var(--dc);}
+  h1 span.ac{color:var(--ac);}
+  .subtitle{font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);letter-spacing:0.5px;text-transform:uppercase;}
+
+  .stage{position:relative;border:1px solid var(--hil-border);border-radius:4px;overflow:hidden;background:#0a0c0b;}
+  canvas{display:block;width:100%;height:auto;}
+
+  .panel{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:4px;padding:16px 18px;margin-top:14px;}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:640px){.controls{grid-template-columns:1fr;}}
+  .field label{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .field label b{color:var(--hil-text);font-size:14px;}
+  input[type=range]{width:100%;accent-color:var(--hil-text);}
+  select{width:100%;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text);font-family:var(--font-mono);padding:7px 8px;border-radius:3px;font-size:13px;}
+
+  .presets{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .presets button{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;background:transparent;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:5px 10px;border-radius:3px;cursor:pointer;}
+  .presets button.active{border-color:var(--hil-text);color:var(--hil-text);}
+  .presets button:hover{border-color:var(--hil-text);color:var(--hil-text);}
+
+  .winner{margin-top:14px;padding:10px 14px;border-radius:4px;font-family:var(--font-ui);font-size:20px;font-weight:600;text-align:center;}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px;}
+  @media (max-width:820px){.cards{grid-template-columns:1fr;}}
+  .mcard{border-radius:4px;padding:14px 16px;border:1px solid var(--hil-border);background:#1c201e;}
+  .mcard.dc{border-top:3px solid var(--dc);}
+  .mcard.ac{border-top:3px solid var(--ac);}
+  .mcard.bldc{border-top:3px solid var(--bldc);}
+  .mcard h3{font-family:var(--font-ui);font-size:22px;font-weight:600;margin:0 0 10px;}
+  .mcard.dc h3{color:var(--dc);}
+  .mcard.ac h3{color:var(--ac);}
+  .mcard.bldc h3{color:var(--bldc);}
+  .statline{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12.5px;padding:4px 0;border-bottom:1px solid #1c201e;}
+  .statline .v{color:var(--hil-text);}
+  .lossbar{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:10px 0 6px;}
+  .lossseg{height:100%;}
+  .legend{display:flex;gap:12px;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:4px;}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  .formula{margin-top:14px;font-family:var(--font-mono);font-size:12.5px;line-height:1.9;border-left:2px solid var(--hil-text-muted);padding:2px 0 2px 14px;}
+  .formula .lbl{color:var(--hil-text-muted);}
+  .formula .num{color:var(--hil-text);}
+
+  .whygrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:6px;}
+  @media (max-width:820px){.whygrid{grid-template-columns:1fr;}}
+  .whycol h4{font-family:var(--font-ui);font-size:18px;margin:0 0 6px;}
+  .whycol.dc h4{color:var(--dc);}
+  .whycol.ac h4{color:var(--ac);}
+  .whycol.bldc h4{color:var(--bldc);}
+  .whycol ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
+
+  /* Breadcrumb + active-member strip — module-specific nav context, not
+     something hil-shell.js provides itself. The old hand-rolled fake header
+     and fake "Patch: calm" status dot are gone — the real header and real
+     PATCH bubble now come from HILShell.init() below. */
+  .gms-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
+  .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-crumb b{color:var(--hil-green);}
+  .gms-member{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-member .name{color:var(--hil-text);font-weight:700;}
+  .gms-member .pill{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:10px;padding:3px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;}
+
+  .wrapup-panel{text-align:center;}
+  .btn-wrapup{font-family:var(--font-display);font-size:12px;letter-spacing:0.05em;background:var(--hil-green);color:#04140a;border:none;padding:10px 18px;border-radius:20px;cursor:pointer;font-weight:700;}
+  .btn-wrapup:hover{background:#00e673;}
+  .btn-wrapup:disabled{background:var(--hil-border-lt);color:var(--hil-text-muted);cursor:default;}
+  .ledger-panel{border:1px solid var(--hil-border);border-radius:8px;background:var(--hil-surface);margin-top:14px;}
+  .ledger-header{padding:10px 16px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .ledger-pre{margin:0;padding:16px;font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--hil-green);overflow-x:auto;}
+  .ledger-pre .k{color:var(--blue,#38bdf8);} .ledger-pre .s{color:var(--hil-amber);}
+</style>
+</head>
+<body>
+
+  <div class="gms-topbar">
+    <div class="gms-crumb">Guild &nbsp;&rsaquo;&nbsp; Electric Forge &nbsp;&rsaquo;&nbsp; <b>Motor Efficiency Lab</b></div>
+    <div class="gms-member">
+      <span class="name" id="memberName">—</span>
+      <span class="pill" id="memberPill">resolving member…</span>
+    </div>
+  </div>
+
+<div class="wrap">
+
+  <header class="moduleheader">
+    <h1><span>DC</span> vs <span class="ac">AC</span> vs <span style="color:var(--bldc);">Brushless</span></h1>
+    <div class="subtitle">same load, three motor types, three different ways to lose (or not lose) power</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="canvas" width="1000" height="420"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label>Load <b id="loadVal">100%</b> of rated</label>
+        <input type="range" id="load" min="10" max="150" value="100" step="1">
+      </div>
+      <div class="field">
+        <label>Motor size</label>
+        <select id="ratedPower">
+          <option value="186">1/4 HP (186 W)</option>
+          <option value="373">1/2 HP (373 W)</option>
+          <option value="746" selected>1 HP (746 W)</option>
+          <option value="1492">2 HP (1492 W)</option>
+          <option value="3730">5 HP (3730 W)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label>Supply voltage (for current draw)</label>
+      <div class="presets" id="voltPresets">
+        <button data-v="12">12V</button>
+        <button data-v="24">24V</button>
+        <button data-v="48">48V</button>
+        <button data-v="120" class="active">120V</button>
+        <button data-v="240">240V</button>
+      </div>
+    </div>
+
+    <div class="winner" id="winner"></div>
+
+    <div class="cards">
+      <div class="mcard dc">
+        <h3>DC Motor (brushed)</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="dcOut"></span></div>
+        <div class="statline"><span>Input power</span><span class="v" id="dcIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="dcEff"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="dcAmps"></span></div>
+        <div class="lossbar" id="dcLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#6b7d72;"></i>friction/brush (fixed)</span>
+          <span><i class="dot" style="background:var(--dc);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+
+      <div class="mcard ac">
+        <h3>AC Motor (induction)</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="acOut"></span></div>
+        <div class="statline"><span>Input power (real)</span><span class="v" id="acIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="acEff"></span></div>
+        <div class="statline"><span>Power factor</span><span class="v" id="acPF"></span></div>
+        <div class="statline"><span>Apparent power</span><span class="v" id="acApp"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="acAmps"></span></div>
+        <div class="lossbar" id="acLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#6b7d72;"></i>core+windage (fixed)</span>
+          <span><i class="dot" style="background:var(--ac);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+
+      <div class="mcard bldc">
+        <h3>Brushless DC</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="bldcOut"></span></div>
+        <div class="statline"><span>Input power</span><span class="v" id="bldcIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="bldcEff"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="bldcAmps"></span></div>
+        <div class="lossbar" id="bldcLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#6b7d72;"></i>core+ESC switching (fixed)</span>
+          <span><i class="dot" style="background:var(--bldc);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula">
+      <span class="lbl">Efficiency:</span> η = P<sub>out</sub> / P<sub>in</sub> &nbsp; where &nbsp; P<sub>in</sub> = P<sub>out</sub> + P<sub>fixed</sub> + P<sub>variable</sub>·(load)²
+      <br>
+      <span class="lbl">AC power factor:</span> PF = I<sub>real</sub> / I<sub>apparent</sub> &nbsp; — the motor always draws magnetizing current, even at no load
+      <br>
+      <span class="lbl">Current drawn:</span> DC: I = P<sub>in</sub> / V &nbsp;&nbsp; AC: I = P<sub>in</sub> / (V × PF)
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="subtitle" style="margin-bottom:8px;">Why they lose power differently</div>
+    <div class="whygrid">
+      <div class="whycol dc">
+        <h4>DC (brushed)</h4>
+        <ul>
+          <li>Physical brushes riding on a commutator create constant friction, win or lose — that loss doesn't care how loaded the motor is.</li>
+          <li>Steady magnetic field means almost no core loss — no alternating flux, nothing to reverse-magnetize.</li>
+          <li>All electrical input is real power — no power factor to worry about, no reactive current.</li>
+        </ul>
+      </div>
+      <div class="whycol ac">
+        <h4>AC (induction)</h4>
+        <ul>
+          <li>No brushes — that source of friction loss is gone entirely.</li>
+          <li>Alternating magnetic field means real core losses — hysteresis and eddy currents reversing 50/60 times a second.</li>
+          <li>Needs a magnetizing current just to sustain the rotating field, regardless of load — that's why power factor collapses at light load, drawing more current than the real power alone suggests.</li>
+        </ul>
+      </div>
+      <div class="whycol bldc">
+        <h4>Brushless DC</h4>
+        <ul>
+          <li>No brushes, same as AC — friction loss gone.</li>
+          <li>Permanent-magnet rotor means the field is just there — no induced rotor current, no "slip" loss like an induction motor has to pay.</li>
+          <li>No continuous magnetizing current needed either, so it stays efficient even lightly loaded — why cordless tools and fans (which rarely run at full rated load) switched to it.</li>
+          <li>Tradeoff: the electronic controller (ESC) that commutates it has its own small switching losses — real, just smaller than what it eliminates.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel wrapup-panel">
+    <button class="btn-wrapup" id="wrapUpBtn">Wrap Up &rarr;</button>
+  </div>
+
+  <div class="ledger-panel">
+    <div class="ledger-header">Session Log Entry — what this Wrap Up wrote to the Ledger</div>
+    <pre class="ledger-pre" id="ledgerPreview">— click Wrap Up to log this session —</pre>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// Simplified per-unit loss models (fractions of RATED output power)
+const DC = { fixedFrac: 0.07, varFrac: 0.11 };
+const AC = { fixedFrac: 0.05, varFrac: 0.07, pfRated: 0.894, imFrac: 0.5 };
+const BLDC = { fixedFrac: 0.035, varFrac: 0.045 };
+
+let loadPct = 100;
+let ratedPower = 746;
+let voltage = 120;
+
+const loadInput = document.getElementById('load');
+const loadVal = document.getElementById('loadVal');
+const ratedSelect = document.getElementById('ratedPower');
+const voltPresets = document.getElementById('voltPresets');
+const winnerBox = document.getElementById('winner');
+
+function effDC(x){
+  return x / (x + DC.fixedFrac + DC.varFrac * x * x);
+}
+function pfAC(x){
+  return x / Math.sqrt(x*x + AC.imFrac*AC.imFrac);
+}
+function effAC(x){
+  return x / (x + AC.fixedFrac + AC.varFrac * x * x);
+}
+function effBLDC(x){
+  return x / (x + BLDC.fixedFrac + BLDC.varFrac * x * x);
+}
+
+function computeDC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = DC.fixedFrac * P_rated;
+  const varr = DC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const I = Pin / V;
+  return { Pout, Pin, fixed, varr, eff, I };
+}
+function computeAC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = AC.fixedFrac * P_rated;
+  const varr = AC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const pf = pfAC(x);
+  const S = Pin / pf;
+  const I = S / V;
+  return { Pout, Pin, fixed, varr, eff, pf, S, I };
+}
+function computeBLDC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = BLDC.fixedFrac * P_rated;
+  const varr = BLDC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const I = Pin / V; // fed from a DC bus (battery) — no reactive component
+  return { Pout, Pin, fixed, varr, eff, I };
+}
+
+function fmtW(w){
+  return w >= 1000 ? (w/1000).toFixed(2)+' kW' : w.toFixed(1)+' W';
+}
+
+function update(){
+  const x = loadPct / 100;
+  loadVal.textContent = loadPct + '%';
+
+  const dc = computeDC(x, ratedPower, voltage);
+  const ac = computeAC(x, ratedPower, voltage);
+  const bldc = computeBLDC(x, ratedPower, voltage);
+
+  document.getElementById('dcOut').textContent = fmtW(dc.Pout);
+  document.getElementById('dcIn').textContent = fmtW(dc.Pin);
+  document.getElementById('dcEff').textContent = (dc.eff*100).toFixed(1) + '%';
+  document.getElementById('dcAmps').textContent = dc.I.toFixed(2) + ' A';
+
+  document.getElementById('acOut').textContent = fmtW(ac.Pout);
+  document.getElementById('acIn').textContent = fmtW(ac.Pin);
+  document.getElementById('acEff').textContent = (ac.eff*100).toFixed(1) + '%';
+  document.getElementById('acPF').textContent = ac.pf.toFixed(2);
+  document.getElementById('acApp').textContent = fmtW(ac.S).replace('W','VA');
+  document.getElementById('acAmps').textContent = ac.I.toFixed(2) + ' A';
+
+  document.getElementById('bldcOut').textContent = fmtW(bldc.Pout);
+  document.getElementById('bldcIn').textContent = fmtW(bldc.Pin);
+  document.getElementById('bldcEff').textContent = (bldc.eff*100).toFixed(1) + '%';
+  document.getElementById('bldcAmps').textContent = bldc.I.toFixed(2) + ' A';
+
+  // loss bars (relative width = fraction of total input power)
+  const dcFixedPct = dc.fixed / dc.Pin * 100;
+  const dcVarPct = dc.varr / dc.Pin * 100;
+  document.getElementById('dcLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-dcFixedPct-dcVarPct)}%;background:${'#00cc66'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${dcFixedPct}%;background:#6b7d72;"></div>
+     <div class="lossseg" style="width:${dcVarPct}%;background:var(--dc);"></div>`;
+
+  const acFixedPct = ac.fixed / ac.Pin * 100;
+  const acVarPct = ac.varr / ac.Pin * 100;
+  document.getElementById('acLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-acFixedPct-acVarPct)}%;background:${'#00cc66'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${acFixedPct}%;background:#6b7d72;"></div>
+     <div class="lossseg" style="width:${acVarPct}%;background:var(--ac);"></div>`;
+
+  const bldcFixedPct = bldc.fixed / bldc.Pin * 100;
+  const bldcVarPct = bldc.varr / bldc.Pin * 100;
+  document.getElementById('bldcLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-bldcFixedPct-bldcVarPct)}%;background:${'#00cc66'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${bldcFixedPct}%;background:#6b7d72;"></div>
+     <div class="lossseg" style="width:${bldcVarPct}%;background:var(--bldc);"></div>`;
+
+  // winner banner — compare all three
+  const results = [
+    { name: 'DC (brushed)', eff: dc.eff, color: 'var(--dc)' },
+    { name: 'AC (induction)', eff: ac.eff, color: 'var(--ac)' },
+    { name: 'Brushless DC', eff: bldc.eff, color: 'var(--bldc)' }
+  ].sort((a,b) => b.eff - a.eff);
+  const best = results[0], second = results[1];
+  const gap = (best.eff - second.eff) * 100;
+  winnerBox.style.background = 'rgba(180,140,232,0.10)';
+  winnerBox.style.color = best.color;
+  if(gap < 0.3){
+    winnerBox.textContent = `Essentially tied at this load — ${results.map(r=>r.name+' '+(r.eff*100).toFixed(1)+'%').join(' · ')}`;
+  } else {
+    winnerBox.textContent = `${best.name} wins at this load — ${(best.eff*100).toFixed(1)}% vs ${second.name} at ${(second.eff*100).toFixed(1)}%`;
+  }
+
+  renderChart(x);
+}
+
+function renderChart(currentX){
+  ctx.fillStyle = '#0a0c0b';
+  ctx.fillRect(0,0,W,H);
+
+  const marginL = 60, marginR = 30, marginT = 30, marginB = 50;
+  const plotW = W - marginL - marginR;
+  const plotH = H - marginT - marginB;
+  const xMin = 0.1, xMax = 1.5;
+  const yMin = 0, yMax = 100;
+
+  function px(x){ return marginL + (x - xMin)/(xMax - xMin) * plotW; }
+  function py(y){ return marginT + plotH - (y - yMin)/(yMax - yMin) * plotH; }
+
+  // grid
+  ctx.strokeStyle = '#1c201e';
+  ctx.lineWidth = 1;
+  ctx.font = '11px var(--font-mono)';
+  ctx.fillStyle = '#3a453e';
+  for(let y=0; y<=100; y+=20){
+    const yy = py(y);
+    ctx.beginPath(); ctx.moveTo(marginL, yy); ctx.lineTo(W-marginR, yy); ctx.stroke();
+    ctx.fillText(y+'%', 8, yy+4);
+  }
+  for(let xv=0.25; xv<=1.5; xv+=0.25){
+    const xx = px(xv);
+    ctx.beginPath(); ctx.moveTo(xx, marginT); ctx.lineTo(xx, H-marginB); ctx.stroke();
+    ctx.fillText(Math.round(xv*100)+'%', xx-14, H-marginB+18);
+  }
+  ctx.fillStyle = '#6b7d72';
+  ctx.fillText('LOAD (% of rated)', W/2-55, H-12);
+
+  // rated-load reference line
+  ctx.strokeStyle = '#232922';
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(px(1), marginT); ctx.lineTo(px(1), H-marginB); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // curves
+  function drawCurve(effFn, color){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for(let i=0;i<=100;i++){
+      const xv = xMin + (xMax-xMin)*i/100;
+      const yv = effFn(xv)*100;
+      const p1 = px(xv), p2 = py(yv);
+      if(i===0) ctx.moveTo(p1,p2); else ctx.lineTo(p1,p2);
+    }
+    ctx.stroke();
+  }
+  drawCurve(effDC, '#ffb454');
+  drawCurve(effAC, '#38bdf8');
+  drawCurve(effBLDC, '#b48ce8');
+
+  // marker dots at current load
+  function marker(effFn, color){
+    const yv = effFn(currentX)*100;
+    const p1 = px(currentX), p2 = py(yv);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(p1,p2,5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#0a0c0b'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  marker(effDC, '#ffb454');
+  marker(effAC, '#38bdf8');
+  marker(effBLDC, '#b48ce8');
+
+  // legend
+  ctx.font = '13px var(--font-mono)';
+  ctx.fillStyle = '#ffb454';
+  ctx.fillText('● DC (brushed)', marginL, 20);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillText('● AC (induction)', marginL+150, 20);
+  ctx.fillStyle = '#b48ce8';
+  ctx.fillText('● Brushless DC', marginL+300, 20);
+}
+
+loadInput.addEventListener('input', ()=>{
+  loadPct = parseFloat(loadInput.value);
+  update();
+});
+ratedSelect.addEventListener('change', ()=>{
+  ratedPower = parseFloat(ratedSelect.value);
+  update();
+});
+voltPresets.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  voltage = parseFloat(btn.dataset.v);
+  [...voltPresets.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  update();
+});
+
+update();
+</script>
+
+<script type="module">
+  import { SessionLogger, resolveActiveMember, writeSessionLogEntry } from '../session-logger.js';
+
+  // ─── MODULE MANIFEST (HIL-Guild-Module-Logging-Standard-v3.md, Part 4) ─────
+  // scoringPath "none" — matches the Universal Scoring Spec's mapping table
+  // ("Wrap Up + heartbeat only, no score") and the live code's own hardcoded
+  // outcome:"explored". Not touching that call — it was already correct.
+  // moduleId kept as "motor-efficiency-lab" (matches this file's own live
+  // ledger entry and the Electric Forge hub's card href) even though other
+  // docs refer to it as "AC/DC/Motor Lab" or "Brushless Motor Lab" — one id,
+  // multiple casual names elsewhere, not a mismatch to resolve here.
+  // Same Concept Index gap as Solar & Battery / Circuit Lab: motor-efficiency-
+  // lab isn't in the Part 6 example either — flagging, not fixing the doc.
+  const MODULE_MANIFEST = {
+    moduleId:    'motor-efficiency-lab',
+    subjects:    ['physics', 'engineering'],
+    conceptTags: ['motor-efficiency', 'power-factor'],
+    ageRange:    null,
+    timeModel:   'active_session',
+    scoringPath: 'none',
+  };
+
+  const logger = new SessionLogger(MODULE_MANIFEST);
+  const wrapUpBtn = document.getElementById('wrapUpBtn');
+  const ledgerPreview = document.getElementById('ledgerPreview');
+  const memberNameEl = document.getElementById('memberName');
+  const memberPillEl = document.getElementById('memberPill');
+
+  let activeMember = null;
+
+  // KNOWN OPEN ITEM (same one flagged in every Electric Forge module so
+  // far): hil-guild.html's module cards don't pass a ?member= param, so a
+  // standalone launch has no way to know which household member is active.
+  // Falling back to the same auto-select hil-guild-scores.html uses.
+  async function resolveMember(user) {
+    activeMember = await resolveActiveMember(window.db, user.uid);
+    if (activeMember) {
+      memberNameEl.textContent = activeMember.name || 'Unnamed member';
+      memberPillEl.textContent = 'auto-selected';
+    } else {
+      memberNameEl.textContent = 'No member set up';
+      memberPillEl.textContent = 'add a member in Guild';
+    }
+  }
+
+  HILShell.init({
+    toolId: 'motor-efficiency-lab',
+    toolName: 'Motor Efficiency Lab',
+    requireAuth: true,
+    onAuth: async (user) => {
+      if (!user) return;
+      await resolveMember(user);
+      logger.start(); // module is interactive as soon as auth + member resolve
+    }
+  });
+
+  logger.onWrapUp = async (entry) => {
+    if (!window.currentUser || !activeMember) {
+      HILShell.toast('Sign in (and make sure a household member exists) to save this session', 'error');
+      return;
+    }
+    try {
+      await writeSessionLogEntry(window.db, window.currentUser.uid, activeMember.id, entry);
+      HILShell.toast('Session logged to the Ledger', 'success');
+    } catch (err) {
+      console.error('Motor Efficiency Lab: session log write failed', err);
+      HILShell.toast('Could not save this session — try again', 'error');
+    }
+  };
+
+  function renderLedgerPreview(entry) {
+    const json = JSON.stringify(entry, null, 2)
+      .replace(/"(entryId|moduleId|entryType|timestampStart|timestampEnd|activeMinutes|subjectsTagged|conceptTags|outcome|accuracy|verifiedBy|tier|description|auto_flushed)":/g, '<span class="k">"$1"</span>:')
+      .replace(/: "([^"]+)"/g, ': <span class="s">"$1"</span>');
+    ledgerPreview.innerHTML = json;
+  }
+
+  wrapUpBtn.addEventListener('click', async () => {
+    wrapUpBtn.disabled = true; // session-scoped duplicate guard (Part 3)
+    const entry = await logger.wrapUp({
+      // no outcome passed — scoringPath "none" means SessionLogger sets
+      // outcome to "explored" itself, per Part 5's controlled vocabulary.
+      description: `Compared DC, AC induction, and brushless motor efficiency at ${loadPct}% of a ${ratedPower}W rated load.`,
+    });
+    if (entry) {
+      renderLedgerPreview(entry);
+    } else {
+      wrapUpBtn.disabled = false; // wrapUp() returned null (already wrapped / not started) — nothing changed
+    }
+  });
+</script>
+</body>
+</html>
