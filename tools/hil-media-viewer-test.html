@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HIL Media Viewer Test</title>
+<script src="./hil-shell.js"></script>
+</head>
+<body>
+  <div style="padding:100px 24px 24px; font-family:monospace; color:#e5e5e5;">
+    <h2 style="color:#00cc66;">Guild Media Viewer — Test Harness</h2>
+    <p>Click a card below. Each pulls its doc from <code>guild_media/{assetId}</code> in Firestore
+       and resolves the file from <code>assets.hilsystem.com/{r2_path}</code>.</p>
+
+    <div id="test-cards" style="max-width:400px;"></div>
+  </div>
+
+  <script>
+    HILShell.init({ toolId: 'media-test', toolName: 'Media Viewer Test', requireAuth: false });
+
+    // Drop in two test trigger cards using the same helper PATCH's chat will use.
+    document.getElementById('test-cards').innerHTML =
+      HILShell.media.cardHTML('TEST-001', 'Smart Home Illustration') +
+      HILShell.media.cardHTML('TEST-002', 'PATCH & SCRATCH Short — Zone Basics');
+  </script>
+</body>
+</html>
