@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HIL — Home Assistant Bridge</title>
+  <script src="./hil-shell.js"></script>
+  <style>
+    /* ── TOOL-SPECIFIC STYLES ── */
+    .ha-hero {
+      position: relative;
+      border-bottom: 1px solid #00cc6633;
+      text-align: center;
+      overflow: hidden;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 1.5rem 2rem;
+    }
+    .ha-hero-bg {
+      position: absolute; inset: 0;
+      background-image: url('https://raw.githubusercontent.com/Dvo77/hilsystem-com/main/bridge-hero.png');
+      background-size: cover;
+      background-position: center 30%;
+      filter: brightness(0.45) saturate(0.85);
+      z-index: 0;
+    }
+    .ha-hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.55) 0%,
+        rgba(0,0,0,0.1) 45%,
+        rgba(0,0,0,0.72) 100%
+      );
+      z-index: 1;
+    }
+    .ha-hero-content {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .ha-hero-tagline {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.62rem;
+      color: var(--hil-green);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      opacity: 0.85;
+    }
+    .ha-hero h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.1rem, 4vw, 1.6rem);
+      color: #fff;
+      letter-spacing: 0.12em;
+      margin: 0 0 0.6rem;
+      text-shadow: 0 0 30px rgba(0,204,102,0.4), 0 2px 8px rgba(0,0,0,0.8);
+      line-height: 1.2;
+    }
+    .ha-hero h1 span { color: var(--hil-green); }
+    .ha-hero-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.06em;
+      margin: 0 0 1.25rem;
+    }
+    .ha-hero-pills {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;
+    }
+    .ha-hero-pill {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem;
+      color: var(--hil-green);
+      border: 1px solid #00cc6644;
+      background: rgba(0,204,102,0.08);
+      padding: 0.25rem 0.65rem;
+      letter-spacing: 0.08em;
+      backdrop-filter: blur(4px);
+    }
+    .ha-hero-patch-says {
+      position: absolute; top: 1rem; right: 1rem; z-index: 2; text-align: right;
+    }
+    .ha-hero-patch-says span {
+      display: block;
+      font-family: 'Orbitron', monospace;
+      font-size: 0.55rem;
+      color: var(--hil-green);
+      letter-spacing: 0.15em;
+      line-height: 1.8;
+      text-shadow: 0 0 12px rgba(0,204,102,0.6);
+      opacity: 0.9;
+    }
+
+    /* ── PHASE STEPPER ── */
+    .phase-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #1a1a1a;
+      overflow-x: auto;
+    }
+    .phase-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: #444;
+      white-space: nowrap;
+    }
+    .phase-step.active { color: var(--hil-green); }
+    .phase-step.done { color: #009944; }
+    .phase-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid #333;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem;
+      font-family: 'Orbitron', monospace;
+      flex-shrink: 0;
+    }
+    .phase-step.active .phase-dot { border-color: var(--hil-green); color: var(--hil-green); background: #00cc6611; }
+    .phase-step.done .phase-dot { border-color: #009944; background: #00994420; color: #009944; }
+    .phase-line {
+      width: 32px; height: 2px;
+      background: #1a1a1a;
+      flex-shrink: 0;
+    }
+    .phase-step.done + .phase-line { background: #009944; }
+
+    /* ── PANELS ── */
+    .tool-body { padding: 1.5rem; max-width: 700px; margin: 0 auto; }
+
+    .panel {
+      background: #0f0f0f;
+      border: 1px solid #1e1e1e;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .panel-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .panel-icon { font-size: 1.25rem; }
+    .panel-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.75rem;
+      color: var(--hil-green);
+      letter-spacing: 0.1em;
+    }
+    .panel-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem;
+      color: #555;
+      margin-top: 0.15rem;
+    }
+
+    /* ── FORM ELEMENTS ── */
+    .field-group { margin-bottom: 1rem; }
+    .field-label {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: #888;
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.05em;
+    }
+    .field-input {
+      width: 100%;
+      background: #0a0c0b;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .field-input:focus { outline: none; border-color: var(--hil-green); }
+    .field-hint {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: #444;
+      margin-top: 0.3rem;
+    }
+    .field-hint a { color: #555; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 0.6rem 1.25rem;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--hil-green); color: #000; }
+    .btn-primary:hover { background: #00ff77; }
+    .btn-primary:disabled { background: #1a3a2a; color: #444; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: var(--hil-green); border: 1px solid var(--hil-green); }
+    .btn-secondary:hover { background: #00cc6611; }
+    .btn-danger { background: transparent; color: #cc3300; border: 1px solid #cc3300; }
+    .btn-danger:hover { background: #cc330011; }
+    .btn-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+    /* ── STATUS INDICATOR ── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 99px;
+    }
+    .status-badge.connected { background: #00cc6622; color: var(--hil-green); border: 1px solid #00cc6644; }
+    .status-badge.disconnected { background: #cc330011; color: #cc5533; border: 1px solid #cc330033; }
+    .status-badge.testing { background: #cc880011; color: var(--hil-amber); border: 1px solid #cc880033; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .status-dot.pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── CONNECTION INFO CARD ── */
+    .conn-info {
+      background: #0a0c0b;
+      border: 1px solid #00cc6622;
+      border-radius: 6px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .conn-info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.25rem 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .conn-info-row:last-child { border: none; }
+    .conn-info-label { color: #555; }
+    .conn-info-value { color: #ccc; }
+    .conn-info-value.green { color: var(--hil-green); }
+
+    /* ── ENTITY LIST ── */
+    .entity-search {
+      width: 100%;
+      background: #0a0c0b;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.6rem 0.75rem;
+      box-sizing: border-box;
+      margin-bottom: 1rem;
+    }
+    .entity-search:focus { outline: none; border-color: var(--hil-green); }
+
+    .entity-category {
+      margin-bottom: 1rem;
+    }
+    .entity-cat-header {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.1em;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #1a1a1a;
+      margin-bottom: 0.5rem;
+    }
+    .entity-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .entity-row:hover { background: #1a1a1a; }
+    .entity-row.mapped { background: #00cc660a; border: 1px solid #00cc6622; margin-bottom: 2px; }
+    .entity-state-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .entity-state-dot.on { background: var(--hil-green); }
+    .entity-state-dot.off { background: #333; }
+    .entity-state-dot.unavailable { background: #cc3300; }
+    .entity-state-dot.other { background: var(--hil-amber); }
+    .entity-info { flex: 1; min-width: 0; }
+    .entity-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.85rem;
+      color: #ccc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .entity-id {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem;
+      color: #444;
+    }
+    .entity-state-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: #555;
+      flex-shrink: 0;
+    }
+    .entity-map-btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.55rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      border: 1px solid #2a2a2a;
+      background: transparent;
+      color: #666;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .entity-map-btn:hover { border-color: var(--hil-green); color: var(--hil-green); }
+    .entity-map-btn.mapped { border-color: #00cc6644; color: var(--hil-green); background: #00cc660a; }
+
+    /* ── MAPPED ENTITIES SUMMARY ── */
+    .mapped-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .mapped-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: #0a0c0b;
+      border: 1px solid #1e1e1e;
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+    }
+    .mapped-entity-id {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--hil-green);
+      flex: 1;
+    }
+    .mapped-arrow { color: #333; font-size: 0.75rem; }
+    .mapped-hil-addr {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem;
+      color: #888;
+    }
+    .mapped-remove {
+      background: none; border: none; color: #444; cursor: pointer;
+      font-size: 0.8rem; padding: 0; flex-shrink: 0;
+    }
+    .mapped-remove:hover { color: #cc3300; }
+
+    /* ── SYNC STATUS ── */
+    .sync-panel {
+      background: #0a0c0b;
+      border: 1px solid #1e1e1e;
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .sync-row {
+      display: flex; justify-content: space-between;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: #555;
+      margin-bottom: 0.4rem;
+    }
+    .sync-row span:last-child { color: #999; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #444;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+    }
+    .empty-state-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+
+    /* ── PATCH CONTEXT BOX ── */
+    .patch-context {
+      background: #0a1a0f;
+      border: 1px solid #00cc6622;
+      border-left: 3px solid var(--hil-green);
+      border-radius: 0 6px 6px 0;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: #888;
+      line-height: 1.6;
+    }
+    .patch-context strong { color: var(--hil-green); }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: #000000cc;
+      z-index: 9000;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #0f0f0f;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.8rem;
+      color: var(--hil-green);
+      margin-bottom: 1rem;
+    }
+    .modal-entity-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1rem;
+      color: #ddd;
+      margin-bottom: 0.25rem;
+    }
+    .modal-entity-id {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: #555;
+      margin-bottom: 1.25rem;
+    }
+    .modal-footer { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+
+    /* ── HIDDEN PHASES ── */
+    .phase-panel { display: none; }
+    .phase-panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <!-- HIL Shell renders header/nav/auth gate -->
+
+  <div class="ha-hero">
+    <div class="ha-hero-bg"></div>
+    <div class="ha-hero-overlay"></div>
+    <!-- PATCH SAYS — top right corner -->
+    <div class="ha-hero-patch-says">
+      <span>PATCH SEES.</span>
+      <span>PATCH KNOWS.</span>
+      <span>PATCH HELPS.</span>
+    </div>
+    <!-- Main content — sits above image -->
+    <div class="ha-hero-content">
+      <div class="ha-hero-tagline">HIL System · Smart Home</div>
+      <h1>HOME ASSISTANT<br><span>BRIDGE</span></h1>
+      <div class="ha-hero-sub">Connect your HA instance · Map entities to HIL addresses · Let PATCH see your home</div>
+      <div class="ha-hero-pills">
+        <span class="ha-hero-pill">🏠 Live Entity State</span>
+        <span class="ha-hero-pill">📍 HL Spatial Context</span>
+        <span class="ha-hero-pill">⚡ PATCH Integration</span>
+        <span class="ha-hero-pill">☀️ Solar &amp; Energy</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase Stepper -->
+  <div class="phase-bar">
+    <div class="phase-step active" id="step-1">
+      <div class="phase-dot">1</div>
+      <span>Connect</span>
+    </div>
+    <div class="phase-line" id="line-1"></div>
+    <div class="phase-step" id="step-2">
+      <div class="phase-dot">2</div>
+      <span>Map Entities</span>
+    </div>
+    <div class="phase-line" id="line-2"></div>
+    <div class="phase-step" id="step-3">
+      <div class="phase-dot">3</div>
+      <span>Sync</span>
+    </div>
+  </div>
+
+  <div class="tool-body">
+
+    <!-- ── PHASE 1: CONNECT ── -->
+    <div class="phase-panel active" id="phase-1">
+
+      <div class="patch-context">
+        <strong>What this does:</strong> Links your Home Assistant instance to HIL System.
+        PATCH will be able to answer "are the bathroom lights on?" — and every entity
+        gets your HL spatial address for context. Your data stays between HIL and your HA instance.
+      </div>
+
+      <!-- Current connection status -->
+      <div class="panel" id="connection-status-panel" style="display:none;">
+        <div class="panel-header">
+          <span class="panel-icon">🔗</span>
+          <div>
+            <div class="panel-title">CONNECTED INSTANCE</div>
+          </div>
+          <span class="status-badge connected" id="conn-badge" style="margin-left:auto;">
+            <span class="status-dot"></span> Connected
+          </span>
+        </div>
+        <div class="conn-info" id="conn-info-block"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="goToPhase(2)">Manage Entity Map →</button>
+          <button class="btn btn-secondary" onclick="runSync()">Sync Now</button>
+          <button class="btn btn-danger" onclick="disconnectHA()">Disconnect</button>
+        </div>
+      </div>
+
+      <!-- Connect form -->
+      <div class="panel" id="connect-form-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚡</span>
+          <div>
+            <div class="panel-title">CONNECT HOME ASSISTANT</div>
+            <div class="panel-sub">You'll need your external HA URL and a long-lived access token</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">HOME ASSISTANT URL</label>
+          <input class="field-input" type="url" id="ha-url"
+            placeholder="https://homeassistant.local:8123 or https://myhome.duckdns.org" />
+          <div class="field-hint">Must be reachable from the internet (not just local network) for cloud sync to work.
+            Use Nabu Casa or a reverse proxy/DDNS for remote access.</div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">LONG-LIVED ACCESS TOKEN</label>
+          <input class="field-input" type="password" id="ha-token"
+            placeholder="eyJ0eXAiOiJKV1QiLCJhbGci..." />
+          <div class="field-hint">
+            Generate in HA: Profile → Security → Long-Lived Access Tokens → Create Token.
+            <br>Token is stored encrypted and used only for your HIL sync.
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" id="test-btn" onclick="testConnection()">Test Connection</button>
+        </div>
+
+        <!-- Test result -->
+        <div id="test-result" style="margin-top:1rem; display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ── PHASE 2: MAP ENTITIES ── -->
+    <div class="phase-panel" id="phase-2">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🗺</span>
+          <div>
+            <div class="panel-title">ENTITY MAP</div>
+            <div class="panel-sub">Map HA entities to HIL items and fixed points</div>
+          </div>
+        </div>
+
+        <div class="patch-context">
+          <strong>How mapping works:</strong> Find the entity in the list below, tap Map,
+          and enter its HIL address or link it to an item in your Vault.
+          Mapped entities sync their live state to HIL so PATCH can answer questions about them.
+        </div>
+
+        <!-- Mapped summary -->
+        <div id="mapped-summary" style="margin-bottom:1rem; display:none;">
+          <div class="panel-sub" style="margin-bottom:0.5rem; color:#555;">MAPPED ENTITIES</div>
+          <div class="mapped-list" id="mapped-list"></div>
+        </div>
+
+        <!-- Entity search -->
+        <input class="entity-search" type="text" id="entity-search"
+          placeholder="Search entities by name or ID..." oninput="filterEntities()" />
+
+        <div id="entity-list">
+          <div class="empty-state">
+            <div class="empty-state-icon">📡</div>
+            Loading entities from Home Assistant...
+          </div>
+        </div>
+
+        <div class="btn-row" style="margin-top:1.25rem;">
+          <button class="btn btn-primary" onclick="saveAndSync()">Save Map & Sync →</button>
+          <button class="btn btn-secondary" onclick="goToPhase(1)">← Back</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PHASE 3: SYNC STATUS ── -->
+    <div class="phase-panel" id="phase-3">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-icon">🔄</span>
+          <div>
+            <div class="panel-title">SYNC STATUS</div>
+            <div class="panel-sub">Live state from your home</div>
+          </div>
+        </div>
+
+        <div class="sync-panel" id="sync-status-block">
+          <div class="sync-row"><span>Status</span><span id="sync-status-text">—</span></div>
+          <div class="sync-row"><span>Last Sync</span><span id="sync-last-time">—</span></div>
+          <div class="sync-row"><span>Entities Synced</span><span id="sync-count">—</span></div>
+          <div class="sync-row"><span>Errors</span><span id="sync-errors">—</span></div>
+        </div>
+
+        <div class="btn-row" style="margin-top:1rem;">
+          <button class="btn btn-primary" onclick="runSync()">Sync Now</button>
+          <button class="btn btn-secondary" onclick="goToPhase(2)">← Edit Map</button>
+        </div>
+
+        <div class="patch-context" style="margin-top:1.25rem;">
+          <strong>Ask PATCH:</strong> "Are the kitchen lights on?" · "What's the thermostat set to?" ·
+          "How much solar are we generating?" · "Is the garage door open?" ·
+          "What's using the most power right now?"
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map Entity Modal -->
+  <div class="modal-overlay" id="map-modal">
+    <div class="modal-box">
+      <div class="modal-title">MAP ENTITY TO HIL</div>
+      <div class="modal-entity-name" id="modal-entity-name"></div>
+      <div class="modal-entity-id" id="modal-entity-id"></div>
+
+      <div class="field-group">
+        <label class="field-label">HIL TYPE</label>
+        <select class="field-input" id="modal-hil-type" onchange="updateModalFields()">
+          <option value="fixed_point">Fixed Point (outlet, switch, light fixture)</option>
+          <option value="item_record">Vault Item (appliance, device, equipment)</option>
+        </select>
+      </div>
+
+      <div class="field-group" id="modal-hl-addr-group">
+        <label class="field-label">HL ADDRESS</label>
+        <input class="field-input" type="text" id="modal-hl-addr"
+          placeholder="e.g. SH-LR-S2-A1 or PW-DR-S1-B0" />
+        <div class="field-hint">The HL address of the fixed point this entity controls or represents.</div>
+      </div>
+
+      <div class="field-group" id="modal-item-id-group" style="display:none;">
+        <label class="field-label">VAULT ITEM ID</label>
+        <input class="field-input" type="text" id="modal-item-id"
+          placeholder="Firestore document ID from item_records" />
+        <div class="field-hint">Find this in your Vault item's detail view. Entity state will write to the item's maintenance block.</div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">LABEL (optional)</label>
+        <input class="field-input" type="text" id="modal-label"
+          placeholder="e.g. Living Room Lamp, Furnace, Solar Inverter" />
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="confirmMapping()">Map Entity</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── CONFIG ──────────────────────────────────────────────────────────────────
+    const BRIDGE_URL = 'https://hil-ha-bridge.dvo77.workers.dev';
+    const WORKER_SECRET = 'HIL_WORKER_SECRET_PLACEHOLDER'; // Replace with actual secret
+
+    // ── STATE ───────────────────────────────────────────────────────────────────
+    let currentUser = null;
+    let haConnection = null;     // saved HA config from Firestore
+    let allEntities = [];        // full entity list from HA
+    let entityMap = [];          // current mappings [{ha_entity_id, hil_type, hil_doc_id, hl_address, label}]
+    let pendingEntityId = null;  // entity being mapped in modal
+    let testResult = null;       // result from test-connection
+
+    // ── SHELL INIT ──────────────────────────────────────────────────────────────
+    HILShell.init({
+      toolId: 'ha-bridge',
+      toolName: 'HA Bridge',
+      requireAuth: true,
+      onAuth: async (user) => {
+        currentUser = user;
+        await loadSavedConfig();
+      }
+    });
+
+    // ── LOAD SAVED CONFIG ───────────────────────────────────────────────────────
+    async function loadSavedConfig() {
+      if (!currentUser) return;
+
+      try {
+        const db = window.db;
+        const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        const ref = doc(db, `users/${currentUser.uid}/integrations/home_assistant`);
+        const snap = await getDoc(ref);
+
+        if (snap.exists()) {
+          haConnection = snap.data();
+          if (haConnection.entity_map && typeof haConnection.entity_map === 'string') {
+            entityMap = JSON.parse(haConnection.entity_map);
+          } else {
+            entityMap = haConnection.entity_map || [];
+          }
+          showConnectedState();
+        }
+      } catch (e) {
+        console.warn('No saved HA config or Firestore unavailable:', e);
+      }
+    }
+
+    function showConnectedState() {
+      if (!haConnection) return;
+
+      document.getElementById('connection-status-panel').style.display = 'block';
+      document.getElementById('connect-form-panel').style.display = 'none';
+
+      const info = document.getElementById('conn-info-block');
+      const lastSync = haConnection.last_sync
+        ? new Date(haConnection.last_sync).toLocaleString()
+        : 'Never';
+
+      info.innerHTML = `
+        <div class="conn-info-row">
+          <span class="conn-info-label">URL</span>
+          <span class="conn-info-value">${haConnection.ha_url || '—'}</span>
+        </div>
+        <div class="conn-info-row">
+          <span class="conn-info-label">Status</span>
+          <span class="conn-info-value green">● Connected</span>
+        </div>
+        <div class="conn-info-row">
+          <span class="conn-info-label">Mapped Entities</span>
+          <span class="conn-info-value">${entityMap.length}</span>
+        </div>
+        <div class="conn-info-row">
+          <span class="conn-info-label">Last Sync</span>
+          <span class="conn-info-value">${lastSync}</span>
+        </div>
+      `;
+
+      markStepDone(1);
+      if (entityMap.length > 0) markStepDone(2);
+    }
+
+    // ── TEST CONNECTION ──────────────────────────────────────────────────────────
+    async function testConnection() {
+      const url = document.getElementById('ha-url').value.trim();
+      const token = document.getElementById('ha-token').value.trim();
+      const btn = document.getElementById('test-btn');
+      const resultDiv = document.getElementById('test-result');
+
+      if (!url || !token) {
+        showTestResult('error', 'Enter your HA URL and token first.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'TESTING...';
+      resultDiv.style.display = 'none';
+
+      try {
+        const res = await fetch(`${BRIDGE_URL}/test-connection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            worker_secret: WORKER_SECRET,
+            ha_url: url,
+            ha_token: token,
+          }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          testResult = { url, token, ...data };
+          showTestResult('success',
+            `✓ Connected to <strong>${data.location_name || 'Home Assistant'}</strong> ` +
+            `· HA ${data.version} · ${data.relevant_entities} entities found`
+          );
+          // Show proceed button
+          document.getElementById('test-result').innerHTML +=
+            `<div style="margin-top:0.75rem;">
+              <button class="btn btn-primary" onclick="proceedToMapping()">
+                Map Entities →
+              </button>
+            </div>`;
+        } else {
+          showTestResult('error', `Connection failed: ${data.error}`);
+        }
+      } catch (e) {
+        showTestResult('error', `Network error — is the bridge worker deployed? (${e.message})`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'TEST CONNECTION';
+      }
+    }
+
+    function showTestResult(type, html) {
+      const el = document.getElementById('test-result');
+      el.style.display = 'block';
+      const colors = { success: '#00cc66', error: '#cc3300', info: '#cc8800' };
+      el.innerHTML = `
+        <div style="font-family:'Space Mono',monospace;font-size:0.68rem;
+             color:${colors[type]||'#888'};padding:0.75rem;background:#0a0c0b;
+             border-radius:4px;border:1px solid ${colors[type]||'#333'}33;">
+          ${html}
+        </div>`;
+    }
+
+    // ── PROCEED TO MAPPING ───────────────────────────────────────────────────────
+    async function proceedToMapping() {
+      goToPhase(2);
+      await loadEntities();
+    }
+
+    async function loadEntities() {
+      const url = testResult?.url || haConnection?.ha_url;
+      const token = testResult?.token || haConnection?.ha_token;
+
+      if (!url || !token) return;
+
+      document.getElementById('entity-list').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">📡</div>
+          Fetching entities from Home Assistant...
+        </div>`;
+
+      try {
+        const res = await fetch(`${BRIDGE_URL}/fetch-entities`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            worker_secret: WORKER_SECRET,
+            ha_url: url,
+            ha_token: token,
+          }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          allEntities = data.entities;
+          renderEntityList(allEntities);
+          renderMappedSummary();
+        } else {
+          document.getElementById('entity-list').innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">⚠️</div>
+              Failed to load entities: ${data.error}
+            </div>`;
+        }
+      } catch (e) {
+        document.getElementById('entity-list').innerHTML = `
+          <div class="empty-state">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── RENDER ENTITY LIST ───────────────────────────────────────────────────────
+    function renderEntityList(entities) {
+      const categories = {};
+      for (const e of entities) {
+        if (!categories[e.category]) categories[e.category] = [];
+        categories[e.category].push(e);
+      }
+
+      const mappedIds = new Set(entityMap.map(m => m.ha_entity_id));
+
+      let html = '';
+      for (const [cat, items] of Object.entries(categories)) {
+        html += `<div class="entity-category">
+          <div class="entity-cat-header">${cat.toUpperCase()} (${items.length})</div>`;
+
+        for (const e of items) {
+          const isMapped = mappedIds.has(e.entity_id);
+          const stateDotClass = e.state === 'on' ? 'on'
+            : e.state === 'off' ? 'off'
+            : e.state === 'unavailable' ? 'unavailable' : 'other';
+
+          html += `
+            <div class="entity-row ${isMapped ? 'mapped' : ''}" data-id="${e.entity_id}"
+                 data-name="${e.friendly_name}" data-cat="${cat}">
+              <div class="entity-state-dot ${stateDotClass}"></div>
+              <div class="entity-info">
+                <div class="entity-name">${e.friendly_name}</div>
+                <div class="entity-id">${e.entity_id}</div>
+              </div>
+              <div class="entity-state-label">${e.state}${e.unit ? ' ' + e.unit : ''}</div>
+              <button class="entity-map-btn ${isMapped ? 'mapped' : ''}"
+                onclick="openMapModal('${e.entity_id}', '${e.friendly_name.replace(/'/g, "\\'")}')">
+                ${isMapped ? '✓ mapped' : 'map'}
+              </button>
+            </div>`;
+        }
+        html += '</div>';
+      }
+
+      document.getElementById('entity-list').innerHTML = html || '<div class="empty-state">No entities found.</div>';
+    }
+
+    function filterEntities() {
+      const q = document.getElementById('entity-search').value.toLowerCase();
+      if (!q) { renderEntityList(allEntities); return; }
+      const filtered = allEntities.filter(e =>
+        e.friendly_name.toLowerCase().includes(q) || e.entity_id.toLowerCase().includes(q)
+      );
+      renderEntityList(filtered);
+    }
+
+    function renderMappedSummary() {
+      const el = document.getElementById('mapped-summary');
+      const list = document.getElementById('mapped-list');
+      if (entityMap.length === 0) { el.style.display = 'none'; return; }
+
+      el.style.display = 'block';
+      list.innerHTML = entityMap.map((m, i) => `
+        <div class="mapped-item">
+          <div class="mapped-entity-id">${m.ha_entity_id}</div>
+          <div class="mapped-arrow">→</div>
+          <div class="mapped-hil-addr">${m.hl_address || m.hil_doc_id || '?'}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:0.55rem;color:#555;flex:1;text-align:right;">
+            ${m.label || ''}
+          </div>
+          <button class="mapped-remove" onclick="removeMapping(${i})" title="Remove">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // ── MAP MODAL ────────────────────────────────────────────────────────────────
+    function openMapModal(entityId, entityName) {
+      pendingEntityId = entityId;
+      document.getElementById('modal-entity-name').textContent = entityName;
+      document.getElementById('modal-entity-id').textContent = entityId;
+      document.getElementById('modal-hl-addr').value = '';
+      document.getElementById('modal-item-id').value = '';
+      document.getElementById('modal-label').value = entityName;
+
+      // Pre-fill label from existing mapping if present
+      const existing = entityMap.find(m => m.ha_entity_id === entityId);
+      if (existing) {
+        document.getElementById('modal-hl-addr').value = existing.hl_address || '';
+        document.getElementById('modal-item-id').value = existing.hil_doc_id || '';
+        document.getElementById('modal-label').value = existing.label || entityName;
+        document.getElementById('modal-hil-type').value = existing.hil_type || 'fixed_point';
+        updateModalFields();
+      }
+
+      document.getElementById('map-modal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('map-modal').classList.remove('open');
+      pendingEntityId = null;
+    }
+
+    function updateModalFields() {
+      const type = document.getElementById('modal-hil-type').value;
+      document.getElementById('modal-hl-addr-group').style.display = type === 'fixed_point' ? 'block' : 'none';
+      document.getElementById('modal-item-id-group').style.display = type === 'item_record' ? 'block' : 'none';
+    }
+
+    function confirmMapping() {
+      const type = document.getElementById('modal-hil-type').value;
+      const hlAddr = document.getElementById('modal-hl-addr').value.trim();
+      const itemId = document.getElementById('modal-item-id').value.trim();
+      const label = document.getElementById('modal-label').value.trim();
+
+      if (type === 'fixed_point' && !hlAddr) {
+        alert('Enter an HL address for the fixed point.'); return;
+      }
+      if (type === 'item_record' && !itemId) {
+        alert('Enter the Vault item ID.'); return;
+      }
+
+      // Remove existing mapping for this entity if present
+      entityMap = entityMap.filter(m => m.ha_entity_id !== pendingEntityId);
+
+      // Add new mapping
+      entityMap.push({
+        ha_entity_id: pendingEntityId,
+        hil_type: type,
+        hl_address: hlAddr || null,
+        hil_doc_id: itemId || null,
+        hil_path: type === 'item_record'
+          ? `users/${currentUser.uid}/item_records/${itemId}`
+          : null,
+        label,
+      });
+
+      closeModal();
+      renderMappedSummary();
+      renderEntityList(allEntities.filter(e =>
+        document.getElementById('entity-search').value
+          ? e.friendly_name.toLowerCase().includes(document.getElementById('entity-search').value.toLowerCase())
+          : true
+      ));
+
+      HILShell.toast(`Mapped: ${label}`, 'success');
+    }
+
+    function removeMapping(index) {
+      entityMap.splice(index, 1);
+      renderMappedSummary();
+      renderEntityList(allEntities);
+    }
+
+    // ── SAVE + SYNC ──────────────────────────────────────────────────────────────
+    async function saveAndSync() {
+      const url = testResult?.url || haConnection?.ha_url;
+      const token = testResult?.token || haConnection?.ha_token;
+
+      if (!url || !token) {
+        HILShell.toast('No HA connection — go back and connect first', 'error');
+        return;
+      }
+
+      HILShell.toast('Saving configuration...', 'info');
+
+      try {
+        const res = await fetch(`${BRIDGE_URL}/save-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            worker_secret: WORKER_SECRET,
+            ha_url: url,
+            ha_token: token,
+            entity_map: entityMap,
+          }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          HILShell.toast('Config saved. Running sync...', 'success');
+          await runSync();
+          goToPhase(3);
+        } else {
+          HILShell.toast(`Save failed: ${data.error}`, 'error');
+        }
+      } catch (e) {
+        HILShell.toast(`Error: ${e.message}`, 'error');
+      }
+    }
+
+    async function runSync() {
+      HILShell.toast('Syncing with Home Assistant...', 'info');
+
+      try {
+        const res = await fetch(`${BRIDGE_URL}/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            worker_secret: WORKER_SECRET,
+          }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          const r = data.result;
+          document.getElementById('sync-status-text').textContent = '✓ Complete';
+          document.getElementById('sync-last-time').textContent = new Date().toLocaleString();
+          document.getElementById('sync-count').textContent = r.synced || 0;
+          document.getElementById('sync-errors').textContent = r.errors || 0;
+          HILShell.toast(`Sync complete — ${r.synced} entities updated`, 'success');
+          markStepDone(3);
+        } else {
+          HILShell.toast(`Sync error: ${data.error}`, 'error');
+        }
+      } catch (e) {
+        HILShell.toast(`Sync failed: ${e.message}`, 'error');
+      }
+    }
+
+    // ── DISCONNECT ───────────────────────────────────────────────────────────────
+    async function disconnectHA() {
+      if (!confirm('Disconnect Home Assistant? Your entity mappings will be removed.')) return;
+
+      try {
+        const db = window.db;
+        const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+        await deleteDoc(doc(db, `users/${currentUser.uid}/integrations/home_assistant`));
+
+        haConnection = null;
+        entityMap = [];
+        testResult = null;
+
+        document.getElementById('connection-status-panel').style.display = 'none';
+        document.getElementById('connect-form-panel').style.display = 'block';
+        document.getElementById('ha-url').value = '';
+        document.getElementById('ha-token').value = '';
+
+        resetSteps();
+        goToPhase(1);
+        HILShell.toast('Home Assistant disconnected', 'info');
+      } catch (e) {
+        HILShell.toast(`Error: ${e.message}`, 'error');
+      }
+    }
+
+    // ── PHASE NAVIGATION ─────────────────────────────────────────────────────────
+    function goToPhase(n) {
+      document.querySelectorAll('.phase-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`phase-${n}`).classList.add('active');
+      setActiveStep(n);
+
+      // Load entities when entering phase 2
+      if (n === 2 && allEntities.length === 0) loadEntities();
+    }
+
+    function setActiveStep(n) {
+      for (let i = 1; i <= 3; i++) {
+        const step = document.getElementById(`step-${i}`);
+        if (!step.classList.contains('done')) {
+          step.classList.toggle('active', i === n);
+        }
+      }
+    }
+
+    function markStepDone(n) {
+      const step = document.getElementById(`step-${n}`);
+      step.classList.remove('active');
+      step.classList.add('done');
+      step.querySelector('.phase-dot').textContent = '✓';
+      if (n < 3) {
+        document.getElementById(`line-${n}`).style.background = '#009944';
+        const next = document.getElementById(`step-${n + 1}`);
+        if (!next.classList.contains('done')) next.classList.add('active');
+      }
+    }
+
+    function resetSteps() {
+      for (let i = 1; i <= 3; i++) {
+        const step = document.getElementById(`step-${i}`);
+        step.classList.remove('done', 'active');
+        step.querySelector('.phase-dot').textContent = i;
+      }
+      document.getElementById('step-1').classList.add('active');
+      document.getElementById('line-1').style.background = '#1a1a1a';
+      document.getElementById('line-2').style.background = '#1a1a1a';
+    }
+
+    // Close modal on overlay click
+    document.getElementById('map-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+  </script>
+</body>
+</html>
