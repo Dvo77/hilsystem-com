@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Incubator — Welcome to Your Wiki</title>
+<script src="../hil-shell.js"></script>
+<style>
+  /* Fonts (Orbitron, Space Mono, Barlow Condensed) are loaded by
+     hil-shell.js's injectStyles() — no duplicate @import here. */
+
+  :root {
+    /* Shared concepts aliased to the real hil-shell.js tokens — values are
+       NOT redeclared here, this file just references shell's actual vars so
+       the existing CSS rules below don't all need rewriting var()-by-var().
+       Same convention as Noun First Lab: inherit shell tokens, keep only
+       genuinely module-specific extras local. */
+    --bg:            var(--hil-bg);
+    --panel:         var(--hil-surface);
+    --panel2:        var(--hil-surface-2);
+    --border:        var(--hil-border);
+    --border-mid:    var(--hil-border);
+    --border-bright: var(--hil-green-dim);
+    --green:         var(--hil-green);
+    --green-dim:     var(--hil-green-dim);
+    --green-glow:    var(--hil-green-glow);
+    --green-soft:    rgba(0,204,102,0.07);
+    --amber:         var(--hil-amber);
+    --amber-dim:     rgba(204,136,0,0.15);
+    --text:          var(--hil-text);
+    --text-mid:      var(--hil-text-muted);
+    --text-dim:      var(--hil-text-muted);
+    --text-bright:   var(--hil-text);
+    /* Module-specific — no shell equivalent, kept local (same pattern as
+       Noun First Lab's --blue/--danger). */
+    --blue:          #38bdf8;
+    --blue-soft:     rgba(56,189,248,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 0% 0%, rgba(0,204,102,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 100% 100%, rgba(0,204,102,0.03) 0%, transparent 50%);
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 64px 32px 48px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--green-dim);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .eyebrow::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: var(--green-dim);
+  }
+
+  h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1.1;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  h1 span {
+    color: var(--green);
+    text-shadow: 0 0 24px rgba(0,204,102,0.4);
+  }
+
+  .hero-sub {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--text-mid);
+    margin-top: 16px;
+    line-height: 1.5;
+    max-width: 620px;
+  }
+
+  .hero-sub strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── ORIENTATION STRIP ── */
+  .orientation {
+    max-width: 900px;
+    margin: 0 auto 48px;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .orient-block {
+    background: var(--panel);
+    padding: 20px 22px;
+  }
+
+  .orient-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--green-dim);
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+
+  .orient-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .orient-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+
+  /* ── SECTION HEADING ── */
+  .section-wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px 48px;
+  }
+
+  .sec-head {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-mid);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sec-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border-mid), transparent);
+  }
+
+  /* ── QUEST CARDS ── */
+  .quest-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .quest-card {
+    background: var(--panel);
+    border: 1px solid var(--border-mid);
+    padding: 20px 22px;
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 14px;
+    align-items: start;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    position: relative;
+  }
+
+  .quest-card:hover {
+    border-color: var(--green-dim);
+    background: var(--green-soft);
+  }
+
+  .quest-card.explored {
+    border-color: var(--green);
+    background: var(--green-soft);
+  }
+
+  .quest-icon {
+    width: 48px;
+    height: 48px;
+    border: 1px solid var(--border-bright);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: var(--panel2);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .quest-check {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #000;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .quest-card.explored .quest-check {
+    display: flex;
+  }
+
+  .quest-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--green-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .quest-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .quest-desc {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.65;
+  }
+
+  .quest-status-note {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── PROGRESS / WRAP UP BAR ── */
+  .progress-bar {
+    max-width: 900px;
+    margin: -12px auto 20px;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .progress-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    letter-spacing: 1px;
+  }
+
+  .progress-label b { color: var(--green); }
+
+  #wrapup-btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 20px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    cursor: pointer;
+    opacity: 0.35;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  #wrapup-btn.ready {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #wrapup-btn:hover.ready {
+    background: var(--text-bright);
+  }
+
+  #save-status {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    max-width: 900px;
+    margin: 0 auto 24px;
+    padding: 0 32px;
+    min-height: 14px;
+  }
+
+  /* ── WHAT THIS WIKI IS ── */
+  .what-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+
+  .what-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--green-dim);
+    padding: 18px 18px 20px;
+  }
+
+  .what-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--green-dim);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .what-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .what-body {
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+
+  /* ── PHILOSOPHY BLOCK ── */
+  .philosophy {
+    background: var(--panel);
+    border: 1px solid var(--border-mid);
+    border-left: 3px solid var(--green);
+    padding: 28px 32px;
+    margin-bottom: 12px;
+  }
+
+  .philosophy blockquote {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(14px, 2.5vw, 20px);
+    font-weight: 400;
+    color: var(--green);
+    letter-spacing: 2px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .philosophy p {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-mid);
+    line-height: 1.8;
+    max-width: 680px;
+  }
+
+  .philosophy p + p {
+    margin-top: 12px;
+  }
+
+  /* ── YOUR DATA ── */
+  .data-strip {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 12px;
+  }
+
+  .data-icon {
+    font-size: 28px;
+    flex-shrink: 0;
+  }
+
+  .data-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-mid);
+    line-height: 1.7;
+  }
+
+  .data-text strong {
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  /* ── GRAMMAR QUICK REF ── */
+  .grammar-box {
+    background: var(--panel2);
+    border: 1px solid var(--border-mid);
+    padding: 20px 24px;
+  }
+
+  .grammar-format {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    letter-spacing: 3px;
+    margin-bottom: 14px;
+    text-shadow: 0 0 10px rgba(0,204,102,0.3);
+  }
+
+  .grammar-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+  }
+
+  .grammar-table th {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .grammar-table td {
+    padding: 6px 8px;
+    color: var(--text-mid);
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .grammar-table td:first-child {
+    color: var(--green);
+    font-weight: 700;
+    width: 120px;
+  }
+
+  .grammar-example {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.3);
+    border-left: 2px solid var(--green-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-mid);
+  }
+
+  .grammar-example .code {
+    color: var(--green);
+    font-size: 13px;
+    letter-spacing: 2px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .footer-mark {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--green-dim);
+    letter-spacing: 4px;
+  }
+
+  .footer-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  /* ── DIVIDER ── */
+  .spacer { height: 48px; }
+
+  /* mobile */
+  @media (max-width: 680px) {
+    .orientation { grid-template-columns: 1fr; }
+    .quest-grid  { grid-template-columns: 1fr; }
+    .what-grid   { grid-template-columns: 1fr; }
+    .hero, .section-wrap { padding-left: 18px; padding-right: 18px; }
+    .progress-bar { padding-left: 18px; padding-right: 18px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    #save-status { padding-left: 18px; padding-right: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="eyebrow">Incubator Edition — Welcome</div>
+  <h1>This is your<br><span>Life Manual.</span></h1>
+  <p class="hero-sub">
+    Not a note app. Not a folder. A <strong>structured knowledge system</strong> — for your projects, your tools, your skills, your stories, and the things that matter to you. Everything here is yours, it lives in your GitHub repo, and it travels with you when you're ready to run your own server.
+  </p>
+</section>
+
+<!-- ORIENTATION -->
+<div style="max-width:900px;margin:0 auto;padding:0 32px 40px;">
+  <div class="orientation">
+    <div class="orient-block">
+      <div class="orient-num">01 — HOSTED HERE</div>
+      <div class="orient-title">You're on the Incubator</div>
+      <div class="orient-desc">Your wiki runs on HIL infrastructure. Low friction. Zero setup. Start building now.</div>
+    </div>
+    <div class="orient-block">
+      <div class="orient-num">02 — SYNCED TO YOU</div>
+      <div class="orient-title">Your GitHub Backs This Up</div>
+      <div class="orient-desc">Every page syncs to your repo. The history, the structure, all of it — already yours.</div>
+    </div>
+    <div class="orient-block">
+      <div class="orient-num">03 — PORTABLE FOREVER</div>
+      <div class="orient-title">Graduate When Ready</div>
+      <div class="orient-desc">Spin up your own Wiki.js, point it at your repo, and nothing changes except who's hosting.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PHILOSOPHY -->
+<section class="section-wrap">
+  <div class="sec-head">Why This Exists</div>
+  <div class="philosophy">
+    <blockquote>"Nothing is Lost. Everything is Logic."</blockquote>
+    <p>
+      People don't keep objects. They keep memories, possibilities, identity, and stories. But those things disappear — in estate sales, in dumpsters, in the brains of the people who cared about them and then died. HIL exists because every death is a catastrophic information loss event. This wiki is how you stop that.
+    </p>
+    <p>
+      Write the life manual that tells the whole story. Document what you built, what you know, where things are, and why they matter. The format is structured so any AI can read it, any person can navigate it, and any machine can act on it. That's not a feature — that's the point.
+    </p>
+  </div>
+</section>
+
+<!-- START HERE QUESTS -->
+<section class="section-wrap">
+  <div class="sec-head">Start Here</div>
+  <div class="quest-grid" id="quest-grid">
+
+    <div class="quest-card" data-quest="life-manual" tabindex="0" role="button" aria-pressed="false">
+      <div class="quest-icon">📖<span class="quest-check">✓</span></div>
+      <div>
+        <div class="quest-tag">Quest 01 · Foundation</div>
+        <div class="quest-title">Create Your Life Manual</div>
+        <div class="quest-desc">Your first page. Who you are, what you do, what you're building, what you know. This is the root document everything else hangs from.</div>
+      </div>
+    </div>
+
+    <div class="quest-card" data-quest="first-project" tabindex="0" role="button" aria-pressed="false">
+      <div class="quest-icon">📋<span class="quest-check">✓</span></div>
+      <div>
+        <div class="quest-tag">Quest 02 · Build</div>
+        <div class="quest-title">Document a Project</div>
+        <div class="quest-desc">Active, completed, or planned — capture what you're working on. Status, materials, decisions, outcomes. Projects become your proof of capability.</div>
+      </div>
+    </div>
+
+    <div class="quest-card" data-quest="first-asset" tabindex="0" role="button" aria-pressed="false">
+      <div class="quest-icon">🔧<span class="quest-check">✓</span></div>
+      <div>
+        <div class="quest-tag">Quest 03 · Address</div>
+        <div class="quest-title">Add Your First Asset</div>
+        <div class="quest-desc">A tool. A machine. A collection. Give it an HL address, a description, and a story. Use the Wiki Page Generator to produce STD-WIKI-001 compliant markdown.</div>
+      </div>
+    </div>
+
+    <div class="quest-card" data-quest="competency" tabindex="0" role="button" aria-pressed="false">
+      <div class="quest-icon">⚔️<span class="quest-check">✓</span></div>
+      <div>
+        <div class="quest-tag">Quest 04 · Capability</div>
+        <div class="quest-title">Log a Competency</div>
+        <div class="quest-desc">What can you do? Document a skill, a trade, a certification — or something you taught yourself. This is your portable competency passport, not a transcript.</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="quest-status-note">
+    Tap each card to mark it read — the generator these quests point to isn't built yet, so this just tracks that you've walked through what's coming.
+  </div>
+</section>
+
+<!-- PROGRESS / WRAP UP -->
+<div class="progress-bar">
+  <div class="progress-label">Explored <b id="progress-count">0</b>/4 quests</div>
+  <button id="wrapup-btn" onclick="doWrapUp()">Wrap Up Session</button>
+</div>
+<div id="save-status"></div>
+
+<!-- WHAT THIS WIKI IS -->
+<section class="section-wrap">
+  <div class="sec-head">What Lives Here</div>
+  <div class="what-grid">
+
+    <div class="what-card">
+      <div class="what-label">Layer 01</div>
+      <div class="what-title">Knowledge Base</div>
+      <div class="what-body">Tools. Processes. Recipes. Procedures. How-tos you figured out and need to not figure out again. Anything your future self or an AI will need to understand what you do and how you do it.</div>
+    </div>
+
+    <div class="what-card">
+      <div class="what-label">Layer 02</div>
+      <div class="what-title">Project Tracker</div>
+      <div class="what-body">Active quests. Completed builds. Ideas in the queue. Structured project pages with status, decisions, materials, outcomes — the record that makes your work visible and legible.</div>
+    </div>
+
+    <div class="what-card">
+      <div class="what-label">Layer 03</div>
+      <div class="what-title">Provenance Record</div>
+      <div class="what-body">The stories attached to objects. Where something came from. Why it matters. Who owned it. What it means. Not just inventory — the context that makes objects more than stuff.</div>
+    </div>
+
+    <div class="what-card">
+      <div class="what-label">Layer 04</div>
+      <div class="what-title">Competency Passport</div>
+      <div class="what-body">Skills you've developed, certifications earned elsewhere, things you've built and can prove. The Guild doesn't issue credentials — it gives you infrastructure to document the ones you earned.</div>
+    </div>
+
+    <div class="what-card">
+      <div class="what-label">Layer 05</div>
+      <div class="what-title">Life Manual</div>
+      <div class="what-body">The document no will ever contains. The context behind the decisions, the values, the instructions for what happens to your things. Written while you still can write it.</div>
+    </div>
+
+    <div class="what-card">
+      <div class="what-label">Layer 06</div>
+      <div class="what-title">AI-Readable Index</div>
+      <div class="what-body">Every page you build follows HIL Grammar. That means any AI — here, at home, or on your own server — can query your knowledge base without you having to re-explain yourself every time.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- HIL GRAMMAR QUICK REF -->
+<section class="section-wrap">
+  <div class="sec-head">The Address Grammar</div>
+  <div class="grammar-box">
+    <div class="grammar-format">[ STRUCT ] — [ ZONE ] — [ ANCHOR ][ COL ] — [ LEVEL ][ DEPTH ]</div>
+    <table class="grammar-table">
+      <thead>
+        <tr>
+          <th>Segment</th>
+          <th>What it means</th>
+          <th>Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>STRUCT</td><td>The building or structure</td><td>SH = Shop · BM = Basement · GR = Garage</td></tr>
+        <tr><td>ZONE</td><td>Room or sub-area within the structure</td><td>MM = Metal Shop · OF = Office · KT = Kitchen</td></tr>
+        <tr><td>ANCHOR + COL</td><td>Wall direction + column number (left→right)</td><td>S3 = South wall, 3rd column from left</td></tr>
+        <tr><td>LEVEL</td><td>Vertical position (A = bottom, counts up)</td><td>B = second shelf from floor</td></tr>
+        <tr><td>DEPTH</td><td>How far inside (0 = visible surface)</td><td>0 = front · 2 = two layers back</td></tr>
+      </tbody>
+    </table>
+    <div class="grammar-example">
+      <span class="code">SH-MM-S3-B0</span>
+      Shop → Metal Shop zone → South wall → Column 3 → Second shelf → Surface visible
+    </div>
+  </div>
+</section>
+
+<!-- YOUR DATA -->
+<section class="section-wrap">
+  <div class="sec-head">Your Data Promise</div>
+
+  <div class="data-strip">
+    <div class="data-icon">🔐</div>
+    <div class="data-text">
+      <strong>Your content syncs to your GitHub repo — not just this server.</strong><br>
+      Every page you write, every edit you make, every page you delete — your repo has the full history. When you're ready to run your own Wiki.js, point it at that repo and everything migrates cleanly. Zero data loss, full history intact. We're temporary. Your data is permanent.
+    </div>
+  </div>
+
+  <div class="data-strip">
+    <div class="data-icon">📡</div>
+    <div class="data-text">
+      <strong>The format is the portability.</strong><br>
+      STD-WIKI-001 pages are plain markdown with structured frontmatter. They work in Wiki.js, Obsidian, Notion, a text editor, or a GitHub repo directly. No proprietary lock-in. The grammar travels wherever the files go — including into a local AI running on your own hardware.
+    </div>
+  </div>
+
+  <div class="data-strip">
+    <div class="data-icon">🌱</div>
+    <div class="data-text">
+      <strong>The Incubator is a launchpad, not a destination.</strong><br>
+      When you're ready to own your own infrastructure, HIL will help you get there. Self-host on a home server, a TrueNAS box, or a VPS — your wiki goes with you. That's the graduation path, and it's built into the model from day one.
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-mark">HIL · INCUBATOR</div>
+  <div class="footer-text">
+    Nothing is Lost. Everything is Logic.<br>
+    Grammar v5.3 · STD-WIKI-001 · DeVoy AI Network / MaxNet
+  </div>
+</footer>
+
+<script type="module">
+import { SessionLogger, resolveActiveMember, writeSessionLogEntry } from '../session-logger.js';
+
+// ── GUILD MODULE MANIFEST (Part 4, v3.5 standard) ──────────────────────────
+// scoringMode: "time" — this pass is landing-page-only (the Identity/Tier
+// Picker/Generator described in this tool's README was never actually built;
+// confirmed against the live file, which has zero <script> tags). Wrap Up
+// trigger is deliberately NOT a bare timer: it requires the user to mark all
+// four "Start Here" quest cards as read first, since that's the only real
+// content on the page right now. subjects/conceptTags are a starting guess
+// per the starter prompt, not locked — revisit once the actual generator
+// (or a confirmed landing-page-only final scope) exists to score against.
+const MODULE_MANIFEST = {
+  moduleId:      'guild-incubator',
+  subjects:      ['reading', 'social_studies'],
+  conceptTags:   ['knowledge-documentation', 'competency-tracking'],
+  scoringMode:   'time',
+  proofMinutesPerPoint: null,
+  proofBonusCapMinutes: null,
+};
+
+let currentUser = null;
+let activeMember = null;
+
+const logger = new SessionLogger({
+  moduleId: MODULE_MANIFEST.moduleId,
+  subjects: MODULE_MANIFEST.subjects,
+  conceptTags: MODULE_MANIFEST.conceptTags,
+  scoringPath: 'none', // Time-only mode, no pass/fail verdict — outcome defaults to "explored"
+});
+
+logger.onWrapUp = async (entry) => {
+  entry.creditedMinutes = entry.activeMinutes; // scoringMode "time" — no proof bonus available yet
+  entry.understandingScore = null;
+  entry.proofEquivalentMinutes = null;
+  entry.vouch = null;
+
+  const statusEl = document.getElementById('save-status');
+  try {
+    if (!currentUser || !activeMember) throw new Error('No signed-in user or household member resolved');
+    await writeSessionLogEntry(window.db, currentUser.uid, activeMember.id, entry);
+    statusEl.textContent = 'Saved to your Scoreboard ✅';
+  } catch (err) {
+    console.error('Guild Incubator: failed to save session log entry', err);
+    statusEl.textContent = 'Save failed — check connection';
+  }
+};
+
+// ── QUEST CARD TRACKING ─────────────────────────────────────────────────
+// Cards no longer navigate to /start/* — those routes don't resolve to real
+// pages yet. Clicking marks the card explored instead, which is the honest
+// signal available on this page today.
+const explored = new Set();
+const wrapupBtn = document.getElementById('wrapup-btn');
+const progressCount = document.getElementById('progress-count');
+
+function markQuest(card) {
+  const key = card.dataset.quest;
+  if (explored.has(key)) return;
+  explored.add(key);
+  card.classList.add('explored');
+  card.setAttribute('aria-pressed', 'true');
+  progressCount.textContent = explored.size;
+  if (explored.size >= 4) {
+    wrapupBtn.classList.add('ready');
+  }
+}
+
+document.querySelectorAll('.quest-card').forEach(card => {
+  card.addEventListener('click', () => markQuest(card));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markQuest(card); }
+  });
+});
+
+window.doWrapUp = async function () {
+  if (!wrapupBtn.classList.contains('ready')) return;
+  wrapupBtn.disabled = true;
+  const description = `Explored all 4 Start Here quest cards on the Incubator overview. Generator tool (Identity/Tier Picker/Page Generator) not yet built — this session logged time on the landing/orientation content only.`;
+  const entry = await logger.wrapUp({ description });
+  if (!entry) return; // session-scoped duplicate guard already fired
+  wrapupBtn.textContent = 'Wrapped Up';
+};
+
+HILShell.init({
+  toolId: 'guild-incubator',
+  toolName: 'Guild Incubator',
+  requireAuth: true,
+  onAuth: async (user) => {
+    if (!user) return;
+    currentUser = user;
+    activeMember = await resolveActiveMember(window.db, user.uid);
+    if (!activeMember) {
+      HILShell.toast?.('No household member set up yet — add one in Guild first.', 'error');
+    }
+    logger.start();
+  }
+});
+</script>
+
+</body>
+</html>
