@@ -1,0 +1,156 @@
+/**
+ * HIL R2 Signer Worker v2.0
+ * hilsystem-r2-signer.dvo77.workers.dev
+ *
+ * POST body:
+ * {
+ *   filename:    string,   // original filename
+ *   contentType: string,   // MIME type
+ *   data:        string,   // base64 encoded file
+ *   context:     string,   // "item" | "collection" | "history_wall" | "avatar" | "exchange"
+ *   uid:         string,   // Firebase Auth UID
+ *   itemId:      string,   // item/collection/record ID
+ *   slot:        string,   // "hero" | "photo_01" | "photo_02" etc. default: "photo"
+ * }
+ *
+ * Returns:
+ * {
+ *   success:         true,
+ *   key:             string,   // R2 object key
+ *   publicUrl:       string,   // write this to Firestore
+ *   firestore_field: string,   // dot-notation field to write URL to
+ * }
+ *
+ * R2 Path Schema (canonical):
+ *   avatar:       users/{uid}/avatar.{ext}
+ *   item:         users/{uid}/items/{itemId}/{slot}.{ext}
+ *   collection:   users/{uid}/collections/{itemId}/{slot}.{ext}
+ *   history_wall: history_wall/{itemId}/{slot}.{ext}
+ *   exchange:     exchange/{itemId}/{slot}.{ext}
+ *
+ * PUBLIC URL: https://pub-1a3ad1ec5a8042dc9cadf659089fe52c.r2.dev/{key}
+ * Update to: https://assets.hilsystem.com/{key} once DNS is wired
+ */
+
+const PUBLIC_BASE = "https://pub-1a3ad1ec5a8042dc9cadf659089fe52c.r2.dev";
+
+export default {
+  async fetch(req, env) {
+    const cors = {
+      "Access-Control-Allow-Origin":  "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age":       "86400",
+    };
+
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
+
+    if (req.method !== "POST") {
+      return new Response("Method not allowed", { status: 405, headers: cors });
+    }
+
+    let body;
+    try { body = await req.json(); }
+    catch { return new Response("Invalid JSON", { status: 400, headers: cors }); }
+
+    const {
+      filename    = "upload.jpg",
+      contentType = "application/octet-stream",
+      data,
+      context     = "item",
+      uid,
+      itemId,
+      slot        = "photo",
+    } = body;
+
+    if (!data) {
+      return json({ error: "data (base64) required" }, 400, cors);
+    }
+
+    // Build schema-correct R2 key
+    const ext = getExt(filename, contentType);
+    let key;
+
+    switch (context) {
+      case "avatar":
+        if (!uid) return json({ error: "uid required for avatar" }, 400, cors);
+        key = `users/${uid}/avatar.${ext}`;
+        break;
+      case "item":
+        if (!uid || !itemId) return json({ error: "uid and itemId required" }, 400, cors);
+        key = `users/${uid}/items/${itemId}/${slot}.${ext}`;
+        break;
+      case "collection":
+        if (!uid || !itemId) return json({ error: "uid and itemId required" }, 400, cors);
+        key = `users/${uid}/collections/${itemId}/${slot}.${ext}`;
+        break;
+      case "history_wall":
+        if (!itemId) return json({ error: "itemId required" }, 400, cors);
+        key = `history_wall/${itemId}/${slot}.${ext}`;
+        break;
+      case "exchange":
+        if (!itemId) return json({ error: "itemId required" }, 400, cors);
+        key = `exchange/${itemId}/${slot}.${ext}`;
+        break;
+      default:
+        // Structured fallback
+        key = `uploads/${uid||"anon"}/${crypto.randomUUID()}-${filename.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+    }
+
+    // Decode base64 and write to R2
+    let bytes;
+    try {
+      const bin = atob(data);
+      bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    } catch {
+      return json({ error: "Invalid base64 data" }, 400, cors);
+    }
+
+    try {
+      await env.BUCKET.put(key, bytes, { httpMetadata: { contentType } });
+    } catch (err) {
+      return json({ error: "R2 write failed: " + err.message }, 500, cors);
+    }
+
+    return json({
+      success:         true,
+      key,
+      publicUrl:       `${PUBLIC_BASE}/${key}`,
+      context,
+      slot,
+      firestore_field: getFirestoreField(context, slot),
+    }, 200, cors);
+  },
+};
+
+function json(data, status = 200, headers = {}) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json", ...headers },
+  });
+}
+
+function getExt(filename, contentType) {
+  const fromName = filename.split(".").pop().toLowerCase();
+  if (fromName && fromName.length <= 4 && fromName !== filename.toLowerCase()) return fromName;
+  const map = {
+    "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+    "image/webp": "webp", "image/gif": "gif", "image/heic": "heic",
+    "application/pdf": "pdf",
+  };
+  return map[contentType] || "jpg";
+}
+
+function getFirestoreField(context, slot) {
+  switch (context) {
+    case "avatar":       return "avatar_url";
+    case "item":         return slot === "hero" ? "photos.hero" : `photos.${slot}`;
+    case "collection":   return slot === "hero" ? "photos.hero" : `photos.${slot}`;
+    case "history_wall": return "public_photo_url";
+    case "exchange":     return "photos.hero";
+    default:             return "photos.upload";
+  }
+}
