@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guild Media Admin — HIL System</title>
+<script src="./hil-shell.js"></script>
+<style>
+  body { padding-top: 90px; }
+  #media-admin-wrap {
+    max-width: 640px; margin: 0 auto 60px; padding: 0 20px;
+    font-family: var(--font-mono);
+  }
+  #media-admin-wrap h1 {
+    font-family: var(--font-display); color: var(--hil-green);
+    font-size: 20px; letter-spacing: 1.5px; margin-bottom: 4px;
+  }
+  #media-admin-wrap .sub { color: var(--hil-text-muted); font-size: 12px; margin-bottom: 24px; }
+
+  #gate-denied, #gate-loading {
+    text-align: center; padding: 80px 20px; color: var(--hil-text-muted);
+  }
+  #gate-denied { color: var(--hil-amber); }
+  .hidden { display: none !important; }
+
+  .field-row { margin-bottom: 16px; }
+  .field-row label {
+    display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--hil-text-muted); margin-bottom: 6px;
+  }
+  .field-row input[type="text"],
+  .field-row textarea,
+  .field-row select {
+    width: 100%; background: var(--hil-surface); border: 1px solid var(--hil-border);
+    color: var(--hil-text); font-family: var(--font-mono); font-size: 13px;
+    padding: 10px; box-sizing: border-box;
+  }
+  .field-row textarea { min-height: 60px; resize: vertical; }
+  .field-row input[type="file"] {
+    width: 100%; color: var(--hil-text-muted); font-size: 12px;
+  }
+  .field-row .hint { font-size: 11px; color: var(--hil-text-muted); margin-top: 4px; }
+
+  #preview-box {
+    margin: 12px 0; padding: 12px; border: 1px dashed var(--hil-border);
+    display: none; text-align: center;
+  }
+  #preview-box.show { display: block; }
+  #preview-box img { max-width: 100%; max-height: 200px; }
+  #preview-box .fname { font-size: 11px; color: var(--hil-text-muted); margin-top: 6px; }
+
+  #submit-btn {
+    width: 100%; padding: 14px; background: var(--hil-green); color: #0a0c0b;
+    border: none; font-family: var(--font-display); font-size: 13px;
+    letter-spacing: 1.5px; cursor: pointer; margin-top: 8px;
+  }
+  #submit-btn:disabled { background: var(--hil-border); color: var(--hil-text-muted); cursor: not-allowed; }
+  #submit-btn:hover:not(:disabled) { background: var(--hil-green-dim); }
+
+  #status-line { margin-top: 12px; font-size: 12px; min-height: 18px; }
+  #status-line.err { color: #cc4444; }
+  #status-line.ok { color: var(--hil-green); }
+
+  #recent-list { margin-top: 40px; }
+  #recent-list h2 {
+    font-family: var(--font-display); font-size: 13px; color: var(--hil-text-muted);
+    letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .recent-item {
+    display: flex; justify-content: space-between; padding: 8px 0;
+    border-bottom: 1px solid var(--hil-border); font-size: 12px; cursor: pointer;
+  }
+  .recent-item:hover { color: var(--hil-green); }
+  .recent-item .rid { color: var(--hil-text-muted); }
+</style>
+</head>
+<body>
+
+  <div id="gate-loading">Checking access…</div>
+
+  <div id="gate-denied" class="hidden">
+    Not authorized. This tool is restricted to platform admins.
+  </div>
+
+  <div id="media-admin-wrap" class="hidden">
+    <h1>GUILD MEDIA ADMIN</h1>
+    <div class="sub">Upload a teaching asset — writes to R2 + <code>guild_media</code> Firestore collection.</div>
+
+    <form id="media-form">
+      <div class="field-row">
+        <label for="f-file">File</label>
+        <input type="file" id="f-file" accept="image/*,video/*,application/pdf" required>
+        <div id="preview-box"><img id="preview-img"><div class="fname" id="preview-fname"></div></div>
+      </div>
+
+      <div class="field-row">
+        <label for="f-type">Type</label>
+        <select id="f-type" required>
+          <option value="hero_illustration">Hero Illustration</option>
+          <option value="whiteboard">Whiteboard Drawing</option>
+          <option value="diagram">Diagram</option>
+          <option value="animation">Animation</option>
+          <option value="patch_scratch_short">PATCH & SCRATCH Short</option>
+          <option value="photo">Photo</option>
+          <option value="svg">SVG</option>
+          <option value="reference_chart">Reference Chart</option>
+          <option value="printable_pdf">Printable PDF</option>
+          <option value="interactive_sim">Interactive Simulation</option>
+        </select>
+        <div class="hint">Determines the auto-generated asset ID prefix and R2 subfolder.</div>
+      </div>
+
+      <div class="field-row">
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title" required>
+      </div>
+
+      <div class="field-row">
+        <label for="f-desc">Description</label>
+        <textarea id="f-desc" required></textarea>
+      </div>
+
+      <div class="field-row">
+        <label for="f-keywords">Keywords <span class="hint">(comma-separated)</span></label>
+        <input type="text" id="f-keywords" placeholder="smart home, automation, zigbee">
+      </div>
+
+      <div class="field-row">
+        <label for="f-concepts">Related Concepts <span class="hint">(comma-separated, Concept Index slugs)</span></label>
+        <input type="text" id="f-concepts" placeholder="smart-home, fixed-points">
+      </div>
+
+      <div class="field-row">
+        <label for="f-use">Assistant Use <span class="hint">(comma-separated)</span></label>
+        <input type="text" id="f-use" placeholder="introduce_module, explain_concept, troubleshooting_reference">
+      </div>
+
+      <div class="field-row">
+        <label for="f-tier">Tier</label>
+        <select id="f-tier">
+          <option value="free">Free</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn">UPLOAD ASSET</button>
+      <div id="status-line"></div>
+    </form>
+
+    <div id="recent-list">
+      <h2>RECENTLY ADDED</h2>
+      <div id="recent-items"></div>
+    </div>
+  </div>
+
+<script type="module">
+import {
+  getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const R2_SIGNER_URL = "https://hilsystem-r2-signer.dvo77.workers.dev";
+
+// Subfolder per type — matches the categories in the media library concept.
+const TYPE_FOLDER = {
+  hero_illustration:   "heroes",
+  whiteboard:          "whiteboards",
+  diagram:             "diagrams",
+  animation:           "animations",
+  patch_scratch_short: "shorts",
+  photo:               "photos",
+  svg:                 "svgs",
+  reference_chart:     "charts",
+  printable_pdf:       "printables",
+  interactive_sim:     "sims",
+};
+
+// Prefix per type — used for auto-generated asset_id, e.g. HERO-014.
+const TYPE_PREFIX = {
+  hero_illustration:   "HERO",
+  whiteboard:          "WB",
+  diagram:             "DIAG",
+  animation:           "ANIM",
+  patch_scratch_short: "SHORT",
+  photo:               "PHOTO",
+  svg:                 "SVG",
+  reference_chart:     "CHART",
+  printable_pdf:       "PDF",
+  interactive_sim:     "SIM",
+};
+
+let db = null;
+
+HILShell.init({
+  toolId: "media-admin",
+  toolName: "Guild Media Admin",
+  requireAuth: true,
+  onAuth: async (user) => {
+    db = window.db || getFirestore();
+    await checkAdminAndReveal(user);
+  },
+});
+
+async function checkAdminAndReveal(user) {
+  document.getElementById("gate-loading").classList.remove("hidden");
+  document.getElementById("gate-denied").classList.add("hidden");
+  document.getElementById("media-admin-wrap").classList.add("hidden");
+
+  try {
+    // Platform-admin gate: admins/{uid} existence check (not a field lookup),
+    // per the locked Firestore rules pattern — separate from household
+    // team_members.is_admin, which gates per-household admin instead.
+    const adminSnap = await getDoc(doc(db, "admins", user.uid));
+    if (!adminSnap.exists()) {
+      document.getElementById("gate-loading").classList.add("hidden");
+      document.getElementById("gate-denied").classList.remove("hidden");
+      return;
+    }
+    document.getElementById("gate-loading").classList.add("hidden");
+    document.getElementById("media-admin-wrap").classList.remove("hidden");
+    loadRecent();
+  } catch (err) {
+    console.error("[Guild Media Admin] admin check failed", err);
+    document.getElementById("gate-loading").classList.add("hidden");
+    document.getElementById("gate-denied").classList.remove("hidden");
+    document.getElementById("gate-denied").textContent = "Error checking access: " + err.message;
+  }
+}
+
+// ─── file preview ────────────────────────────────────────────────────────
+document.getElementById("f-file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  const box = document.getElementById("preview-box");
+  const img = document.getElementById("preview-img");
+  const fname = document.getElementById("preview-fname");
+  if (!file) { box.classList.remove("show"); return; }
+  fname.textContent = `${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+  if (file.type.startsWith("image/")) {
+    img.style.display = "";
+    img.src = URL.createObjectURL(file);
+  } else {
+    img.style.display = "none";
+  }
+  box.classList.add("show");
+});
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result.split(",")[1]);
+    r.onerror = () => reject(new Error("File read failed"));
+    r.readAsDataURL(file);
+  });
+}
+
+function csvToArray(str) {
+  return str.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+async function nextAssetId(type) {
+  const prefix = TYPE_PREFIX[type] || "MEDIA";
+  // Find highest existing number for this prefix by querying assets whose
+  // asset_id starts with it, ordered descending. Simple client-side scan —
+  // fine at this volume; revisit with a counter doc if the library grows large.
+  const q = query(collection(db, "guild_media"), orderBy("asset_id", "desc"), limit(50));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.forEach(d => {
+    const id = d.id;
+    if (id.startsWith(prefix + "-")) {
+      const n = parseInt(id.split("-")[1], 10);
+      if (!isNaN(n) && n > max) max = n;
+    }
+  });
+  const next = String(max + 1).padStart(3, "0");
+  return `${prefix}-${next}`;
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById("status-line");
+  el.textContent = msg;
+  el.className = cls || "";
+}
+
+document.getElementById("media-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  setStatus("Uploading…", "");
+
+  try {
+    const file = document.getElementById("f-file").files[0];
+    if (!file) throw new Error("Select a file first.");
+
+    const type = document.getElementById("f-type").value;
+    const title = document.getElementById("f-title").value.trim();
+    const description = document.getElementById("f-desc").value.trim();
+    const keywords = csvToArray(document.getElementById("f-keywords").value);
+    const related_concepts = csvToArray(document.getElementById("f-concepts").value);
+    const assistant_use = csvToArray(document.getElementById("f-use").value);
+    const tier = document.getElementById("f-tier").value;
+
+    if (!title || !description) throw new Error("Title and description are required.");
+
+    const assetId = await nextAssetId(type);
+    const assetType = TYPE_FOLDER[type] || "misc";
+
+    // 1) Upload file to R2 via the signer Worker
+    setStatus(`Uploading file for ${assetId}…`, "");
+    const base64 = await fileToBase64(file);
+    const uploadResp = await fetch(R2_SIGNER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        data: base64,
+        context: "guild_media",
+        itemId: assetId,
+        assetType,
+      }),
+    });
+    const uploadData = await uploadResp.json();
+    if (!uploadResp.ok || !uploadData.success) {
+      throw new Error(uploadData.error || "R2 upload failed");
+    }
+
+    // 2) Write the metadata doc directly to Firestore (frontend-writable —
+    // guild_media is curated content, not inventory truth, same tier as
+    // Museum/Exchange).
+    setStatus(`Saving metadata for ${assetId}…`, "");
+    await setDoc(doc(db, "guild_media", assetId), {
+      asset_id: assetId,
+      type,
+      title,
+      description,
+      keywords,
+      related_concepts,
+      assistant_use,
+      file: {
+        r2_path: uploadData.key,
+        mime_type: file.type || "application/octet-stream",
+        thumbnail_r2_path: null,
+      },
+      permissions: { tier },
+      status: "active",
+      created_at: serverTimestamp(),
+    });
+
+    setStatus(`Saved ${assetId} — ${title}`, "ok");
+    document.getElementById("media-form").reset();
+    document.getElementById("preview-box").classList.remove("show");
+    loadRecent();
+  } catch (err) {
+    console.error("[Guild Media Admin] upload failed", err);
+    setStatus("Error: " + err.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadRecent() {
+  const listEl = document.getElementById("recent-items");
+  listEl.textContent = "Loading…";
+  try {
+    const q = query(collection(db, "guild_media"), orderBy("created_at", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if (snap.empty) { listEl.textContent = "No assets yet."; return; }
+    listEl.innerHTML = "";
+    snap.forEach(d => {
+      const a = d.data();
+      const row = document.createElement("div");
+      row.className = "recent-item";
+      row.innerHTML = `<span>${a.title || d.id}</span><span class="rid">${d.id}</span>`;
+      row.addEventListener("click", () => HILShell.media.open(d.id));
+      listEl.appendChild(row);
+    });
+  } catch (err) {
+    listEl.textContent = "Couldn't load recent assets: " + err.message;
+  }
+}
+</script>
+</body>
+</html>
