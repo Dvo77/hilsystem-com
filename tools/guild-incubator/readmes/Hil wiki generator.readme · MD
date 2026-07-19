@@ -1,0 +1,48 @@
+## HIL Incubator — Landing / Orientation Page
+
+**File:** `hil-incubator-generator.html`
+**URL:** `hilsystem.com/tools/hil-incubator-generator.html`
+**Status:** Live (landing page only) — generator not built
+
+**Purpose:** HIL Guild's onboarding landing page for the Incubator (Wiki.js-hosted personal knowledge system). Explains the concept, orients new members, and presents four "Start Here" quest cards. Wired into `hil-shell.js` (header/nav/PATCH bubble) and `session-logger.js` (Time-only scoring) as of this pass.
+
+**⚠️ Scope correction (this version):** A prior README version (v1.0.0, dated 2026-07-16) described a fully-built three-step onboarding + markdown generator — Identity form, 12-tile Tier Picker, and a two-tab Generator producing STD-WIKI-001 compliant pages. **That was never actually built.** The live file has always been landing/marketing content only — zero `<script>` tags, no Identity/Tier Picker/Generator markup. The prior README was ahead of the code, not behind it. That spec is still good and can serve as the build brief whenever the real generator gets built — see "Not yet built" below.
+
+**Companion file referenced by the old README (`hil-incubator-wiki-home.html`) does not exist** — confirmed 404 against the repo. If/when it's built, document it separately; don't assume it from this file.
+
+---
+
+**Core Features (what's actually live):**
+- Hero section — "This is your Life Manual" framing
+- Orientation strip — Hosted Here / Synced to You / Graduate When Ready
+- "Why This Exists" philosophy block
+- Four "Start Here" quest cards (Life Manual, Document a Project, Add Your First Asset, Log a Competency) — clicking a card marks it explored (no real page to navigate to yet; they no longer link out)
+- "What Lives Here" — six content-layer explainer cards
+- HL Address Grammar quick reference table
+- "Your Data Promise" section — GitHub sync, portable markdown format, self-host graduation path
+- `hil-shell.js` integration: real shared header/nav/auth/PATCH bubble, no duplicate `:root` token block (module keeps only `--blue`/`--blue-soft`, which aren't standard shell tokens)
+- `session-logger.js` integration: `scoringMode: 'time'`, Module Manifest `moduleId: 'guild-incubator'`. Wrap Up is gated behind marking all 4 quest cards explored (not a bare timer) — the only real engagement signal this page currently has.
+
+**Not yet built:**
+- Step 1 — Identity form (name, handle, GitHub repo URL, wiki base URL)
+- Step 2 — Tier Picker (12 preset domain tiles + custom tier builder)
+- Step 3 — Generator (T-0 master index tab + New Wiki Page tab, STD-WIKI-001 output, copy-to-clipboard)
+- `hil-incubator-wiki-home.html` companion page
+- Tab 3 / MaxNet Archival & Deprecation Prompt (retiring pages)
+- Once the generator exists, Wrap Up trigger should move from "explored all 4 quest cards" to "generated a real page" — flagged as a known follow-up, not done in this pass
+
+**How it connects:**
+- Reads from: nothing — still no Firebase/API calls beyond `hil-shell.js` auth and `session-logger.js` writes
+- Writes to: `users/{uid}/team_members/{memberId}/session_log_entries` via `writeSessionLogEntry` (Wrap Up only)
+- Entry points: linked from Guild onboarding flow
+
+**Subjects/conceptTags in the Module Manifest** (`reading`, `social_studies` / `knowledge-documentation`, `competency-tracking`) are a starting guess, not locked — revisit once real generator content exists to score against.
+
+---
+
+#### Change Log
+
+| Version | Date | Owner | Description |
+|:--:|:--:|:--:|:--|
+| **1.0.0** | 2026-07-16 | DVO77 | *(Inaccurate — described a generator that was never built. Superseded by 1.1.0.)* |
+| **1.1.0** | 2026-07-19 | DVO77 | README corrected to match live file. `hil-shell.js` + `session-logger.js` wired to the actual landing-page content; Wrap Up gated on exploring all 4 quest cards. Generator (Identity/Tier Picker/Generator) confirmed not built — remains backlogged, README no longer claims otherwise. |
