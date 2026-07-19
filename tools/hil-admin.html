@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HIL Admin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Barlow+Condensed:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root{
+  --bg: #0a0c0b;
+  --panel: #131614;
+  --panel-raised: #181c19;
+  --line: #232823;
+  --green: #00cc66;
+  --green-dim: #00cc6622;
+  --amber: #cc8800;
+  --amber-dim: #cc880022;
+  --text: #e8ece9;
+  --text-dim: #8a948e;
+  --text-faint: #545b56;
+  --danger: #cc4433;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Barlow Condensed', sans-serif;
+  font-size:16px;
+  min-height:100vh;
+}
+
+/* ---------- GATE SCREENS ---------- */
+.gate-screen{
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:16px; z-index:999;
+}
+.gate-screen.hidden{ display:none; }
+.gate-mark{ width:54px; height:54px; }
+.gate-text{
+  font-family:'Space Mono', monospace;
+  font-size:13px; color:var(--text-dim); letter-spacing:0.08em;
+}
+.gate-text.err{ color:var(--danger); }
+.gate-sub{ font-size:13px; color:var(--text-faint); font-family:'Space Mono',monospace; }
+.gate-btn{
+  margin-top:8px;
+  font-family:'Space Mono', monospace; font-size:12px;
+  background:var(--panel-raised); border:1px solid var(--green); color:var(--green);
+  padding:8px 18px; border-radius:5px; cursor:pointer;
+}
+
+/* ---------- SHELL LAYOUT ---------- */
+.shell{
+  display:none;
+  grid-template-columns: 230px 1fr;
+  grid-template-rows: 60px 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "sidebar main";
+  min-height:100vh;
+}
+.shell.active{ display:grid; }
+
+/* ---------- TOPBAR ---------- */
+.topbar{
+  grid-area:topbar;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  border-bottom:1px solid var(--line);
+  background:var(--panel);
+}
+.brand{ display:flex; align-items:center; gap:12px; }
+.brand svg{ width:28px; height:28px; }
+.brand-text{
+  font-family:'Orbitron', sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:0.12em; color:var(--text);
+}
+.brand-text span{ color:var(--green); }
+.topbar-right{ display:flex; align-items:center; gap:18px; }
+.patch-badge{
+  display:flex; align-items:center; gap:8px;
+  background:var(--panel-raised); border:1px solid var(--line); border-radius:20px;
+  padding:5px 12px 5px 6px; cursor:pointer; transition:border-color .15s ease;
+}
+.patch-badge:hover{ border-color:var(--green); }
+.patch-dot{
+  width:22px; height:22px; border-radius:50%; background:var(--green);
+  display:flex; align-items:center; justify-content:center; position:relative; flex-shrink:0;
+}
+.patch-dot::after{ content:""; position:absolute; top:-3px; width:3px; height:6px; background:var(--green); border-radius:2px; }
+.patch-eyes{ width:10px; height:3px; background:var(--bg); border-radius:2px; }
+.patch-count{ font-family:'Space Mono', monospace; font-size:12px; color:var(--amber); }
+.admin-id{ font-family:'Space Mono', monospace; font-size:12px; color:var(--text-dim); }
+.admin-id b{ color:var(--text); font-weight:700; }
+.sign-out-link{ font-family:'Space Mono',monospace; font-size:11px; color:var(--text-faint); cursor:pointer; }
+.sign-out-link:hover{ color:var(--danger); }
+
+/* ---------- SIDEBAR ---------- */
+.sidebar{
+  grid-area:sidebar; border-right:1px solid var(--line); background:var(--panel);
+  padding:20px 0; display:flex; flex-direction:column;
+}
+.nav-label{
+  font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.15em;
+  color:var(--text-faint); padding:0 20px; margin:18px 0 8px; text-transform:uppercase;
+}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:9px 20px; font-size:18px;
+  font-weight:500; color:var(--text-dim); cursor:pointer; border-left:2px solid transparent;
+  transition:all .15s ease;
+}
+.nav-item:hover{ color:var(--text); background:var(--panel-raised); }
+.nav-item.active{ color:var(--green); border-left-color:var(--green); background:var(--green-dim); }
+.nav-item .dot{ width:6px; height:6px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
+.nav-item.active .dot{ background:var(--green); }
+.nav-item .count{
+  margin-left:auto; font-family:'Space Mono', monospace; font-size:11px; color:var(--amber);
+  background:var(--amber-dim); padding:1px 7px; border-radius:10px;
+}
+.sidebar-foot{
+  margin-top:auto; padding:14px 20px 4px; font-family:'Space Mono', monospace;
+  font-size:10px; color:var(--text-faint); border-top:1px solid var(--line);
+}
+
+/* ---------- MAIN ---------- */
+.main{ grid-area:main; padding:28px 32px 60px; overflow-y:auto; }
+.main-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px; }
+.main-title{ font-family:'Orbitron', sans-serif; font-size:20px; font-weight:700; letter-spacing:0.04em; }
+.main-sub{ font-size:15px; color:var(--text-dim); margin-top:2px; }
+.edit-mode-toggle{
+  display:flex; align-items:center; gap:8px; font-family:'Space Mono', monospace;
+  font-size:11px; color:var(--text-dim); cursor:pointer; user-select:none;
+}
+.switch{
+  width:34px; height:18px; background:var(--panel-raised); border:1px solid var(--line);
+  border-radius:10px; position:relative;
+}
+.switch::after{
+  content:""; position:absolute; top:1px; left:1px; width:14px; height:14px;
+  background:var(--text-faint); border-radius:50%; transition:all .15s ease;
+}
+.switch.on{ border-color:var(--green); }
+.switch.on::after{ left:17px; background:var(--green); }
+
+/* ---------- MODULE GRID ---------- */
+.module-grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:18px; }
+.module{
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:18px 20px; position:relative;
+}
+.module.hidden-mod{ display:none; }
+.edit-on .module{ border-style:dashed; border-color:var(--text-faint); }
+.module-drag-handle{
+  position:absolute; top:14px; right:14px; font-family:'Space Mono', monospace;
+  font-size:10px; color:var(--text-faint); letter-spacing:0.1em; display:none;
+}
+.edit-on .module-drag-handle{ display:flex; gap:8px; align-items:center; }
+.mod-hide-btn{ color:var(--danger); cursor:pointer; }
+
+/* ---------- MOBILE ---------- */
+.hamburger{ display:none; }
+@media (max-width: 860px){
+  .shell{
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px auto 1fr;
+    grid-template-areas: "topbar" "sidebar" "main";
+  }
+  .hamburger{
+    display:flex; align-items:center; justify-content:center;
+    width:34px; height:34px; border:1px solid var(--line); border-radius:6px;
+    background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
+    font-family:'Space Mono',monospace; font-size:14px;
+  }
+  .admin-id{ display:none; }
+  .sidebar{
+    display:none; border-right:none; border-bottom:1px solid var(--line);
+    padding:10px 0; flex-direction:row; flex-wrap:wrap; gap:4px 0;
+  }
+  .sidebar.mobile-open{ display:flex; }
+  .nav-label{ display:none; }
+  .nav-item{ padding:8px 14px; font-size:15px; border-left:none; border-bottom:2px solid transparent; }
+  .nav-item.active{ border-left:none; border-bottom-color:var(--green); }
+  .sidebar-foot{ display:none; }
+  .main{ padding:16px 14px 40px; }
+  .main-head{ flex-direction:column; align-items:flex-start; gap:8px; }
+  .main-title{ font-size:17px; }
+  .module-grid{ display:flex; flex-direction:column; gap:14px; }
+  .module, .col-4, .col-5, .col-7, .col-8, .col-12{ width:100%; }
+  .module{ padding:14px 16px; }
+  .staged-row, .person-row{ flex-wrap:wrap; }
+  .staged-actions{ width:100%; justify-content:flex-end; margin-top:4px; }
+  .modal{ width:94vw; padding:18px; }
+}
+
+.col-4{ grid-column: span 4; } .col-5{ grid-column: span 5; }
+.col-7{ grid-column: span 7; } .col-8{ grid-column: span 8; }
+.col-12{ grid-column: span 12; }
+
+.module-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.module-title{
+  font-family:'Orbitron', sans-serif; font-size:13px; font-weight:700; letter-spacing:0.06em;
+  color:var(--text); display:flex; align-items:center; gap:8px;
+}
+.module-title .tag{
+  font-family:'Space Mono', monospace; font-size:10px; font-weight:400; color:var(--amber);
+  background:var(--amber-dim); padding:1px 6px; border-radius:3px; letter-spacing:0;
+}
+.module-action{ font-family:'Space Mono', monospace; font-size:11px; color:var(--green); cursor:pointer; background:none; border:none; }
+.module-empty{ font-family:'Space Mono',monospace; font-size:11px; color:var(--text-faint); padding:10px 0; }
+.module-loading{ font-family:'Space Mono',monospace; font-size:11px; color:var(--text-faint); padding:10px 0; }
+
+/* ---------- people list ---------- */
+.person-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+.person-row:last-child{ border-bottom:none; }
+.person-row:hover .person-name{ color:var(--green); }
+.avatar{
+  width:30px; height:30px; border-radius:50%; background:var(--panel-raised); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; font-family:'Space Mono', monospace;
+  font-size:11px; color:var(--text-dim); flex-shrink:0;
+}
+.avatar.pet{ background:var(--amber-dim); color:var(--amber); border-color:var(--amber); }
+.person-meta{ flex:1; min-width:0; }
+.person-name{ font-size:16px; font-weight:500; line-height:1.1; }
+.person-role{ font-size:12px; color:var(--text-dim); font-family:'Space Mono', monospace; }
+.admin-pill{ font-family:'Space Mono', monospace; font-size:9px; color:var(--green); border:1px solid var(--green); padding:1px 6px; border-radius:8px; }
+
+/* ---------- financial ---------- */
+.stat-row{ display:flex; justify-content:space-between; align-items:baseline; padding:8px 0; border-bottom:1px solid var(--line); }
+.stat-row:last-child{ border-bottom:none; }
+.stat-label{ font-size:15px; color:var(--text-dim); }
+.stat-value{ font-family:'Space Mono', monospace; font-size:16px; font-weight:700; color:var(--text); }
+.stat-value.green{ color:var(--green); }
+.stat-value.amber{ color:var(--amber); }
+
+/* ---------- staged items ---------- */
+.staged-row{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.staged-row:last-child{ border-bottom:none; }
+.staged-thumb{ width:36px; height:36px; border-radius:5px; background:var(--panel-raised); border:1px solid var(--line); flex-shrink:0; background-size:cover; background-position:center; }
+.staged-meta{ flex:1; min-width:0; }
+.staged-name{ font-size:15px; }
+.staged-source{ font-size:11px; font-family:'Space Mono', monospace; color:var(--text-faint); }
+.staged-actions{ display:flex; gap:6px; }
+.btn-mini{
+  font-family:'Space Mono', monospace; font-size:10px; padding:4px 9px; border-radius:4px;
+  border:1px solid var(--line); background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
+}
+.btn-mini:disabled{ opacity:0.4; cursor:wait; }
+.btn-mini.approve{ border-color:var(--green); color:var(--green); }
+.btn-mini.reject{ border-color:var(--danger); color:var(--danger); }
+
+/* ---------- issue log ---------- */
+.issue-row{ display:flex; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); align-items:flex-start; }
+.issue-row:last-child{ border-bottom:none; }
+.issue-tag{ font-family:'Space Mono', monospace; font-size:9px; padding:2px 6px; border-radius:3px; flex-shrink:0; margin-top:1px; }
+.issue-tag.bug{ background:#cc443322; color:var(--danger); }
+.issue-tag.todo{ background:var(--amber-dim); color:var(--amber); }
+.issue-tag.idea{ background:var(--green-dim); color:var(--green); }
+.issue-text{ font-size:14px; color:var(--text-dim); line-height:1.3; }
+
+/* ---------- seasonal flair module ---------- */
+.flair-row{ display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
+.flair-desc{ font-size:14px; color:var(--text-dim); max-width:280px; line-height:1.3; }
+.flair-preview{
+  margin-top:12px; background:var(--panel-raised); border:1px solid var(--line); border-radius:6px;
+  padding:14px; font-family:'Space Mono', monospace; font-size:11px; color:var(--text-faint); text-align:center;
+}
+.flair-bday-row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); margin-top:4px; }
+.flair-bday-input{
+  font-family:'Space Mono', monospace; font-size:13px; padding:6px 9px; border-radius:4px;
+  border:1px solid var(--line); background:var(--panel-raised); color:var(--text); width:130px;
+}
+.flair-bday-input:focus{ outline:none; border-color:var(--green); }
+.flair-bday-save{
+  font-family:'Space Mono', monospace; font-size:10px; padding:6px 12px; border-radius:4px;
+  border:1px solid var(--green); background:transparent; color:var(--green); cursor:pointer;
+}
+.flair-bday-save:hover{ background:var(--green-dim); }
+.flair-bday-save:disabled{ opacity:0.4; cursor:wait; }
+.flair-bday-status{ font-family:'Space Mono', monospace; font-size:10px; color:var(--text-faint); margin-left:4px; }
+
+/* ---------- add module ghost ---------- */
+.module-ghost{
+  display:flex; align-items:center; justify-content:center; min-height:60px;
+  border:1px dashed var(--text-faint); border-radius:8px; color:var(--text-faint);
+  font-family:'Space Mono', monospace; font-size:12px; cursor:pointer; gap:10px; flex-wrap:wrap;
+}
+.module-ghost:hover{ color:var(--green); border-color:var(--green); }
+.ghost-chip{
+  border:1px solid var(--text-faint); border-radius:14px; padding:4px 12px; cursor:pointer;
+}
+.ghost-chip:hover{ border-color:var(--green); color:var(--green); }
+
+/* ---------- modal ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; z-index:500;
+}
+.modal-backdrop.active{ display:flex; }
+.modal{
+  background:var(--panel-raised); border:1px solid var(--line); border-radius:8px;
+  padding:24px; width:420px; max-width:92vw; max-height:86vh; overflow-y:auto;
+}
+.modal h3{ font-family:'Orbitron',sans-serif; font-size:14px; margin-bottom:16px; letter-spacing:0.04em; }
+.field-label{ font-family:'Space Mono',monospace; font-size:10px; color:var(--text-faint); margin:12px 0 4px; text-transform:uppercase; letter-spacing:0.06em; }
+.field-input, .field-select, .field-textarea{
+  width:100%; background:var(--panel); border:1px solid var(--line); border-radius:5px;
+  color:var(--text); padding:8px 10px; font-family:'Barlow Condensed',sans-serif; font-size:15px;
+}
+.field-textarea{ min-height:60px; resize:vertical; }
+.field-checkbox-row{ display:flex; align-items:center; gap:8px; margin:12px 0; }
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.btn-primary{
+  font-family:'Space Mono',monospace; font-size:12px; background:var(--green-dim); border:1px solid var(--green);
+  color:var(--green); padding:7px 16px; border-radius:5px; cursor:pointer;
+}
+.btn-primary:disabled{ opacity:0.4; cursor:wait; }
+.btn-ghost{
+  font-family:'Space Mono',monospace; font-size:12px; background:none; border:1px solid var(--line);
+  color:var(--text-dim); padding:7px 16px; border-radius:5px; cursor:pointer;
+}
+.tricks-tag-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.tricks-tag{
+  font-family:'Space Mono',monospace; font-size:10px; background:var(--amber-dim); color:var(--amber);
+  padding:2px 8px; border-radius:10px; display:flex; align-items:center; gap:5px;
+}
+.tricks-tag .x{ cursor:pointer; }
+
+/* ---------- guild media tab ---------- */
+.media-form-wrap{ margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.media-file-row{ margin: 12px 0; }
+.media-file-row input[type="file"]{
+  font-family:'Space Mono',monospace; font-size:12px; color: var(--text-dim); width: 100%;
+}
+.media-preview{
+  margin-top:10px; padding:10px; border:1px dashed var(--line); border-radius:6px;
+  display:none; text-align:center;
+}
+.media-preview.show{ display:block; }
+.media-preview img{ max-width:100%; max-height:160px; border-radius:4px; }
+.media-preview .fname{ font-family:'Space Mono',monospace; font-size:10px; color:var(--text-faint); margin-top:6px; }
+.media-status{ font-family:'Space Mono',monospace; font-size:11px; margin-top:10px; min-height:16px; }
+.media-status.err{ color: var(--danger); }
+.media-status.ok{ color: var(--green); }
+.media-row{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); cursor:pointer; }
+.media-row:last-child{ border-bottom:none; }
+.media-row:hover .media-title{ color: var(--green); }
+.media-thumb{
+  width:36px; height:36px; border-radius:5px; background:var(--panel-raised); border:1px solid var(--line);
+  flex-shrink:0; background-size:cover; background-position:center; display:flex; align-items:center;
+  justify-content:center; font-family:'Space Mono',monospace; font-size:9px; color:var(--text-faint);
+}
+.media-meta{ flex:1; min-width:0; }
+.media-title{ font-size:15px; }
+.media-sub{ font-size:11px; font-family:'Space Mono',monospace; color:var(--text-faint); }
+.media-view-body{ display:flex; align-items:center; justify-content:center; margin-bottom: 12px; }
+.media-view-body img, .media-view-body video{ max-width:100%; max-height:50vh; border-radius:6px; }
+.media-view-body embed{ width:100%; height:50vh; }
+.media-view-desc{ font-family:'Space Mono',monospace; font-size:12px; color:var(--text-dim); line-height:1.4; }
+</style>
+</head>
+<body>
+
+<!-- ===================== AUTH GATE SCREENS ===================== -->
+<div id="gate-loading" class="gate-screen">
+  <svg class="gate-mark" viewBox="0 0 100 100" fill="none">
+    <polygon points="50,8 88,28 88,72 50,92 12,72 12,28" stroke="#00cc66" stroke-width="4" fill="none"/>
+    <path d="M50 25 L55 48 L50 48 L45 48 Z M50 75 L45 52 L55 52 Z M25 50 L48 45 L48 55 Z M75 50 L52 55 L52 45 Z" fill="#00cc66"/>
+    <circle cx="50" cy="50" r="6" fill="#0a0c0b" stroke="#00cc66" stroke-width="2"/>
+  </svg>
+  <div class="gate-text">CHECKING CREDENTIALS…</div>
+</div>
+
+<div id="gate-signedout" class="gate-screen hidden">
+  <svg class="gate-mark" viewBox="0 0 100 100" fill="none">
+    <polygon points="50,8 88,28 88,72 50,92 12,72 12,28" stroke="#00cc66" stroke-width="4" fill="none"/>
+    <path d="M50 25 L55 48 L50 48 L45 48 Z M50 75 L45 52 L55 52 Z M25 50 L48 45 L48 55 Z M75 50 L52 55 L52 45 Z" fill="#00cc66"/>
+    <circle cx="50" cy="50" r="6" fill="#0a0c0b" stroke="#00cc66" stroke-width="2"/>
+  </svg>
+  <div class="gate-text">SIGN IN REQUIRED</div>
+  <div class="gate-sub">HIL Admin is restricted to authenticated admin accounts</div>
+  <button class="gate-btn" id="btn-google-signin">SIGN IN WITH GOOGLE</button>
+</div>
+
+<div id="gate-denied" class="gate-screen hidden">
+  <svg class="gate-mark" viewBox="0 0 100 100" fill="none">
+    <polygon points="50,8 88,28 88,72 50,92 12,72 12,28" stroke="#cc4433" stroke-width="4" fill="none"/>
+    <circle cx="50" cy="50" r="6" fill="#0a0c0b" stroke="#cc4433" stroke-width="2"/>
+  </svg>
+  <div class="gate-text err">ACCESS DENIED</div>
+  <div class="gate-sub" id="gate-denied-sub">Signed in, but this account does not have is_admin === true</div>
+  <button class="gate-btn" id="btn-signout" style="border-color:#cc4433;color:#cc4433;">SIGN OUT</button>
+</div>
+
+<div id="gate-error" class="gate-screen hidden">
+  <div class="gate-text err">CONNECTION ERROR</div>
+  <div class="gate-sub" id="gate-error-sub">Could not reach Firestore.</div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div class="shell" id="app-shell">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="hamburger" id="hamburger-btn">☰</div>
+      <svg viewBox="0 0 100 100" fill="none">
+        <polygon points="50,8 88,28 88,72 50,92 12,72 12,28" stroke="#00cc66" stroke-width="4" fill="none"/>
+        <path d="M50 25 L55 48 L50 48 L45 48 Z M50 75 L45 52 L55 52 Z M25 50 L48 45 L48 55 Z M75 50 L52 55 L52 45 Z" fill="#00cc66"/>
+        <circle cx="50" cy="50" r="6" fill="#0a0c0b" stroke="#00cc66" stroke-width="2"/>
+      </svg>
+      <div class="brand-text">HIL <span>ADMIN</span></div>
+    </div>
+    <div class="topbar-right">
+      <div class="patch-badge" id="issues-badge">
+        <div class="patch-dot"><div class="patch-eyes"></div></div>
+        <span class="patch-count" id="issues-count">— open issues</span>
+      </div>
+      <div class="admin-id">signed in — <b id="admin-name">…</b></div>
+      <div class="sign-out-link" id="btn-signout-2">sign out</div>
+    </div>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" data-section="dashboard"><span class="dot"></span> Dashboard</div>
+
+    <div class="nav-label">Family Ledger</div>
+    <div class="nav-item" data-section="people"><span class="dot"></span> People & Pets</div>
+    <div class="nav-item" data-section="financial"><span class="dot"></span> Financial</div>
+
+    <div class="nav-label">Pipeline</div>
+    <div class="nav-item" data-section="staged"><span class="dot"></span> Staged Items <span class="count" id="staged-count">0</span></div>
+    <div class="nav-item" data-section="issues"><span class="dot"></span> Owner Issues <span class="count" id="nav-issues-count">0</span></div>
+
+    <div class="nav-label">Platform</div>
+    <div class="nav-item" data-section="flair"><span class="dot"></span> Seasonal Flair</div>
+    <div class="nav-item" data-section="media"><span class="dot"></span> Guild Media</div>
+
+    <div class="sidebar-foot">HIL SYSTEM v2.5<br>modular admin — drag to rearrange</div>
+  </div>
+
+  <div class="main">
+    <div class="main-head">
+      <div>
+        <div class="main-title" id="main-title">DASHBOARD</div>
+        <div class="main-sub">Nothing is Lost. Everything is Logic.</div>
+      </div>
+      <div class="edit-mode-toggle" id="edit-toggle">
+        EDIT LAYOUT <div class="switch" id="edit-switch"></div>
+      </div>
+    </div>
+
+    <div class="module-grid" id="module-grid"></div>
+  </div>
+
+</div>
+
+<!-- ===================== MODAL ===================== -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal-body"></div>
+</div>
+
+<!-- ===================== FIREBASE / APP LOGIC ===================== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, addDoc, collection,
+  query, where, orderBy, limit, onSnapshot, getDocs, serverTimestamp, deleteField
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ============================================================
+   FIREBASE CONFIG
+   TODO(Dan): paste the actual hilsystem-com firebaseConfig block
+   (apiKey/authDomain/projectId/etc) here — pulling from your
+   existing hil-shell.js init so this matches every other tool.
+   Left as placeholders so this file is safe to drop in without
+   accidentally shipping live keys in chat.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyARjQ3kD8iz9rD-2Fl1zNASnlVDmvDeVb4",
+  authDomain: "project-97444efa-3b6f-493b-b96.firebaseapp.com",
+  projectId: "project-97444efa-3b6f-493b-b96",
+  storageBucket: "project-97444efa-3b6f-493b-b96.firebasestorage.app",
+  messagingSenderId: "937314472168",
+  appId: "1:937314472168:web:5ad7b916ac01a9e649b95d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ============================================================
+   ARCHITECTURE RULE (locked) — DO NOT VIOLATE
+   item_records is backend-write-only. This admin UI NEVER writes
+   item_records directly. Staged item "approve" calls the Cloud Run
+   commit service; this file never bypasses it.
+   ============================================================ */
+const COMMIT_SERVICE_URL = "https://hil-admin-action-937314472168.us-central1.run.app/webhook/admin-action";
+// Live as of today's deploy. TODO(Dan): once api.hilsystem.com routing is set
+// up the same way as your existing ingest webhook, swap this for
+// "https://api.hilsystem.com/webhook/admin-action" — no other code changes
+// needed, this is the only line that references the raw Cloud Run URL.
+
+// Guild Media Library — writes directly to guild_media (frontend-writable,
+// curated content, same tier as Museum/Exchange). Firestore rule requires
+// isAdmin() (admins/{uid} existence check) — NOTE this is a *different* admin
+// concept than the team_members.is_admin flag that gates this whole panel.
+// Confirm your own account has an admins/{uid} doc, or writes here will 403
+// even though the rest of this panel works fine for you.
+const R2_SIGNER_URL = "https://hilsystem-r2-signer.dvo77.workers.dev";
+const MEDIA_TYPE_FOLDER = {
+  hero_illustration:   "heroes",
+  whiteboard:          "whiteboards",
+  diagram:             "diagrams",
+  animation:           "animations",
+  patch_scratch_short: "shorts",
+  photo:               "photos",
+  svg:                 "svgs",
+  reference_chart:     "charts",
+  printable_pdf:       "printables",
+  interactive_sim:     "sims",
+};
+const MEDIA_TYPE_PREFIX = {
+  hero_illustration:   "HERO",
+  whiteboard:          "WB",
+  diagram:             "DIAG",
+  animation:           "ANIM",
+  patch_scratch_short: "SHORT",
+  photo:               "PHOTO",
+  svg:                 "SVG",
+  reference_chart:     "CHART",
+  printable_pdf:       "PDF",
+  interactive_sim:     "SIM",
+};
+
+let currentUid = null;
+let currentAdminDoc = null;
+let activeSection = "dashboard";
+let editMode = false;
+let unsubMap = {}; // section -> unsubscribe fn, so we detach listeners on nav away
+
+const MODULE_DEFS = {
+  people:    { title: "PEOPLE & PETS",       col: "col-5", section: "people" },
+  financial: { title: "FINANCIAL OVERVIEW",  col: "col-7", section: "financial" },
+  staged:    { title: "STAGED ITEMS",        col: "col-7", section: "staged" },
+  issues:    { title: "OWNER ISSUES",        col: "col-5", section: "issues" },
+  flair:     { title: "SEASONAL FLAIR",      col: "col-7", section: "flair" },
+  media:     { title: "GUILD MEDIA",         col: "col-7", section: "media" },
+};
+let dashboardLayout = ["people","financial","staged","issues","flair","media"]; // static order — no drag-reorder
+let hiddenModules = [];
+
+/* ---------------- AUTH GATE ---------------- */
+function showGate(id){
+  ["gate-loading","gate-signedout","gate-denied","gate-error"].forEach(g=>{
+    document.getElementById(g).classList.toggle("hidden", g!==id);
+  });
+  document.getElementById("app-shell").classList.remove("active");
+}
+
+document.getElementById("btn-google-signin").onclick = ()=>{
+  signInWithPopup(auth, new GoogleAuthProvider()).catch(e=>{
+    console.error("[HIL Admin] sign-in error", e);
+  });
+};
+document.getElementById("btn-signout").onclick = ()=> signOut(auth);
+document.getElementById("btn-signout-2").onclick = ()=> signOut(auth);
+document.getElementById("hamburger-btn").onclick = ()=>{
+  document.getElementById("sidebar").classList.toggle("mobile-open");
+};
+
+onAuthStateChanged(auth, async (user)=>{
+  detachAllListeners();
+  if(!user){
+    currentUid = null;
+    showGate("gate-signedout");
+    return;
+  }
+  showGate("gate-loading");
+  currentUid = user.uid;
+  try{
+    // is_admin gate checked against team_members doc for this signed-in user.
+    // Pattern: users/{uid}/team_members/{memberId} where linked_uid == uid.
+    // Most installs will have the owner's own member doc id == uid; fall back
+    // to a query on linked_uid if not.
+    let memberDoc = await getDoc(doc(db, "users", user.uid, "team_members", user.uid));
+    let memberData = memberDoc.exists() ? memberDoc.data() : null;
+
+    if(!memberData){
+      const q = query(collection(db, "users", user.uid, "team_members"),
+                       where("linked_uid","==", user.uid), limit(1));
+      const snap = await getDocs(q);
+      if(!snap.empty) memberData = snap.docs[0].data();
+    }
+
+    if(!memberData || memberData.is_admin !== true){
+      document.getElementById("gate-denied-sub").textContent =
+        `Signed in as ${user.email || user.uid}, but is_admin !== true on team_members.`;
+      showGate("gate-denied");
+      return;
+    }
+
+    currentAdminDoc = memberData;
+    document.getElementById("admin-name").textContent = memberData.name || user.displayName || user.email;
+    document.getElementById("app-shell").classList.add("active");
+    ["gate-loading","gate-signedout","gate-denied","gate-error"].forEach(g=>document.getElementById(g).classList.add("hidden"));
+
+    await loadAdminLayout();
+    attachIssuesCounterBadge();
+    renderSection("dashboard");
+  }catch(e){
+    console.error("[HIL Admin] auth gate error", e);
+    document.getElementById("gate-error-sub").textContent = e.message || "Unknown Firestore error.";
+    showGate("gate-error");
+  }
+});
+
+function detachAllListeners(){
+  Object.values(unsubMap).forEach(fn=>{ try{fn();}catch(_){} });
+  unsubMap = {};
+}
+
+/* ---------------- LAYOUT PERSISTENCE (which modules are hidden) ---------------- */
+async function loadAdminLayout(){
+  try{
+    const snap = await getDoc(doc(db, "users", currentUid, "admin_prefs", "dashboard_layout"));
+    if(snap.exists()){
+      const d = snap.data();
+      if(Array.isArray(d.hidden)) hiddenModules = d.hidden;
+    }
+  }catch(e){ console.warn("[HIL Admin] no saved layout yet", e); }
+}
+
+let layoutSaveTimer = null;
+function persistLayout(){
+  clearTimeout(layoutSaveTimer);
+  layoutSaveTimer = setTimeout(async ()=>{
+    try{
+      await setDoc(doc(db, "users", currentUid, "admin_prefs", "dashboard_layout"), {
+        hidden: hiddenModules, updated_at: serverTimestamp()
+      });
+    }catch(e){ console.error("[HIL Admin] layout save failed", e); }
+  }, 600);
+}
+
+/* ---------------- SIDEBAR ROUTING ---------------- */
+document.querySelectorAll(".nav-item[data-section]").forEach(el=>{
+  el.addEventListener("click", ()=>{
+    renderSection(el.dataset.section);
+    document.getElementById("sidebar").classList.remove("mobile-open");
+  });
+});
+
+const SECTION_TITLES = {
+  dashboard: "DASHBOARD", people: "PEOPLE & PETS", financial: "FINANCIAL OVERVIEW",
+  staged: "STAGED ITEMS", issues: "OWNER ISSUES", flair: "SEASONAL FLAIR",
+  media: "GUILD MEDIA"
+};
+
+function renderSection(section){
+  activeSection = section;
+  document.querySelectorAll(".nav-item[data-section]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.section === section);
+  });
+  document.getElementById("main-title").textContent = SECTION_TITLES[section] || section.toUpperCase();
+
+  const grid = document.getElementById("module-grid");
+  grid.innerHTML = "";
+
+  if(section === "dashboard"){
+    grid.style.display = "grid";
+    dashboardLayout.forEach(key=>{
+      if(!MODULE_DEFS[key]) return;
+      const hidden = hiddenModules.includes(key);
+      grid.appendChild(buildModuleShell(key, hidden));
+    });
+    const ghost = document.createElement("div");
+    ghost.className = "module-ghost col-12";
+    ghost.id = "add-module-ghost";
+    renderGhost(ghost);
+    grid.appendChild(ghost);
+    loadAllDashboardData();
+  } else {
+    // single-section deep view — full width, same module body renderer
+    grid.style.display = "grid";
+    const shell = buildModuleShell(section, false, true);
+    grid.appendChild(shell);
+    loadSectionData(section);
+  }
+}
+
+function renderGhost(ghost){
+  ghost.innerHTML = "";
+  const hiddenKeys = hiddenModules.filter(k=>MODULE_DEFS[k]);
+  if(!hiddenKeys.length){
+    ghost.textContent = "+ add module (none hidden)";
+    return;
+  }
+  ghost.append("+ restore: ");
+  hiddenKeys.forEach(k=>{
+    const chip = document.createElement("span");
+    chip.className = "ghost-chip";
+    chip.textContent = MODULE_DEFS[k].title;
+    chip.onclick = (ev)=>{
+      ev.stopPropagation();
+      hiddenModules = hiddenModules.filter(x=>x!==k);
+      persistLayout();
+      renderSection("dashboard");
+    };
+    ghost.appendChild(chip);
+  });
+}
+
+function buildModuleShell(key, hidden, fullWidth){
+  const def = MODULE_DEFS[key];
+  const mod = document.createElement("div");
+  mod.className = `module ${fullWidth ? "col-12" : def.col}${hidden ? " hidden-mod":""}`;
+  mod.dataset.key = key;
+  mod.innerHTML = `
+    <div class="module-drag-handle">⠿⠿ DRAG <span class="mod-hide-btn" data-hide="${key}">✕ hide</span></div>
+    <div class="module-head">
+      <div class="module-title" id="title-${key}">${def.title}</div>
+      <button class="module-action" data-viewall="${key}">${fullWidth ? "" : "view all"}</button>
+    </div>
+    <div class="module-body" id="body-${key}"><div class="module-loading">loading…</div></div>
+  `;
+  mod.querySelector("[data-viewall]")?.addEventListener("click", ()=> renderSection(key==="flair"?"flair":key));
+  mod.querySelector(".mod-hide-btn")?.addEventListener("click", (ev)=>{
+    ev.stopPropagation();
+    hiddenModules.push(key);
+    persistLayout();
+    renderSection("dashboard");
+  });
+  return mod;
+}
+
+document.getElementById("edit-toggle").onclick = ()=>{
+  editMode = !editMode;
+  document.body.classList.toggle("edit-on", editMode);
+  document.getElementById("edit-switch").classList.toggle("on", editMode);
+};
+
+/* ---------------- DATA LOADERS ---------------- */
+function loadAllDashboardData(){
+  Object.keys(MODULE_DEFS).forEach(key=>{
+    if(document.getElementById(`body-${key}`)) loadSectionData(key);
+  });
+}
+
+function loadSectionData(key){
+  if(key === "people") loadPeoplePets();
+  else if(key === "issues") loadOwnerIssues();
+  else if(key === "staged") loadStagedItems();
+  else if(key === "financial") loadFinancial();
+  else if(key === "flair") loadSeasonalFlair();
+  else if(key === "media") loadGuildMedia();
+}
+
+/* ---- PEOPLE & PETS ---- */
+function loadPeoplePets(){
+  const body = document.getElementById("body-people");
+  if(!body) return;
+  if(unsubMap.people) unsubMap.people();
+  const q = query(collection(db, "users", currentUid, "team_members"), orderBy("name"));
+  unsubMap.people = onSnapshot(q, (snap)=>{
+    if(snap.empty){ body.innerHTML = `<div class="module-empty">no people or pets yet</div>`; return; }
+    body.innerHTML = "";
+    snap.forEach(d=>{
+      const m = d.data();
+      const isPet = m.species != null; // pets carry species; humans don't
+      const initials = (m.name||"??").split(" ").map(s=>s[0]).slice(0,2).join("").toUpperCase();
+      const roleLine = isPet
+        ? `pet · ${m.species||""}${m.breed?" · "+m.breed:""}`
+        : (m.role || "family");
+      const row = document.createElement("div");
+      row.className = "person-row";
+      row.innerHTML = `
+        <div class="avatar ${isPet?"pet":""}">${initials}</div>
+        <div class="person-meta">
+          <div class="person-name">${escapeHtml(m.name||"unnamed")}</div>
+          <div class="person-role">${escapeHtml(roleLine)}</div>
+        </div>
+        ${m.is_admin ? '<div class="admin-pill">ADMIN</div>' : ''}
+      `;
+      row.onclick = ()=> openPersonModal(d.id, m);
+      body.appendChild(row);
+    });
+  }, (err)=>{
+    console.error("[HIL Admin] people listener error", err);
+    body.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(err.message)}</div>`;
+  });
+
+  const addBtn = document.querySelector('[data-viewall="people"]');
+  // add a dedicated "+ add" action next to view-all on the people module
+  const head = body.closest(".module")?.querySelector(".module-head");
+  if(head && !head.querySelector(".add-person-btn")){
+    const btn = document.createElement("button");
+    btn.className = "module-action add-person-btn";
+    btn.textContent = "+ add";
+    btn.style.marginRight = "10px";
+    btn.onclick = ()=> openPersonModal(null, {});
+    head.insertBefore(btn, head.lastElementChild);
+  }
+}
+
+function openPersonModal(memberId, m){
+  const isPet = !!memberId ? m.species != null : null; // unknown for new — let user choose
+  const tricks = (m.capabilities?.tricks || []).slice();
+  const vax = (m.vaccination_records || []).slice();
+
+  document.getElementById("modal-body").innerHTML = `
+    <h3>${memberId ? "EDIT" : "ADD"} TEAM MEMBER</h3>
+    <div class="field-checkbox-row">
+      <input type="checkbox" id="f-is-pet" ${ (m.species!=null) ? "checked":""}/>
+      <label for="f-is-pet" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text-dim);">this is a pet</label>
+    </div>
+    <div class="field-label">Name</div>
+    <input class="field-input" id="f-name" value="${escapeAttr(m.name||"")}" />
+
+    <div class="field-label">Birthday <span style="color:var(--text-faint);font-weight:normal;">(day/month only — triggers Seasonal Flare balloons)</span></div>
+    <input type="date" class="field-input" id="f-birthday" value="${m.birthday ? `2000-${m.birthday}` : ""}" />
+
+    <div id="human-fields">
+      <div class="field-label">Role</div>
+      <input class="field-input" id="f-role" value="${escapeAttr(m.role||"")}" placeholder="Dad / Shop Lead / Family" />
+      <div class="field-checkbox-row">
+        <input type="checkbox" id="f-is-admin" ${m.is_admin ? "checked":""}/>
+        <label for="f-is-admin" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text-dim);">is_admin (grants Admin panel access)</label>
+      </div>
+    </div>
+
+    <div id="pet-fields">
+      <div class="field-label">Species</div>
+      <input class="field-input" id="f-species" value="${escapeAttr(m.species||"")}" placeholder="dog / cat / ..." />
+      <div class="field-label">Breed</div>
+      <input class="field-input" id="f-breed" value="${escapeAttr(m.breed||"")}" />
+      <div class="field-label">Tricks</div>
+      <input class="field-input" id="f-trick-input" placeholder="type a trick, press Enter" />
+      <div class="tricks-tag-list" id="tricks-list"></div>
+      <div class="field-label">Vaccination records (one per line — "name : date")</div>
+      <textarea class="field-textarea" id="f-vax">${escapeHtml(vax.map(v=>`${v.name||""} : ${v.date||""}`).join("\n"))}</textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" id="modal-cancel">cancel</button>
+      <button class="btn-primary" id="modal-save">save</button>
+    </div>
+  `;
+
+  let tricksState = tricks.slice();
+  const renderTricks = ()=>{
+    const list = document.getElementById("tricks-list");
+    list.innerHTML = "";
+    tricksState.forEach((t,i)=>{
+      const chip = document.createElement("div");
+      chip.className = "tricks-tag";
+      chip.innerHTML = `${escapeHtml(t)} <span class="x" data-i="${i}">✕</span>`;
+      chip.querySelector(".x").onclick = ()=>{ tricksState.splice(i,1); renderTricks(); };
+      list.appendChild(chip);
+    });
+  };
+  renderTricks();
+
+  const toggleFields = ()=>{
+    const isPetChecked = document.getElementById("f-is-pet").checked;
+    document.getElementById("human-fields").style.display = isPetChecked ? "none" : "block";
+    document.getElementById("pet-fields").style.display = isPetChecked ? "block" : "none";
+  };
+  document.getElementById("f-is-pet").onchange = toggleFields;
+  toggleFields();
+
+  document.getElementById("f-trick-input").addEventListener("keydown", (ev)=>{
+    if(ev.key === "Enter" && ev.target.value.trim()){
+      tricksState.push(ev.target.value.trim());
+      ev.target.value = "";
+      renderTricks();
+    }
+  });
+
+  document.getElementById("modal-cancel").onclick = closeModal;
+  document.getElementById("modal-save").onclick = async ()=>{
+    const saveBtn = document.getElementById("modal-save");
+    saveBtn.disabled = true; saveBtn.textContent = "saving…";
+    try{
+      const isPetChecked = document.getElementById("f-is-pet").checked;
+      const name = document.getElementById("f-name").value.trim();
+      if(!name){ alert("name required"); saveBtn.disabled=false; saveBtn.textContent="save"; return; }
+
+      let payload = { name, updated_at: serverTimestamp() };
+
+      const birthdayVal = document.getElementById("f-birthday").value; // "YYYY-MM-DD" or ""
+      payload.birthday = birthdayVal ? birthdayVal.slice(5) : null; // strip fixed year, keep "MM-DD"
+
+      if(isPetChecked){
+        const vaxLines = document.getElementById("f-vax").value.split("\n").map(l=>l.trim()).filter(Boolean);
+        payload.species = document.getElementById("f-species").value.trim();
+        payload.breed = document.getElementById("f-breed").value.trim();
+        payload.role = "pet";
+        payload.capabilities = { ...(m.capabilities||{}), tricks: tricksState };
+        payload.vaccination_records = vaxLines.map(l=>{
+          const [n, d] = l.split(":").map(s=>s.trim());
+          return { name: n||l, date: d||null };
+        });
+      } else {
+        payload.role = document.getElementById("f-role").value.trim();
+        payload.is_admin = document.getElementById("f-is-admin").checked;
+        // clear pet-only fields if this doc was previously a pet and got switched
+        payload.species = deleteField();
+        payload.breed = deleteField();
+      }
+
+      if(memberId){
+        await updateDoc(doc(db,"users",currentUid,"team_members",memberId), payload);
+      } else {
+        payload.owner_uid = currentUid;
+        payload.created_at = serverTimestamp();
+        payload.linked_uid = null;
+        await addDoc(collection(db,"users",currentUid,"team_members"), payload);
+      }
+      closeModal();
+    }catch(e){
+      console.error("[HIL Admin] save team_member failed", e);
+      alert("Save failed: " + e.message);
+      saveBtn.disabled = false; saveBtn.textContent = "save";
+    }
+  };
+
+  document.getElementById("modal-backdrop").classList.add("active");
+}
+
+function closeModal(){ document.getElementById("modal-backdrop").classList.remove("active"); }
+document.getElementById("modal-backdrop").addEventListener("click", (ev)=>{
+  if(ev.target.id === "modal-backdrop") closeModal();
+});
+
+/* ---- OWNER ISSUES (platform/owner_issues) ---- */
+function loadOwnerIssues(){
+  const body = document.getElementById("body-issues");
+  if(!body) return;
+  if(unsubMap.issues) unsubMap.issues();
+  const q = query(collection(db, "platform", "owner_issues", "items"), orderBy("created_at","desc"), limit(20));
+  unsubMap.issues = onSnapshot(q, (snap)=>{
+    if(snap.empty){ body.innerHTML = `<div class="module-empty">no open issues</div>`; updateIssuesCount(0); return; }
+    body.innerHTML = "";
+    let openCount = 0;
+    snap.forEach(d=>{
+      const it = d.data();
+      if(it.status !== "resolved") openCount++;
+      const tagClass = (it.type||"todo").toLowerCase();
+      const row = document.createElement("div");
+      row.className = "issue-row";
+      row.innerHTML = `
+        <div class="issue-tag ${tagClass}">${(it.type||"TODO").toUpperCase()}</div>
+        <div class="issue-text">${escapeHtml(it.text || it.message || "")}</div>
+      `;
+      body.appendChild(row);
+    });
+    updateIssuesCount(openCount);
+  }, (err)=>{
+    console.error("[HIL Admin] owner_issues listener error", err);
+    body.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(err.message)}</div>`;
+  });
+}
+
+function updateIssuesCount(n){
+  document.getElementById("issues-count").textContent = `${n} open issue${n===1?"":"s"}`;
+  document.getElementById("nav-issues-count").textContent = n;
+}
+function attachIssuesCounterBadge(){
+  document.getElementById("issues-count").textContent = "— open issues";
+}
+
+/* ---- STAGED ITEMS ---- */
+function loadStagedItems(){
+  const body = document.getElementById("body-staged");
+  if(!body) return;
+  if(unsubMap.staged) unsubMap.staged();
+  const q = query(collection(db, "staged_items"), where("owner_uid","in",[currentUid, null]),
+                   orderBy("created_at","desc"), limit(25));
+  unsubMap.staged = onSnapshot(q, (snap)=>{
+    const pending = snap.docs.filter(d=> (d.data().status||"pending") === "pending");
+    document.getElementById("staged-count").textContent = pending.length;
+    if(pending.length===0){ body.innerHTML = `<div class="module-empty">nothing staged</div>`; return; }
+    body.innerHTML = "";
+    pending.forEach(d=>{
+      const it = d.data();
+      const thumbUrl = it.parsed?.attachments?.[0] || "";
+      const isUnmatched = !it.owner_uid;
+      const row = document.createElement("div");
+      row.className = "staged-row";
+      row.innerHTML = `
+        <div class="staged-thumb" style="${thumbUrl?`background-image:url('${thumbUrl}')`:""}"></div>
+        <div class="staged-meta">
+          <div class="staged-name">${escapeHtml(it.parsed?.name || it.subject || "untitled")}</div>
+          <div class="staged-source">${escapeHtml(it.source_email||"")} ${isUnmatched ? "· owner_uid: null · needs manual match" : "· forwarded receipt"}</div>
+        </div>
+        <div class="staged-actions">
+          <button class="btn-mini approve" data-approve="${d.id}">${isUnmatched ? "match" : "approve"}</button>
+          <button class="btn-mini reject" data-reject="${d.id}">reject</button>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+    body.querySelectorAll("[data-approve]").forEach(btn=>{
+      btn.onclick = ()=> approveStagedItem(btn.dataset.approve, btn);
+    });
+    body.querySelectorAll("[data-reject]").forEach(btn=>{
+      btn.onclick = ()=> rejectStagedItem(btn.dataset.reject, btn);
+    });
+  }, (err)=>{
+    console.error("[HIL Admin] staged_items listener error", err);
+    body.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(err.message)}</div>`;
+  });
+}
+
+async function approveStagedItem(itemId, btn){
+  btn.disabled = true; btn.textContent = "approving…";
+  try{
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(COMMIT_SERVICE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+      body: JSON.stringify({ action: "approve", itemId })
+    });
+    if(!res.ok) throw new Error(`commit service returned ${res.status}`);
+  }catch(e){
+    console.error("[HIL Admin] approve failed — commit service endpoint likely not deployed yet", e);
+    alert("Approve failed: " + e.message + "\n\nThis calls api.hilsystem.com/webhook/admin-action which needs to be built in Cloud Run before this works end to end (see architecture rule — frontend cannot write item_records directly).");
+    btn.disabled = false; btn.textContent = "approve";
+  }
+}
+
+async function rejectStagedItem(itemId, btn){
+  btn.disabled = true; btn.textContent = "rejecting…";
+  try{
+    await updateDoc(doc(db,"staged_items",itemId), { status: "rejected", updated_at: serverTimestamp() });
+  }catch(e){
+    console.error("[HIL Admin] reject failed", e);
+    alert("Reject failed: " + e.message);
+    btn.disabled = false; btn.textContent = "reject";
+  }
+}
+
+/* ---- FINANCIAL OVERVIEW (aggregation across item_records.financial) ---- */
+async function loadFinancial(){
+  const body = document.getElementById("body-financial");
+  if(!body) return;
+  body.innerHTML = `<div class="module-loading">aggregating item_records…</div>`;
+  try{
+    const snap = await getDocs(collection(db,"users",currentUid,"item_records"));
+    let total = 0, insured = 0, pendingValuation = 0;
+    const byZone = {};
+    snap.forEach(d=>{
+      const it = d.data();
+      const f = it.financial || {};
+      const val = Number(f.current_value || 0);
+      total += val;
+      if(f.insured) insured += Number(f.insured_value || val);
+      if(f.current_value == null) pendingValuation++;
+      const zone = (it.hl_address || "").split("-")[1] || "UNKNOWN";
+      byZone[zone] = (byZone[zone]||0) + val;
+    });
+    let topZone = "—", topVal = 0;
+    Object.entries(byZone).forEach(([z,v])=>{ if(v>topVal){ topVal=v; topZone=z; } });
+
+    body.innerHTML = `
+      <div class="stat-row"><div class="stat-label">Total catalogued value</div><div class="stat-value green">$${total.toLocaleString()}</div></div>
+      <div class="stat-row"><div class="stat-label">Insured value</div><div class="stat-value">$${insured.toLocaleString()}</div></div>
+      <div class="stat-row"><div class="stat-label">Items pending valuation</div><div class="stat-value amber">${pendingValuation}</div></div>
+      <div class="stat-row"><div class="stat-label">Highest-value zone</div><div class="stat-value">${escapeHtml(topZone)} — $${topVal.toLocaleString()}</div></div>
+    `;
+  }catch(e){
+    console.error("[HIL Admin] financial aggregation failed", e);
+    body.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ---- SEASONAL FLAIR ---- */
+async function loadSeasonalFlair(){
+  const body = document.getElementById("body-flair");
+  if(!body) return;
+  try{
+    const userSnap = await getDoc(doc(db,"users",currentUid));
+    const userData = userSnap.exists() ? userSnap.data() : {};
+    const enabledResolved = userSnap.exists() ? (userData?.preferences?.seasonal_flair_enabled !== false) : true;
+    const birthdayMMDD = userData?.birthday || null;
+    const dateInputValue = birthdayMMDD ? `2000-${birthdayMMDD}` : "";
+    body.innerHTML = `
+      <div class="flair-row">
+        <div class="flair-desc">Per-user toggle. When on, a 30-second seasonal effect plays on sign-in (snow, etc. — set by current date).</div>
+        <div class="switch ${enabledResolved?"on":""}" id="flair-switch"></div>
+      </div>
+      <div class="flair-bday-row">
+        <div class="flair-desc" style="max-width:none;">Birthday <span style="color:var(--text-faint)">(day/month only — triggers the balloons effect)</span></div>
+        <input type="date" class="flair-bday-input" id="flair-bday-input" value="${dateInputValue}"/>
+        <button class="flair-bday-save" id="flair-bday-save">SAVE</button>
+        <span class="flair-bday-status" id="flair-bday-status"></span>
+      </div>
+      <div class="flair-preview">${currentSeasonLabel(birthdayMMDD)}</div>
+    `;
+    document.getElementById("flair-switch").onclick = async function(){
+      const next = !this.classList.contains("on");
+      this.classList.toggle("on", next);
+      try{
+        await setDoc(doc(db,"users",currentUid), { preferences: { seasonal_flair_enabled: next } }, { merge: true });
+      }catch(e){
+        console.error("[HIL Admin] flair toggle save failed", e);
+        this.classList.toggle("on", !next);
+        alert("Failed to save: " + e.message);
+      }
+    };
+    document.getElementById("flair-bday-save").onclick = async function(){
+      const input  = document.getElementById("flair-bday-input");
+      const status = document.getElementById("flair-bday-status");
+      const val = input.value;
+      const mmdd = val ? val.slice(5) : null;
+      this.disabled = true;
+      try{
+        await setDoc(doc(db,"users",currentUid), { birthday: mmdd }, { merge: true });
+        status.textContent = "saved";
+        document.querySelector(".flair-preview").textContent = currentSeasonLabel(mmdd);
+        setTimeout(()=>{ status.textContent = ""; }, 2000);
+      }catch(e){
+        console.error("[HIL Admin] birthday save failed", e);
+        status.textContent = "error";
+        alert("Failed to save: " + e.message);
+      }finally{
+        this.disabled = false;
+      }
+    };
+  }catch(e){
+    console.error("[HIL Admin] flair load failed", e);
+    body.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(e.message)}</div>`;
+  }
+}
+function currentSeasonLabel(birthdayMMDD){
+  const today = new Date();
+  const month = today.getMonth()+1;
+  const day   = today.getDate();
+  const mmdd  = `${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+
+  if(birthdayMMDD && birthdayMMDD === mmdd) return "current season effect: BIRTHDAY — BALLOONS 🎈";
+  if(month === 3 && day === 17) return "current season effect: ST. PATRICK'S — SHAMROCKS 🍀";
+  if(month === 7 && day === 4)  return "current season effect: JULY 4TH — FIREWORKS 🎆";
+  if(month === 2 && day >= 10 && day <= 14) return "current season effect: VALENTINE'S — HEARTS 💚💛 (active Feb 10–14)";
+  if(month === 12 || month === 1) return "current season effect: WINTER — SNOW ❄ (active Dec–Jan)";
+  if((month === 9 && day >= 22) || month === 10 || month === 11) return "current season effect: FALL — LEAVES 🍁 (active Sep 22–Nov 30)";
+  return "current season effect: none active today";
+}
+
+/* ---- GUILD MEDIA ---- */
+function loadGuildMedia(){
+  const body = document.getElementById("body-media");
+  if(!body) return;
+
+  body.innerHTML = `
+    <div class="media-form-wrap">
+      <div class="field-label">Type</div>
+      <select class="field-select" id="media-f-type">
+        <option value="hero_illustration">Hero Illustration</option>
+        <option value="whiteboard">Whiteboard Drawing</option>
+        <option value="diagram">Diagram</option>
+        <option value="animation">Animation</option>
+        <option value="patch_scratch_short">PATCH & SCRATCH Short</option>
+        <option value="photo">Photo</option>
+        <option value="svg">SVG</option>
+        <option value="reference_chart">Reference Chart</option>
+        <option value="printable_pdf">Printable PDF</option>
+        <option value="interactive_sim">Interactive Simulation</option>
+      </select>
+
+      <div class="field-label">Title</div>
+      <input class="field-input" id="media-f-title" placeholder="Smart Home Illustration" />
+
+      <div class="field-label">Description</div>
+      <textarea class="field-textarea" id="media-f-desc" placeholder="What this asset shows and when PATCH should use it."></textarea>
+
+      <div class="field-label">Keywords <span style="color:var(--text-faint);font-weight:normal;">(comma-separated)</span></div>
+      <input class="field-input" id="media-f-keywords" placeholder="smart home, automation, zigbee" />
+
+      <div class="field-label">Related Concepts <span style="color:var(--text-faint);font-weight:normal;">(comma-separated slugs)</span></div>
+      <input class="field-input" id="media-f-concepts" placeholder="smart-home, fixed-points" />
+
+      <div class="field-label">Assistant Use <span style="color:var(--text-faint);font-weight:normal;">(comma-separated)</span></div>
+      <input class="field-input" id="media-f-use" placeholder="introduce_module, explain_concept" />
+
+      <div class="field-label">Tier</div>
+      <select class="field-select" id="media-f-tier">
+        <option value="free">Free</option>
+        <option value="paid">Paid</option>
+      </select>
+
+      <div class="media-file-row">
+        <div class="field-label">File</div>
+        <input type="file" id="media-f-file" accept="image/*,video/*,application/pdf" />
+        <div class="media-preview" id="media-preview">
+          <img id="media-preview-img" />
+          <div class="fname" id="media-preview-fname"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn-primary" id="media-submit-btn" style="width:100%;">UPLOAD ASSET</button>
+      </div>
+      <div class="media-status" id="media-status"></div>
+    </div>
+
+    <div class="field-label" style="margin-bottom:8px;">Recently Added</div>
+    <div id="media-recent-list"><div class="module-loading">loading…</div></div>
+  `;
+
+  document.getElementById("media-f-file").addEventListener("change", (ev)=>{
+    const file = ev.target.files[0];
+    const box = document.getElementById("media-preview");
+    const img = document.getElementById("media-preview-img");
+    const fname = document.getElementById("media-preview-fname");
+    if(!file){ box.classList.remove("show"); return; }
+    fname.textContent = `${file.name} (${(file.size/1024).toFixed(0)} KB)`;
+    if(file.type.startsWith("image/")){
+      img.style.display = "";
+      img.src = URL.createObjectURL(file);
+    } else {
+      img.style.display = "none";
+    }
+    box.classList.add("show");
+  });
+
+  document.getElementById("media-submit-btn").onclick = uploadGuildMediaAsset;
+
+  loadRecentGuildMedia();
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result.split(",")[1]);
+    r.onerror = ()=> reject(new Error("File read failed"));
+    r.readAsDataURL(file);
+  });
+}
+
+function csvToArray(str){
+  return str.split(",").map(s=>s.trim()).filter(Boolean);
+}
+
+async function nextGuildMediaAssetId(type){
+  const prefix = MEDIA_TYPE_PREFIX[type] || "MEDIA";
+  const q = query(collection(db, "guild_media"), orderBy("asset_id", "desc"), limit(50));
+  const snap = await getDocs(q);
+  let max = 0;
+  snap.forEach(d=>{
+    const id = d.id;
+    if(id.startsWith(prefix + "-")){
+      const n = parseInt(id.split("-")[1], 10);
+      if(!isNaN(n) && n > max) max = n;
+    }
+  });
+  const next = String(max + 1).padStart(3, "0");
+  return `${prefix}-${next}`;
+}
+
+function setMediaStatus(msg, cls){
+  const el = document.getElementById("media-status");
+  if(!el) return;
+  el.textContent = msg;
+  el.className = "media-status" + (cls ? " " + cls : "");
+}
+
+async function uploadGuildMediaAsset(){
+  const btn = document.getElementById("media-submit-btn");
+  btn.disabled = true;
+  setMediaStatus("Uploading…", "");
+  try{
+    const file = document.getElementById("media-f-file").files[0];
+    if(!file) throw new Error("Select a file first.");
+
+    const type = document.getElementById("media-f-type").value;
+    const title = document.getElementById("media-f-title").value.trim();
+    const description = document.getElementById("media-f-desc").value.trim();
+    const keywords = csvToArray(document.getElementById("media-f-keywords").value);
+    const related_concepts = csvToArray(document.getElementById("media-f-concepts").value);
+    const assistant_use = csvToArray(document.getElementById("media-f-use").value);
+    const tier = document.getElementById("media-f-tier").value;
+
+    if(!title || !description) throw new Error("Title and description are required.");
+
+    const assetId = await nextGuildMediaAssetId(type);
+    const assetType = MEDIA_TYPE_FOLDER[type] || "misc";
+
+    setMediaStatus(`Uploading file for ${assetId}…`, "");
+    const base64 = await fileToBase64(file);
+    const uploadResp = await fetch(R2_SIGNER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        data: base64,
+        context: "guild_media",
+        itemId: assetId,
+        assetType,
+      }),
+    });
+    const uploadData = await uploadResp.json();
+    if(!uploadResp.ok || !uploadData.success){
+      throw new Error(uploadData.error || "R2 upload failed");
+    }
+
+    setMediaStatus(`Saving metadata for ${assetId}…`, "");
+    await setDoc(doc(db, "guild_media", assetId), {
+      asset_id: assetId,
+      type,
+      title,
+      description,
+      keywords,
+      related_concepts,
+      assistant_use,
+      file: {
+        r2_path: uploadData.key,
+        mime_type: file.type || "application/octet-stream",
+        thumbnail_r2_path: null,
+      },
+      permissions: { tier },
+      status: "active",
+      created_at: serverTimestamp(),
+    });
+
+    setMediaStatus(`Saved ${assetId} — ${title}`, "ok");
+    document.getElementById("media-f-title").value = "";
+    document.getElementById("media-f-desc").value = "";
+    document.getElementById("media-f-keywords").value = "";
+    document.getElementById("media-f-concepts").value = "";
+    document.getElementById("media-f-use").value = "";
+    document.getElementById("media-f-file").value = "";
+    document.getElementById("media-preview").classList.remove("show");
+    loadRecentGuildMedia();
+  }catch(e){
+    console.error("[HIL Admin] guild_media upload failed", e);
+    setMediaStatus("Error: " + e.message, "err");
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function loadRecentGuildMedia(){
+  const listEl = document.getElementById("media-recent-list");
+  if(!listEl) return;
+  try{
+    const q = query(collection(db, "guild_media"), orderBy("created_at", "desc"), limit(10));
+    const snap = await getDocs(q);
+    if(snap.empty){ listEl.innerHTML = `<div class="module-empty">no assets yet</div>`; return; }
+    listEl.innerHTML = "";
+    snap.forEach(d=>{
+      const a = d.data();
+      const row = document.createElement("div");
+      row.className = "media-row";
+      row.innerHTML = `
+        <div class="media-thumb">${(a.type||"").split("_")[0]?.slice(0,3).toUpperCase()||""}</div>
+        <div class="media-meta">
+          <div class="media-title">${escapeHtml(a.title||d.id)}</div>
+          <div class="media-sub">${d.id} · ${escapeHtml(a.type||"")}</div>
+        </div>
+      `;
+      row.onclick = ()=> openMediaPreviewModal(d.id, a);
+      listEl.appendChild(row);
+    });
+  }catch(e){
+    console.error("[HIL Admin] recent guild_media load failed", e);
+    listEl.innerHTML = `<div class="module-empty">error loading — ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+const R2_PUBLIC_BASE = "https://pub-1a3ad1ec5a8042dc9cadf659089fe52c.r2.dev";
+function openMediaPreviewModal(assetId, asset){
+  const url = `${R2_PUBLIC_BASE}/${asset.file?.r2_path || ""}`;
+  const mime = asset.file?.mime_type || "";
+  let bodyHtml;
+  if(mime.startsWith("image/")){
+    bodyHtml = `<img src="${url}" alt="${escapeAttr(asset.title||"")}" />`;
+  } else if(mime.startsWith("video/")){
+    bodyHtml = `<video src="${url}" controls autoplay playsinline></video>`;
+  } else if(mime === "application/pdf"){
+    bodyHtml = `<embed src="${url}" type="application/pdf" />`;
+  } else {
+    bodyHtml = `<a href="${url}" target="_blank" style="color:var(--green);">Open file</a>`;
+  }
+
+  document.getElementById("modal-body").innerHTML = `
+    <h3>${escapeHtml(asset.title || assetId)}</h3>
+    <div class="media-view-body">${bodyHtml}</div>
+    <div class="media-view-desc">${escapeHtml(asset.description || "")}</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="modal-cancel">close</button>
+    </div>
+  `;
+  document.getElementById("modal-cancel").onclick = closeModal;
+  document.getElementById("modal-backdrop").classList.add("active");
+}
+
+/* ---------------- UTIL ---------------- */
+function escapeHtml(s){
+  return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+</script>
+</body>
+</html>
