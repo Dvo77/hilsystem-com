@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noun First Lab — HIL Guild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="../hil-shell.js"></script>
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     full :root block. --blue and --danger aren't standard shell tokens
+     (specific to this module's PATCH/SCRATCH visuals and wrong-answer
+     feedback), so those two stay as a small local addition, same
+     convention as Electric Forge's hub-specific CSS. */
+  :root{ --blue:#3b9eff; --danger:#ff4d5e; }
+  *{box-sizing:border-box;}
+  body{
+    font-family:'Barlow Condensed', sans-serif;
+  }
+  .wrap{position:relative; z-index:1; width:100%; max-width:560px; margin:0 auto; padding:20px 14px 60px;}
+
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:2px; color:var(--hil-text-muted);
+    text-transform:uppercase; margin-bottom:6px;
+  }
+  h1{
+    font-family:var(--font-display); font-weight:900;
+    font-size:clamp(22px,6vw,30px); margin:0 0 4px; color:var(--hil-text);
+    letter-spacing:0.5px;
+  }
+  .sub{color:var(--hil-text-muted); font-size:16px; margin:0 0 20px; line-height:1.4;}
+
+  .card{
+    background:linear-gradient(180deg, var(--hil-surface-2), var(--hil-surface));
+    border:1px solid var(--hil-border); border-radius:10px;
+    padding:20px; margin-bottom:16px;
+  }
+
+  .agent-row{display:flex; gap:12px; align-items:flex-start; margin-bottom:14px;}
+  .avatar{
+    flex:0 0 auto; width:44px; height:44px; border-radius:50%;
+    background:#0d0f0e; border:1px solid var(--hil-border);
+    position:relative;
+  }
+  .avatar .eye{
+    position:absolute; width:7px; height:7px; border-radius:50%; top:18px;
+    box-shadow:0 0 8px currentColor, 0 0 16px currentColor;
+  }
+  .avatar.patch .eye{background:var(--blue); color:var(--blue);}
+  .avatar.patch .eye.l{left:11px;} .avatar.patch .eye.r{left:26px;}
+  .avatar.scratch .eye{background:var(--hil-green); color:var(--hil-green);}
+  .avatar.scratch .eye.l{left:11px;} .avatar.scratch .eye.r{left:26px;}
+  .agent-name{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
+    text-transform:uppercase; margin-bottom:3px;
+  }
+  .agent-name.patch{color:var(--blue);}
+  .agent-name.scratch{color:var(--hil-green);}
+  .agent-text{font-size:17px; line-height:1.45; color:var(--hil-text);}
+
+  .objline{
+    font-family:var(--font-mono); font-size:13px; color:var(--hil-amber, #cc8800);
+    border:1px dashed var(--hil-border); border-radius:8px; padding:12px 14px; margin-bottom:16px;
+    background:rgba(204,136,0,0.05);
+  }
+
+  .grid5{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px;}
+  @media(min-width:420px){ .grid5{grid-template-columns:1fr 1fr 1fr;} }
+  button.opt{
+    font-family:'Barlow Condensed', sans-serif; font-weight:600; font-size:15px;
+    background:var(--hil-surface-2); color:var(--hil-text); border:1px solid var(--hil-border);
+    border-radius:8px; padding:12px 8px; cursor:pointer; letter-spacing:0.5px;
+    transition:border-color .15s, background .15s;
+  }
+  button.opt:hover{border-color:var(--hil-green); background:#182019;}
+  button.opt:disabled{opacity:0.4; cursor:default;}
+  button.opt.correct{border-color:var(--hil-green); background:rgba(0,204,102,0.12); color:var(--hil-green);}
+  button.opt.wrong{border-color:var(--danger); background:rgba(255,77,94,0.1); color:var(--danger);}
+
+  .btn{
+    font-family:var(--font-mono); font-weight:700; font-size:13px;
+    letter-spacing:1px; text-transform:uppercase;
+    background:var(--hil-green); color:#04140b; border:none; border-radius:8px;
+    padding:13px 18px; cursor:pointer; width:100%; margin-top:8px;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.35; cursor:default;}
+  .btn.ghost{ background:transparent; color:var(--hil-green); border:1px solid var(--hil-green); }
+  .btn.amber{background:var(--hil-amber, #cc8800); color:#231400;}
+  .btn.blue{background:var(--blue); color:#001528;}
+
+  textarea, input, select{
+    width:100%; font-family:'Barlow Condensed', sans-serif; font-size:16px;
+    background:#0d100e; color:var(--hil-text); border:1px solid var(--hil-border);
+    border-radius:8px; padding:11px 12px; margin-bottom:4px;
+  }
+  textarea{min-height:78px; resize:vertical;}
+  label{font-family:var(--font-mono); font-size:11px; letter-spacing:1px; color:var(--hil-text-muted); text-transform:uppercase; display:block; margin:12px 0 5px;}
+
+  .feedback{
+    margin-top:14px; padding:12px 14px; border-radius:8px;
+    background:rgba(59,158,255,0.07); border:1px solid rgba(59,158,255,0.3);
+    font-size:15px; line-height:1.4;
+  }
+
+  .progress-dots{display:flex; gap:6px; margin-bottom:16px;}
+  .dot{width:10px; height:10px; border-radius:2px; background:var(--hil-border); transform:rotate(45deg);}
+  .dot.done{background:var(--hil-green);}
+  .dot.active{background:var(--hil-amber, #cc8800);}
+
+  .compass{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin:18px 0; }
+  .prong{ text-align:center; border:1px solid var(--hil-border); border-radius:10px; padding:14px 6px; background:var(--hil-surface-2); }
+  .prong.disabled{ opacity:0.45; }
+  .dial{
+    width:64px; height:64px; margin:0 auto 8px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:13px;
+  }
+  .dial-time{background:conic-gradient(var(--blue) calc(var(--p,0)*1%), #1a201c 0);}
+  .dial-proof{background:conic-gradient(var(--hil-amber, #cc8800) calc(var(--p,0)*1%), #1a201c 0);}
+  .dial-total{background:conic-gradient(var(--hil-green) calc(var(--p,0)*1%), #1a201c 0);}
+  .dial-inner{
+    width:48px; height:48px; border-radius:50%; background:var(--hil-surface-2);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .dial-inner b{font-size:15px; color:var(--hil-text);}
+  .dial-inner span{font-size:9px; color:var(--hil-text-muted);}
+  .prong-label{font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; color:var(--hil-text-muted); text-transform:uppercase;}
+
+  .vouch-status{
+    display:flex; align-items:center; gap:8px; font-family:var(--font-mono);
+    font-size:12px; padding:10px 12px; border-radius:8px; margin-top:10px;
+  }
+  .vouch-status.pending{background:rgba(124,144,134,0.1); color:var(--hil-text-muted); border:1px solid var(--hil-border);}
+
+  .badge{
+    display:inline-block; font-family:var(--font-mono); font-size:10px;
+    letter-spacing:1px; padding:3px 8px; border-radius:20px; text-transform:uppercase;
+  }
+  .badge.soon{background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.4);}
+  .badge.live{background:rgba(0,204,102,0.15); color:var(--hil-green); border:1px solid rgba(0,204,102,0.4);}
+
+  .footer-note{font-size:13px; color:var(--hil-text-muted); text-align:center; margin-top:18px; line-height:1.5;}
+
+  .gms-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
+  .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-crumb b{color:var(--hil-green);}
+  .gms-crumb a{color:var(--hil-text-muted);text-decoration:none;}
+  .gms-crumb a:hover{color:var(--hil-green);}
+</style>
+</head>
+<body>
+
+  <div class="gms-topbar">
+    <div class="gms-crumb"><a href="../hil-guild.html">Guild</a> &nbsp;&rsaquo;&nbsp; <a href="./">Foundations</a> &nbsp;&rsaquo;&nbsp; <b>Noun First Lab</b></div>
+  </div>
+
+<div class="wrap">
+
+  <div class="eyebrow">HIL Guild — Foundations · Lesson 1</div>
+  <h1>Noun First Lab</h1>
+  <p class="sub">Time-scored today. Proof and Human Vouch are built into the design already — <span class="badge soon">Coming Soon</span> until PATCH's real proctoring wiring lands.</p>
+
+  <!-- ENTRY SCREEN -->
+  <div id="screen-entry" class="card">
+    <div class="agent-row">
+      <div class="avatar patch"><div class="eye l"></div><div class="eye r"></div></div>
+      <div>
+        <div class="agent-name patch">PATCH</div>
+        <div class="agent-text">Five objects. No labels. Before you tell me what any of them are <em>for</em>, tell me what they fundamentally <b>are</b> — TOOL, FASTENER, MATERIAL, CONSUMABLE, or COMPONENT. After that, I'll ask you to explain your reasoning on one of them.</div>
+      </div>
+    </div>
+    <button class="btn" onclick="startSession()">Start Session</button>
+  </div>
+
+  <!-- ROUND SCREEN -->
+  <div id="screen-round" class="card" style="display:none;">
+    <div class="progress-dots" id="dots"></div>
+    <div class="agent-row">
+      <div class="avatar patch"><div class="eye l"></div><div class="eye r"></div></div>
+      <div>
+        <div class="agent-name patch">PATCH</div>
+        <div class="agent-text">What IS this, fundamentally?</div>
+      </div>
+    </div>
+    <div class="objline" id="objline"></div>
+    <div class="grid5" id="options"></div>
+    <div id="reveal" style="display:none;">
+      <div class="agent-row" style="margin-top:14px;">
+        <div class="avatar scratch"><div class="eye l"></div><div class="eye r"></div></div>
+        <div>
+          <div class="agent-name scratch">SCRATCH</div>
+          <div class="agent-text" id="reveal-text"></div>
+        </div>
+      </div>
+      <button class="btn" id="next-btn" onclick="nextRound()">Next Object</button>
+    </div>
+  </div>
+
+  <!-- PROOF SCREEN -->
+  <div id="screen-proof" class="card" style="display:none;">
+    <div class="agent-row">
+      <div class="avatar patch"><div class="eye l"></div><div class="eye r"></div></div>
+      <div>
+        <div class="agent-name patch">PATCH</div>
+        <div class="agent-text" id="proof-question"></div>
+      </div>
+    </div>
+    <label>Your explanation</label>
+    <textarea id="proof-answer" placeholder="Type your reasoning here — not scored yet, but PATCH still wants to hear it."></textarea>
+    <span class="badge soon">Proof scoring coming soon</span>
+    <div class="feedback" style="margin-top:12px;">
+      Real Proof-prong scoring needs PATCH's Cloud Run proctoring wiring, which isn't built yet. Your reasoning here is saved as a reflection, not scored — no bonus credit yet, but it's still worth writing out.
+    </div>
+    <button class="btn" style="margin-top:12px;" onclick="showWrapUp()">Continue to Wrap Up</button>
+  </div>
+
+  <!-- WRAP UP SCREEN -->
+  <div id="screen-wrapup" class="card" style="display:none;">
+    <div class="eyebrow">Wrap Up</div>
+    <h1 style="font-size:20px;">Session Summary</h1>
+    <span class="badge live" id="save-status">Saving…</span>
+
+    <div class="compass" id="compass"></div>
+
+    <div style="margin-top:18px;">
+      <label>Reflection — which one tripped you up, and why? (Optional)</label>
+      <textarea id="reflection" placeholder="Optional..."></textarea>
+    </div>
+
+    <div style="margin-top:6px;">
+      <label>Human Vouch <span class="badge soon">Coming Soon</span></label>
+      <div class="vouch-status pending">Needs approved tutor accounts, not built yet — entry stays verifiedBy: "self"</div>
+    </div>
+
+    <button class="btn" style="margin-top:14px; background:var(--hil-surface-2); color:var(--hil-text-muted); border:1px solid var(--hil-border);" onclick="location.reload()">Done</button>
+  </div>
+
+  <p class="footer-note">Guild Foundations · Noun First Lab · Session Log Entries write to your real Guild Scoreboard.</p>
+</div>
+
+<script type="module">
+import { SessionLogger, resolveActiveMember, writeSessionLogEntry } from '../session-logger.js';
+
+const OBJECTS = [
+  {name:"Yellow twist-on wire connector", correct:"COMPONENT",
+   reason:"It doesn't act on anything (not TOOL), isn't raw stock (not MATERIAL), and doesn't deplete the way tape or solder does with a single use (not CONSUMABLE) — it's a functional hardware piece that becomes part of a finished circuit. COMPONENT."},
+  {name:"2-inch Phillips wood screw", correct:"FASTENER",
+   reason:"Its whole job is mechanically holding two things together. That's the FASTENER definition, full stop — not a tool, not raw material."},
+  {name:"Roll of black electrical tape", correct:"CONSUMABLE",
+   reason:"It gets used up — wrapped, cut, gone. Depletes with use. That's the CONSUMABLE tell, even though it 'does' something to a wire."},
+  {name:"Pine 2x4 stud, raw and uncut", correct:"MATERIAL",
+   reason:"Raw stock that gets shaped into something else. Doesn't act, doesn't fasten, doesn't deplete in the CONSUMABLE sense — MATERIAL."},
+  {name:"Cordless drill", correct:"TOOL",
+   reason:"It acts on other things. Operational, reusable, does work. Textbook TOOL."}
+];
+const ROOTS = ["TOOL","FASTENER","MATERIAL","CONSUMABLE","COMPONENT"];
+
+// ── GUILD MODULE MANIFEST (Part 4, v3.5 standard) ──────────────────────────
+// scoringMode: "time" — Proof and Human Vouch are UI-complete but disabled
+// (Part 10: understandingScore enforcement and vouch both need infra that
+// isn't built yet). Ships honest Time-only credit now.
+const MODULE_MANIFEST = {
+  moduleId:      'noun-first-lab',
+  subjects:      ['reading', 'science'],
+  conceptTags:   ['root-noun-classification', 'noun-first-naming'],
+  scoringMode:   'time',
+  proofMinutesPerPoint: null,
+  proofBonusCapMinutes: null,
+};
+
+let idx = 0;
+let picks = [];
+let firstTryCorrect = null;
+let retried = false;
+let currentUser = null;
+let activeMember = null;
+const logger = new SessionLogger({
+  moduleId: MODULE_MANIFEST.moduleId,
+  subjects: MODULE_MANIFEST.subjects,
+  conceptTags: MODULE_MANIFEST.conceptTags,
+  scoringPath: 'none', // v3 accuracy/outcome don't apply — this module uses v3.5 scoringMode, written manually at Wrap Up
+});
+
+function renderDots(){
+  const dots = document.getElementById('dots');
+  dots.innerHTML = '';
+  for(let i=0;i<OBJECTS.length;i++){
+    const d = document.createElement('div');
+    d.className = 'dot' + (i<idx?' done':(i===idx?' active':''));
+    dots.appendChild(d);
+  }
+}
+
+window.startSession = function(){
+  document.getElementById('screen-entry').style.display = 'none';
+  document.getElementById('screen-round').style.display = 'block';
+  logger.start();
+  renderRound();
+};
+
+function renderRound(){
+  renderDots();
+  const obj = OBJECTS[idx];
+  document.getElementById('objline').textContent = "OBJECT: " + obj.name;
+  document.getElementById('reveal').style.display = 'none';
+  const optDiv = document.getElementById('options');
+  optDiv.innerHTML = '';
+  ROOTS.forEach(r=>{
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = r;
+    b.onclick = ()=>pick(r, b);
+    optDiv.appendChild(b);
+  });
+}
+
+function pick(choice, btn){
+  const obj = OBJECTS[idx];
+  const allBtns = document.querySelectorAll('#options .opt');
+  const isCorrect = choice === obj.correct;
+
+  if(firstTryCorrect === null) firstTryCorrect = isCorrect;
+  else retried = true;
+
+  if(isCorrect){
+    allBtns.forEach(b=>b.disabled=true);
+    btn.classList.add('correct');
+    picks.push({objName:obj.name, correct:obj.correct, gotItRight:true, usedRetry:retried});
+    document.getElementById('reveal-text').textContent = obj.reason;
+    document.getElementById('reveal').style.display = 'block';
+  } else {
+    btn.classList.add('wrong');
+    btn.disabled = true;
+  }
+}
+
+window.nextRound = function(){
+  idx++;
+  firstTryCorrect = null;
+  retried = false;
+  if(idx < OBJECTS.length){
+    renderRound();
+  } else {
+    document.getElementById('screen-round').style.display = 'none';
+    document.getElementById('screen-proof').style.display = 'block';
+    const missed = picks.find(p=>p.usedRetry);
+    const target = missed || picks[picks.length-1];
+    document.getElementById('proof-question').textContent =
+      `One more thing. Why isn't the "${target.objName}" a ${ROOTS.filter(r=>r!==target.correct)[Math.floor(Math.random()*4)]}? Walk me through your reasoning.`;
+  }
+};
+
+window.showWrapUp = function(){
+  document.getElementById('screen-proof').style.display = 'none';
+  document.getElementById('screen-wrapup').style.display = 'block';
+  renderCompassAndSave();
+};
+
+async function renderCompassAndSave(){
+  const missedList = picks.filter(p=>p.usedRetry).map(p=>p.objName);
+  let description = `${picks.length}/${OBJECTS.length} rounds completed. Self-corrected on: ${missedList.length ? missedList.join(', ') : 'none'}.`;
+  const reflection = document.getElementById('reflection')?.value?.trim();
+  if (reflection) description += ` Reflection: ${reflection}`;
+
+  const entry = logger.wrapUp({ outcome: null, accuracy: null, description });
+  const activeMinutes = entry.activeMinutes;
+  const creditedMinutes = activeMinutes; // scoringMode "time" — no proof bonus available yet
+
+  const timePct = Math.min(100, (activeMinutes/10)*100);
+  document.getElementById('compass').innerHTML = `
+    <div class="prong">
+      <div class="dial dial-time" style="--p:${timePct}"><div class="dial-inner"><b>${activeMinutes}</b><span>min</span></div></div>
+      <div class="prong-label">Time</div>
+    </div>
+    <div class="prong disabled">
+      <div class="dial dial-proof" style="--p:0"><div class="dial-inner"><b>—</b><span>/10</span></div></div>
+      <div class="prong-label">Proof (soon)</div>
+    </div>
+    <div class="prong">
+      <div class="dial dial-total" style="--p:${Math.min(100,(creditedMinutes/25)*100)}"><div class="dial-inner"><b>${creditedMinutes}</b><span>min</span></div></div>
+      <div class="prong-label">Credited</div>
+    </div>
+  `;
+
+  const statusEl = document.getElementById('save-status');
+  entry.creditedMinutes = creditedMinutes;
+  entry.understandingScore = null;
+  entry.proofEquivalentMinutes = null;
+  entry.vouch = null;
+  entry.tier = null;
+
+  try {
+    if (!currentUser || !activeMember) throw new Error('No signed-in user or household member resolved');
+    await writeSessionLogEntry(window.db, currentUser.uid, activeMember.id, entry);
+    statusEl.textContent = 'Saved to your Scoreboard ✅';
+  } catch (err) {
+    console.error('Noun First Lab: failed to save session log entry', err);
+    statusEl.textContent = 'Save failed — check connection';
+    statusEl.className = 'badge soon';
+  }
+}
+
+HILShell.init({
+  toolId: 'noun-first-lab',
+  toolName: 'Noun First Lab',
+  requireAuth: true,
+  onAuth: async (user) => {
+    if (!user) return;
+    currentUser = user;
+    activeMember = await resolveActiveMember(window.db, user.uid);
+    if (!activeMember) {
+      HILShell.toast?.('No household member set up yet — add one in Guild first.', 'error');
+    }
+  }
+});
+</script>
+
+</body>
+</html>
