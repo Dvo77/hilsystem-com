@@ -1,7 +1,8 @@
 # PATCH & SCRATCH — BRAND CANON
-**Status:** 🔒 LOCKED (character identity) / ⚠️ one open conflict (write-back behavior, see §5)
-**Canonical home:** `Dvo77/hilsystem-com` repo root (GitHub)
+**Status:** 🔒 LOCKED (character identity + full visual spec) / ⚠️ one open conflict (write-back behavior, see §5)
+**Canonical home:** `Dvo77/hilsystem-com` repo → `standards/PATCH-SCRATCH-Brand-Canon.md`
 **Mirror:** HIL Guild Incubator Wiki.js (community/shared section)
+**Sources merged:** Prior session memory (personality, catchphrase, AI assistant behavior) + PATCH Brand Canon v1.0 visual asset (Owner: DVO77/Daniel, June 2026 — antenna colors confirmed and locked July 21, 2026)
 **Relationship to other docs:** This is the parent canon. Two separate implementations pull from it — the **Bot Component** (`hil-shell.js`, visual mood cards, see its own README) and the **PATCH AI Assistant** (`hil-patch-agent` Worker, conversational). Neither of those docs should redefine character traits — they should link back here.
 
 ---
@@ -35,6 +36,61 @@ The core relationship: **Patch is the finished, reviewed answer. Scratch is the 
 - **⚠️ KNOWN MISMATCH (open, unresolved):** In `hil-shell.js` v2.9 (confirmed live in GitHub, line 395), Scratch's name-label renders in `var(--hil-amber)`, not green. The Bot Component README flags this as a deliberate placeholder carried over from an early demo — real sprite art was meant to resolve it but hasn't landed yet. **This canon document is the source of truth that the code should eventually match: Scratch = green.**
 - **Sprite art:** Not yet produced. `.bot__avatar` slots are wired and waiting (safe/caution/danger × character = 6 image slots total).
 - **Send It Lab palette is a separate, unrelated standard** — black/navy + orange + white + gold, no teal. Do not conflate Send It Lab's module palette with Patch/Scratch's character colors above; they govern different surfaces.
+
+### 3a. Full Visual Spec (🔒 LOCKED July 21, 2026 — source: PATCH Brand Canon v1.0 asset, Dan-confirmed)
+
+**Patch**
+| Attribute | Spec |
+|---|---|
+| Overall look | Off-white / silver rounded body, clean and friendly |
+| Eyes | Blue glowing — `#00B6FF` |
+| Antenna | 🔒 Green glowing ball — `#27D14A` |
+| Expression | Calm, confident smile |
+| Accents | Blue lights and details |
+| Chest label | "PATCH" (all caps) |
+| Style | Friendly, futuristic, approachable — never aggressive |
+
+**Scratch**
+| Attribute | Spec |
+|---|---|
+| Eyes | Green glowing |
+| Antenna | 🔒 Red glowing ball |
+| Relationship to Patch | Patch = steady coach. Scratch = curious learner. Together they balance logic and curiosity, teaching and learning. |
+
+**Shared palette**
+| Color | Hex | Use |
+|---|---|---|
+| Primary Blue | `#00B6FF` | Patch eyes & accents |
+| Antenna Green | `#27D14A` | Patch antenna |
+| Body Off-White | `#F2F0EA` | Body base |
+| Silver / Gray | `#C9CCD1` | Body accents |
+| Dark Gray / Black | `#14161A` | Detail lines |
+| Outline / Shadow | `#0A0C0F` | Outlines |
+
+**Expression states (Patch):** Neutral/Ready, Happy/Reassuring, Thinking/Focused, Explaining/Teaching, Encouraging/Proud
+
+**Common poses (Patch):** Neutral, Thumbs Up, Explaining, Thinking, Pointing/Teaching, Working/Helping
+
+**Minimum size:** Do not render Patch smaller than 24px in height in digital applications. Reference scale: 24px / 32px / 48px / 64px.
+
+**Usage guidelines:**
+- ✅ Always friendly and approachable
+- ✅ Use in educational, coaching, and system guidance contexts
+- ✅ Keep colors consistent
+- ✅ Keep expressions positive, calm, and confident
+- ✅ Maintain brand consistency across all platforms
+
+**Do not:**
+- ❌ Make Patch angry, sad, or aggressive
+- ❌ Change the eye color or antenna color
+- ❌ Distort proportions or add extra details
+- ❌ Use in a way that conflicts with HIL philosophy
+
+**Voice & tone (Patch):** Confident, reassuring, practical. Speaks like a knowledgeable mentor who loves systems, logic, and people. Short, clear sentences. No hype. No fluff. No ego.
+
+**Example phrases:** "Let's break it down." / "Here's what's happening." / "Logic first. Always." / "You're in control." / "I've got this."
+
+🔴 **GAP:** This spec is Patch-only in depth (expressions, poses, voice, phrases). Scratch has confirmed eye/antenna colors now, but no equivalent expression library, pose set, or voice/tone spec yet — candidate for a follow-up asset.
 
 ---
 
