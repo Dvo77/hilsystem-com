@@ -78,7 +78,7 @@
 | Standard | Status | Location | Governs |
 |---|---|---|---|
 | Patch & Scratch Bot Component (visual mood-card) | 🔒 | `hil-shell.js` v2.9+ (confirmed live in GitHub), README documented | Shared `.bot` CSS + `HILShell.bot.render/setState/setLine` JS API for safe/caution/danger mood cards. **Purely decorative — not the AI assistant.** |
-| PATCH / SCRATCH Brand Canon | 🔒 (⚠️ 1 open conflict inside) | `PATCH-SCRATCH-Brand-Canon.md` (new — parent canon for both surfaces below) | Character identity, colors, locked catchphrase, PATCH AI Assistant behavior (memory, query escalation ladder), open write-back conflict flagged for Dan to resolve |
+| PATCH / SCRATCH Brand Canon | 🔒 (⚠️ 1 open conflict inside) | `standards/PATCH-SCRATCH-Brand-Canon.md` | Character identity, full visual spec (hex codes, antenna colors — Scratch red, Patch green — expressions, poses, do's/don'ts), locked catchphrase, PATCH AI Assistant behavior, open write-back conflict flagged for Dan to resolve |
 | Send It Lab Palette | 🔒 | Memory — **not yet a standalone doc** | Black/navy + orange + white + gold (no teal). Unrelated to Patch/Scratch character colors — separate module palette |
 
 ⚠️ **KNOWN MISMATCH (confirmed in GitHub, not yet fixed):** `hil-shell.js` line 395 — `.bot--scratch .bot__name { color: var(--hil-amber); }`. Canon says Scratch = green. Full detail in `PATCH-SCRATCH-Brand-Canon.md` §3.
