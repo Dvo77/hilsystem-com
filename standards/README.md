@@ -1,7 +1,7 @@
 # HIL STANDARDS INDEX
 **Single source of truth for every locked standard, protocol, and template across the HIL ecosystem.**
 **Owner:** Daniel Ray DeVoy
-**Index Version:** 1.0 — July 2026
+**Index Version:** 1.1 — July 2026
 **Canonical home:** `Dvo77/hilsystem-com` repo root (GitHub)
 **Mirror:** HIL Guild Incubator Wiki.js (community/shared section)
 
@@ -13,6 +13,12 @@
 2. Go to the named source document/location — don't infer from memory or old chats.
 3. If a standard isn't listed here, it's either undocumented or lives only in chat history — flag it, don't guess.
 4. Update this file only after a standard is confirmed locked, same discipline as `DEPLOY_STATE.md`.
+
+**Adding a new standard (workflow):**
+1. Save the new standard as its own file directly in `standards/` — don't wait for permission to add the file itself.
+2. Let a few accumulate. This index does not need to be updated after every single addition.
+3. Periodically, reconcile: add a row to the relevant category table below, mark it with the correct status (🔒/🟡/🔴), and clear any 🔴 GAP line it fills.
+4. Same append-then-reconcile rhythm as `DEPLOY_STATE.md` — work happens continuously, this file gets updated in batches once things are confirmed, not mid-flight.
 
 ---
 
@@ -67,7 +73,7 @@
 | GitHub SSOT | 🔒 | `HIL-GitHub-SSOT-v2.md` | Git workflow (edit → add → commit → push), naming convention (`filename` / `filename-v1` / `filename-wip`), build/edit rules, connected services table |
 | Cloudflare SSOT | 🔒 | `HIL-Cloudflare-SSOT-v2_2.md` (supersedes `v2_1.md`) | Workers/Pages/R2/KV/Email Routing inventory and config |
 | Deploy State Protocol | 🔒 | `DEPLOY_STATE.md` (repo root) | Status legend (✅/🟡/🔴/⚠️), append-only changelog, Claude fetches first for any Cloudflare/Firestore/Cloud Run session |
-| hil-shell.js Universal Shell | 🔒 | Repo: `hil-shell.js` (currently v2.9) | Firebase init, Google Auth, shared globals, header/nav, auth gate, toast system, design tokens, `HILShell.init()` 3-line drop-in |
+| hil-shell.js Universal Shell | 🔒 | Repo: `hil-shell.js` (currently v2.15) — added since v2.9: Patch & Scratch bot component (v2.9, see §5), Guild Media Viewer + Library panel + `renderForConcept()` (v2.12–v2.15) | Firebase init, Google Auth, shared globals, header/nav, auth gate, toast system, design tokens, `HILShell.init()` 3-line drop-in |
 | Design Tokens | 🔒 | Enforced via `hil-shell.js` | Dark `#0a0c0b` bg, `#00cc66` green, `#cc8800` amber; Orbitron/Space Mono/Barlow Condensed fonts; hex compass logo |
 | Tool Doc / README Schema | 🔒 | `HIL-Tool-Doc-Schema-README.md` | Format every tool's README must follow |
 
@@ -112,16 +118,30 @@ These are locked specs for individual features — listed for completeness, not 
 
 ---
 
-## OPEN GAPS SUMMARY (candidates for next standards write-up)
+## 8. GUILD MEDIA / CONTENT LIBRARY
 
-1. **PATCH/SCRATCH Brand Canon** — highest-traffic undocumented standard, referenced constantly across sessions
-2. **HIL Exchange Spec** — locked in principle, no file
-3. **Business Model / Tiering** — locked in principle, no file
-4. **PATCH Query Escalation Ladder** — locked in principle, no file
-5. **PATCH + Wiki.js Write-Back Flow** — actively conflicting, needs resolution before documenting
-6. **Firestore Security Rules** — live but console-only, never mirrored to a readable doc
+| Standard | Status | Location | Governs |
+|---|---|---|---|
+| Guild Media Asset Schema | 🔒 | `Guild-Media-README.md` (`tools/readmes/`) | `guild_media` Firestore collection field shapes, asset ID scheme (`{TYPE-PREFIX}-{NNN}`, e.g. `HERO-001`), R2 storage path convention (`guild-media/{type-folder}/{assetId}.{ext}`) |
+| Concept Tagging Rule | 🔒 | `Guild-Media-README.md` | `related_concepts` must use the same slug vocabulary as the Guild Concept Index — never free text; this is what makes tag-driven auto-display (`HILShell.media.renderForConcept()`) work platform-wide |
+| Media Display Rule | 🔒 | `Guild-Media-README.md` | Media never renders inline in chat or inline unprompted in a page — always opens through the shared popup viewer (`HILShell.media.open()`). One viewer, one place it's styled. |
+| HIL Whiteboard Style Guide | 🔒 | `Guild-Media-README.md` | Colors (`#0a0c0b` bg / `#00cc66` primary / `#cc8800` example-values / `#dde8e2` labels / `#8a948e` muted / `#0a2614` fill), type scale (28/18/18/22/14px), camera size (800×600 default), critical export-bounds rule for Excalidraw-drawn assets |
+
+🔴 **GAP:** PATCH-side integration (PATCH's own chat responses deciding to surface a media asset) is designed for (`cardHTML()` exists) but not built — nothing on the PATCH agent Worker side queries `guild_media` yet.
 
 ---
 
-*HIL Standards Index v1.0 — July 2026*
+## 9. OPEN GAPS SUMMARY (candidates for next standards write-up)
+
+1. **HIL Exchange Spec** — locked in principle, no file
+2. **Business Model / Tiering** — locked in principle, no file
+3. **PATCH Query Escalation Ladder** — locked in principle, no file
+4. **PATCH + Wiki.js Write-Back Flow** — actively conflicting, needs resolution before documenting
+5. **Firestore Security Rules** — live but console-only, never mirrored to a readable doc
+6. **Send It Lab Palette** — locked in principle, no standalone file
+7. **PATCH-side Guild Media surfacing** — the visual-aid-during-tutoring vision this feature was built for isn't wired up yet; `HILShell.media.cardHTML()` is ready for PATCH's agent to use, but the agent doesn't call `guild_media` or include a suggested asset in its responses
+
+---
+
+*HIL Standards Index v1.1 — July 2026*
 *Maintained alongside `DEPLOY_STATE.md` — update only after a standard is confirmed locked, not mid-discussion.*
