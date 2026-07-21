@@ -2,78 +2,79 @@
 
 **File:** hil-admin.html
 **URL:** hilsystem.com/tools/hil-admin.html
-**Status:** Beta
+**Status:** Live
+**Audience:** Platform owner/admin only (Dan). No regular user ever reaches this panel.
 
-**Purpose:** The platform control panel for the HIL System owner/admin. Lets the admin
-review and approve incoming staged items, manage people and pets in the household,
-monitor financial overview across all catalogued inventory, track open owner issues,
-and toggle per-user seasonal effects — all from one authenticated dashboard.
+**Purpose:** The platform operations center for the HIL System owner. Reviews and approves
+incoming staged items, manages household people and pets, monitors financial overview,
+tracks open owner issues, manages Guild Media assets, and controls seasonal effects —
+all from one authenticated dashboard.
+
+**How it differs from hil-account.html:**
+- Requires `is_admin: true` on `team_members` doc — regular users are denied at the door
+- Has Staged Items review queue (approve/reject/match receipts from the email pipeline)
+- Has Owner Issues feed (bugs, todos, ideas from PATCH or manual entry)
+- Has Guild Media management (upload/manage hero illustrations, whiteboards, diagrams, etc.)
+- Does NOT have subscription management, Full Disclosure page, or data export — those
+  live in hil-account.html which is the user-facing panel
+- Has a sidebar link to hil-account.html so Dan can preview the user panel while staying
+  in his own admin context
 
 **Core Features:**
-- Auth gate: only accounts with `is_admin: true` on their `team_members` doc can enter —
-  everyone else is denied at the door regardless of sign-in status
-- People & Pets module: view, add, and edit all household members including pet-specific
-  fields (species, breed, tricks, vaccination records) and admin flag toggles
-- Staged Items module: review pending items from the email ingestion pipeline, approve
-  them (routes through Cloud Run commit service — never writes `item_records` directly),
-  reject them, or match unmatched receipts to an owner
-- Owner Issues module: live feed from `platform/owner_issues` — bugs, todos, and ideas
-  logged by PATCH or manually, with type tags (BUG / TODO / IDEA)
-- Financial Overview: aggregated read across all `item_records` showing total catalogued
-  value, insured value, items pending valuation, and highest-value zone
-- Seasonal Flair toggle: per-user switch for the 30-second seasonal sign-in effect
-  (snow in winter, etc.) stored at `users/{uid}.preferences.seasonal_flair_enabled`
-- Module hide/restore: any dashboard module can be hidden and restored, persisted per
-  admin user in `users/{uid}/admin_prefs/dashboard_layout`
-- Mobile responsive: sidebar collapses to a hamburger menu on small screens; all modules
-  stack to single column
+- Auth gate: `is_admin: true` on `users/{uid}/team_members/{uid}` — denied otherwise
+- Dashboard: modular grid of all sections; modules can be hidden/restored per admin user
+- People & Pets: view, add, edit household members including pet fields, admin flag toggles
+- Financial Overview: aggregated read across item_records — total value, insured value,
+  items pending valuation, highest-value zone
+- Insurance Report: external link to hil-insurance-report.html (opens in new tab)
+- Staged Items: review pending items from email ingestion pipeline — approve (routes
+  through Cloud Run), reject, or match unowned receipts to a specific user
+- Owner Issues: live feed from `platform/owner_issues/items` — BUG / TODO / IDEA tags
+- Seasonal Flair: per-user toggle for 30-second sign-in particle effect
+- Guild Media: upload and manage platform media assets (hero illustrations, whiteboards,
+  diagrams, animations, shorts, photos, SVGs, charts, PDFs, sims) to R2 via signed URL
+- Account Panel link: opens hil-account.html in a new tab for admin preview
 
 **How it connects:**
 - Reads from: `users/{uid}/team_members`, `staged_items`, `users/{uid}/item_records`,
-  `platform/owner_issues/items`, `users/{uid}` (preferences)
+  `platform/owner_issues/items`, `users/{uid}` (preferences), `guild_media`
 - Writes to:
-  - `users/{uid}/team_members` — add/edit people and pets (direct frontend write, allowed)
-  - `staged_items` — reject action only (direct frontend write, allowed — staging collection)
-  - `users/{uid}.preferences.seasonal_flair_enabled` — flair toggle (direct frontend write)
+  - `users/{uid}/team_members` — add/edit people and pets (frontend write, allowed)
+  - `staged_items` — reject action only (frontend write, allowed)
+  - `users/{uid}.preferences.seasonal_flair_enabled` — flair toggle (frontend write)
   - `users/{uid}/admin_prefs/dashboard_layout` — module visibility preferences
-  - `users/{uid}/item_records` — **never written directly from this tool**
-- Approve action routes through: Cloud Run `hil-admin-action` service at
+  - `guild_media` — media asset records (frontend write, gated by admins/{uid} existence)
+  - R2 via `hilsystem-r2-signer` Worker — photo/file uploads
+  - `users/{uid}/item_records` — **NEVER written directly from this tool**
+- Approve action routes through: Cloud Run `hil-admin-action` at
   `hil-admin-action-937314472168.us-central1.run.app/webhook/admin-action`
-  — the only writer to `item_records` per architecture doctrine
-- Entry points: direct URL only — no in-platform nav entry for non-admin users
-- Cross-tool data flows: approved staged items land in Vault (`item_records`) with
-  `status: "needs_address"` — owner then assigns an HL address through Vault or
-  Family Ledger to complete the record
+- Entry points: direct URL only; sidebar link from any tool for admin users
+- Related tools: hil-account.html (user-facing counterpart)
 
-**Known limitations / not yet live:**
-- Financial Overview is a one-time aggregation on page load, not a live listener —
-  refresh the page to reflect newly approved items
-- Owner Issues collection path assumed to be `platform/owner_issues/items` subcollection —
-  confirm this matches actual Firestore structure before testing
-- Staged Items "match" action (for receipts with no owner_uid) requires the admin to
-  supply the correct owner UID manually — no owner lookup UI built yet
-- `api.hilsystem.com/webhook/admin-action` custom domain routing not yet configured —
-  currently pointing at raw Cloud Run URL; swap one constant when routing is set up
-- Carrie's `team_members` doc needs `is_admin: true` and `linked_uid` added before she
-  can access the admin panel
-- Feature Flags section visible in sidebar nav but not yet built
-- No audit log — admin actions (approve/reject/edit) are not currently logged with
-  who did what and when (good candidate for a future `admin_log` collection)
+**Auth model:**
+```
+onAuthStateChanged → check users/{uid}/team_members/{uid}.is_admin === true
+  → true: show dashboard
+  → false / missing: show "access denied" gate
+  → not signed in: show sign-in gate
+```
 
-**Common questions this tool answers:**
-- "How do I approve a receipt that came in?" → Go to Staged Items in the admin panel,
-  find the pending item, and hit approve. It routes through the backend and lands in
-  your Vault automatically.
-- "Someone forwarded a receipt but it didn't attach to their account — what do I do?"
-  → In Staged Items it'll show as "owner_uid: null — needs manual match." Hit the match
-  button and supply the correct owner's UID to commit it to their inventory.
-- "Can Carrie get into the admin panel?" → Yes, but her team_members doc needs
-  is_admin: true and her linked_uid added in Firestore first — same two fields that
-  were added for Dan.
-- "Why can't I see my newly approved item in the Financial Overview?" → The financial
-  aggregation runs once when the page loads. Refresh the page and it will include it.
-- "What happens if I reject a staged item?" → It stays in staged_items with
-  status: "rejected" and disappears from the pending queue. It is not deleted.
-- "Is the admin panel accessible to regular users?" → No. The auth gate checks
-  is_admin === true server-side on every request — a regular signed-in user gets
-  an "access denied" screen, not a blank page.
+**Known limitations:**
+- Financial Overview is a one-time aggregation on page load — refresh to reflect
+  newly approved items (not a live listener)
+- Staged Items "match" action requires manual entry of owner UID — no lookup UI
+- No audit log — admin actions (approve/reject/edit) are not logged with actor + timestamp
+  (candidate for a future `admin_log` collection per the security/privacy policy)
+- Carrie's team_members doc needs `is_admin: true` and `linked_uid` before she
+  can access this panel
+
+**Common questions:**
+- "How do I approve a receipt?" → Staged Items tab → find pending item → Approve.
+  Routes through Cloud Run, lands in Vault automatically.
+- "A receipt came in with no owner — what do I do?" → Shows as owner_uid: null.
+  Hit Match and supply the correct owner UID.
+- "Can regular users see this?" → No. is_admin check fires before anything renders.
+- "Why doesn't my newly approved item show in Financial Overview?" → Aggregation runs
+  once on load. Refresh the page.
+- "Where do users manage their account, subscription, and privacy?" → hil-account.html.
+  That's the user-facing panel. This panel is ops-only.
