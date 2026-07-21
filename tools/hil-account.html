@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIL Account</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Barlow+Condensed:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="./hil-shell.js"></script>
+  <style>
+    :root {
+      --bg: #0a0c0b; --panel: #131614; --panel-raised: #181c19;
+      --line: #232823; --green: #00cc66; --green-dim: #00cc6622;
+      --amber: #cc8800; --amber-dim: #cc880022;
+      --text: #e8ece9; --text-dim: #8a948e; --text-faint: #545b56;
+      --danger: #cc4433; --danger-dim: #cc443322;
+    }
+
+    .acct-wrap {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: calc(100vh - 96px);
+    }
+
+    /* SIDEBAR */
+    .acct-sidebar {
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 96px;
+      height: calc(100vh - 96px);
+      overflow-y: auto;
+    }
+    .acct-nav-group {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .15em;
+      color: var(--text-faint);
+      padding: 0 16px;
+      margin: 16px 0 6px;
+      text-transform: uppercase;
+    }
+    .acct-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: all .15s;
+    }
+    .acct-nav-item:hover { color: var(--text); background: var(--panel-raised); }
+    .acct-nav-item.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
+    .acct-nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); flex-shrink: 0; }
+    .acct-nav-item.active .dot { background: var(--green); }
+    .acct-nav-item .badge {
+      margin-left: auto;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--amber);
+      background: var(--amber-dim);
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .acct-nav-item.admin-only { display: none; }
+    .acct-nav-item.admin-only.visible { display: flex; }
+    .sidebar-foot {
+      margin-top: auto;
+      padding: 12px 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--text-faint);
+      border-top: 1px solid var(--line);
+      line-height: 1.6;
+    }
+
+    /* MAIN */
+    .acct-main { padding: 28px 32px 60px; overflow-y: auto; }
+    .acct-head { margin-bottom: 24px; }
+    .acct-title { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: .04em; }
+    .acct-sub { font-size: 15px; color: var(--text-dim); margin-top: 4px; }
+
+    /* SECTIONS */
+    .acct-section { display: none; }
+    .acct-section.active { display: block; }
+
+    /* CARDS */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: .12em;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .card-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .card-row:last-child { border-bottom: none; }
+    .card-row-label { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--text-dim); }
+    .card-row-value { font-family: 'Space Mono', monospace; font-size: 13px; color: var(--text); }
+    .card-row-value.green { color: var(--green); }
+    .card-row-value.faint { color: var(--text-faint); }
+
+    /* EMAIL HERO */
+    .email-hero {
+      background: var(--panel-raised);
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .email-hero-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .15em;
+      color: var(--green);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .email-hero-addr {
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    /* BUTTONS */
+    .btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      padding: 7px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all .15s;
+      flex-shrink: 0;
+    }
+    .btn-green { background: transparent; border: 1px solid var(--green); color: var(--green); }
+    .btn-green:hover { background: var(--green-dim); }
+    .btn-green.solid { background: var(--green); color: var(--bg); border: none; font-weight: 700; padding: 9px 20px; }
+    .btn-green.solid:hover { opacity: .9; }
+    .btn-muted { background: transparent; border: 1px solid var(--line); color: var(--text-dim); }
+    .btn-muted:hover { border-color: var(--text-dim); color: var(--text); }
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+    .btn-danger:hover { background: var(--danger-dim); }
+    .btn-amber { background: transparent; border: 1px solid var(--amber); color: var(--amber); font-size: 11px; padding: 5px 12px; }
+
+    /* STEPS */
+    .steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .step { display: flex; align-items: flex-start; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
+    .step-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; background: var(--green-dim); border: 1px solid var(--green); font-family: 'Space Mono', monospace; font-size: 10px; color: var(--green); display: flex; align-items: center; justify-content: center; }
+    .step-body { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text-dim); line-height: 1.5; }
+    .step-body b { color: var(--text); }
+
+    /* INGEST LOG */
+    .ingest-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .ingest-row:last-child { border-bottom: none; }
+    .i-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .i-dot.pending { background: var(--amber); }
+    .i-dot.merged  { background: var(--text-faint); }
+    .i-dot.active  { background: var(--green); }
+    .i-from    { color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .i-subject { color: var(--text); flex: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .i-time    { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-faint); flex-shrink: 0; }
+    .i-status  { font-family: 'Space Mono', monospace; font-size: 10px; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+    .i-status.pending { color: var(--amber); background: var(--amber-dim); }
+    .i-status.merged  { color: var(--text-faint); background: var(--panel-raised); }
+    .i-status.active  { color: var(--green); background: var(--green-dim); }
+
+    /* STAGED ITEMS */
+    .staged-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .staged-row:last-child { border-bottom: none; }
+    .staged-info { flex: 1; min-width: 0; }
+    .staged-subject { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--text); }
+    .staged-from { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+    .staged-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-confirm { font-family: 'Space Mono', monospace; font-size: 10px; background: var(--green); color: var(--bg); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-weight: 700; }
+    .btn-confirm:hover { opacity: .9; }
+    .btn-reject { font-family: 'Space Mono', monospace; font-size: 10px; background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 5px 12px; border-radius: 4px; cursor: pointer; }
+
+    /* TIER BADGE */
+    .tier-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-size: 12px; padding: 5px 13px; border-radius: 20px; margin-bottom: 14px; }
+    .tier-badge.free { border: 1px solid var(--text-faint); color: var(--text-dim); }
+    .tier-badge.paid { border: 1px solid var(--green); color: var(--green); background: var(--green-dim); }
+    .tier-badge .tdot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    /* UPGRADE CTA */
+    .upgrade-cta { background: var(--panel); border: 1px solid var(--green); border-radius: 8px; padding: 20px 24px; margin-top: 14px; text-align: center; }
+    .upgrade-cta-title { font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 8px; }
+    .upgrade-cta-sub { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.5; }
+
+    /* DISCLOSURE */
+    .disc-block { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px 22px; margin-bottom: 12px; }
+    .disc-title { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: .12em; color: var(--green); text-transform: uppercase; margin-bottom: 10px; }
+    .disc-body { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--text-dim); line-height: 1.7; }
+    .disc-body b { color: var(--text); }
+    .check-item, .x-item { display: flex; align-items: flex-start; gap: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text-dim); padding: 5px 0; line-height: 1.5; }
+    .check-item::before { content: "✓"; color: var(--green); font-family: 'Space Mono', monospace; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+    .x-item::before { content: "✕"; color: var(--danger); font-family: 'Space Mono', monospace; font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+
+    /* HOUSEHOLD */
+    .member-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .member-row:last-child { border-bottom: none; }
+    .member-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--panel-raised); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--green); flex-shrink: 0; }
+    .member-info { flex: 1; }
+    .member-name { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--text); }
+    .member-role { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+    .member-role.admin { color: var(--amber); }
+
+    /* TOGGLE */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; color: var(--text-dim); }
+    .toggle-label b { color: var(--text); display: block; }
+    .switch { width: 34px; height: 18px; background: var(--panel-raised); border: 1px solid var(--line); border-radius: 10px; position: relative; cursor: pointer; flex-shrink: 0; }
+    .switch::after { content: ""; position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; background: var(--text-faint); border-radius: 50%; transition: all .15s; }
+    .switch.on { border-color: var(--green); }
+    .switch.on::after { left: 17px; background: var(--green); }
+
+    /* INVITE FORM */
+    .invite-form { display: flex; gap: 10px; margin-top: 14px; }
+    .invite-input { flex: 1; background: var(--panel-raised); border: 1px solid var(--line); border-radius: 5px; padding: 8px 12px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--text); outline: none; }
+    .invite-input:focus { border-color: var(--green); }
+
+    .empty-state { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--text-faint); text-align: center; padding: 28px 0; line-height: 1.8; }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .section-note { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--text-faint); margin-top: 8px; line-height: 1.6; }
+
+    @media (max-width: 800px) {
+      .acct-wrap { grid-template-columns: 1fr; }
+      .acct-sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; padding: 6px 0; border-right: none; border-bottom: 1px solid var(--line); }
+      .acct-nav-group { display: none; }
+      .acct-nav-item { padding: 7px 10px; font-size: 14px; border-left: none; border-bottom: 2px solid transparent; }
+      .acct-nav-item.active { border-left: none; border-bottom-color: var(--green); }
+      .sidebar-foot { display: none; }
+      .acct-main { padding: 14px 14px 40px; }
+      .email-hero { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="acct-wrap" id="acct-wrap" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <div class="acct-sidebar">
+    <div class="acct-nav-group">Account</div>
+    <div class="acct-nav-item active" data-sec="overview"><span class="dot"></span>My Account</div>
+
+    <div class="acct-nav-group">Inventory</div>
+    <div class="acct-nav-item" data-sec="staged"><span class="dot"></span>Staged Items<span class="badge" id="staged-badge">0</span></div>
+
+    <div class="acct-nav-group">Email</div>
+    <div class="acct-nav-item" data-sec="email"><span class="dot"></span>HIL Inbox<span class="badge" id="ingest-badge">0</span></div>
+
+    <div class="acct-nav-group">Household</div>
+    <div class="acct-nav-item" data-sec="household"><span class="dot"></span>My Household</div>
+    <div class="acct-nav-item admin-only" data-sec="household-mgmt" id="nav-hh-mgmt"><span class="dot"></span>Manage Members</div>
+
+    <div class="acct-nav-group">Subscription</div>
+    <div class="acct-nav-item" data-sec="subscription"><span class="dot"></span>Plan & Billing</div>
+
+    <div class="acct-nav-group">Privacy</div>
+    <div class="acct-nav-item" data-sec="disclosure"><span class="dot"></span>Full Disclosure</div>
+    <div class="acct-nav-item" data-sec="data"><span class="dot"></span>My Data</div>
+
+    <div class="sidebar-foot">HIL SYSTEM<br>your account · your data</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="acct-main">
+    <div class="acct-head">
+      <div class="acct-title" id="acct-title">MY ACCOUNT</div>
+      <div class="acct-sub" id="acct-sub">Nothing is Lost. Everything is Logic.</div>
+    </div>
+
+    <!-- ═══ OVERVIEW ═══ -->
+    <div class="acct-section active" id="sec-overview">
+      <div class="card">
+        <div class="card-title">Profile</div>
+        <div class="card-row"><span class="card-row-label">Name</span><span class="card-row-value" id="ov-name">—</span></div>
+        <div class="card-row"><span class="card-row-label">Email</span><span class="card-row-value" id="ov-email">—</span></div>
+        <div class="card-row"><span class="card-row-label">Member since</span><span class="card-row-value" id="ov-since">—</span></div>
+        <div class="card-row"><span class="card-row-label">Plan</span><span class="card-row-value green" id="ov-plan">Free</span></div>
+        <div class="card-row"><span class="card-row-label">Household role</span><span class="card-row-value" id="ov-role">Member</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Your HIL Inbox</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <div>
+            <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.15em;color:var(--green);text-transform:uppercase;margin-bottom:6px;">Forward receipts to</div>
+            <div style="font-family:'Space Mono',monospace;font-size:14px;color:var(--text);" id="ov-hil-email">—</div>
+          </div>
+          <button class="btn btn-green" id="ov-copy-btn">Copy</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Ingestion</div>
+        <div id="ov-recent"><div class="empty-state">No emails ingested yet.</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ STAGED ITEMS ═══ -->
+    <div class="acct-section" id="sec-staged">
+      <div class="card">
+        <div class="card-title">Pending Confirmation <span id="staged-count" style="color:var(--text-faint)"></span></div>
+        <div class="section-note" style="margin-bottom:14px;">These came in via email. Confirm to add to your inventory, or reject to discard.</div>
+        <div id="staged-list"><div class="empty-state">No staged items waiting.<br>Forward a receipt to get started.</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ EMAIL INGESTION ═══ -->
+    <div class="acct-section" id="sec-email">
+      <div class="email-hero">
+        <div>
+          <div class="email-hero-label">Your HIL Email Address</div>
+          <div class="email-hero-addr" id="email-addr">—</div>
+        </div>
+        <button class="btn btn-green" id="email-copy-btn">Copy</button>
+      </div>
+      <div class="card">
+        <div class="card-title">How It Works</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body">Get a receipt email from Amazon, Home Depot, Harbor Freight — anywhere you shop.</div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><b>Forward it</b> to your HIL address above. No special subject line needed.</div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body">It appears in your <b>Staged Items</b> queue — ready to confirm with two taps.</div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-body">Confirmed items go straight into your HIL Vault inventory.</div></div>
+        </div>
+        <div class="section-note">Tip: Save your HIL address as a contact named "📦 Add to HIL" — forwarding becomes 3 taps.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ingestion History <span id="ingest-count" style="color:var(--text-faint)"></span></div>
+        <div id="ingest-log"><div class="empty-state">No emails ingested yet.<br>Forward a receipt to get started.</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ HOUSEHOLD VIEW ═══ -->
+    <div class="acct-section" id="sec-household">
+      <div class="card">
+        <div class="card-title">My Household</div>
+        <div id="hh-members"><div class="empty-state">Loading household…</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ HOUSEHOLD MANAGEMENT (admin only) ═══ -->
+    <div class="acct-section" id="sec-household-mgmt">
+      <div class="card">
+        <div class="card-title">Manage Members</div>
+        <div id="hh-manage-list"><div class="empty-state">Loading…</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Invite a Member</div>
+        <div class="disc-body" style="margin-bottom:12px;">Enter their email address. They'll receive an invite to join your HIL household.</div>
+        <div class="invite-form">
+          <input class="invite-input" id="invite-email-input" type="email" placeholder="email@example.com">
+          <button class="btn btn-green" id="btn-send-invite">Send Invite</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SUBSCRIPTION ═══ -->
+    <div class="acct-section" id="sec-subscription">
+      <div class="card">
+        <div class="card-title">Current Plan</div>
+        <div><span class="tier-badge free" id="tier-badge"><span class="tdot"></span> FREE TIER</span></div>
+        <div class="card-row"><span class="card-row-label">HIL Inbox</span><span class="card-row-value faint" id="sub-inbox">Not included</span></div>
+        <div class="card-row"><span class="card-row-label">AI Features (PATCH)</span><span class="card-row-value faint" id="sub-ai">Not included</span></div>
+        <div class="card-row"><span class="card-row-label">Vault & Exchange</span><span class="card-row-value green">Included</span></div>
+        <div class="card-row"><span class="card-row-label">Museum & History Wall</span><span class="card-row-value green">Included</span></div>
+        <div class="card-row"><span class="card-row-label">HIL Household</span><span class="card-row-value green">Included</span></div>
+      </div>
+      <div class="upgrade-cta" id="upgrade-cta">
+        <div class="upgrade-cta-title">UPGRADE TO HIL PAID</div>
+        <div class="upgrade-cta-sub">Unlock your personal HIL inbox, AI-powered PATCH features, and priority support. ~$10–15/month.</div>
+        <button class="btn btn-green solid" id="btn-upgrade">Upgrade — Coming Soon</button>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <div class="card-title">Billing History</div>
+        <div id="billing-history"><div class="empty-state">No billing history yet.</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ FULL DISCLOSURE ═══ -->
+    <div class="acct-section" id="sec-disclosure">
+      <div class="disc-block">
+        <div class="disc-title">What HIL Collects</div>
+        <div class="disc-body">When you use HIL, we store what you give us: your name and email from sign-in, items you add to inventory, photos you upload, receipt emails you forward, and your household settings. We don't collect anything you don't explicitly send us.</div>
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">What We Do With It</div>
+        <div class="check-item">Power your inventory, history, and exchange listings.</div>
+        <div class="check-item">Run the email ingestion pipeline to capture receipts faster.</div>
+        <div class="check-item">Run AI features (PATCH) using your own data to answer your own questions.</div>
+        <div class="check-item">Send platform notifications you've opted into.</div>
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">What We Don't Do</div>
+        <div class="x-item">We do not sell your data. Not to advertisers, data brokers, or anyone.</div>
+        <div class="x-item">We do not use your inventory data to train AI models.</div>
+        <div class="x-item">We do not show ads based on what you own or what you've bought.</div>
+        <div class="x-item">We do not share your data with third parties except infrastructure providers (Google Firebase, Cloudflare) bound by their own privacy policies.</div>
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">Staff Access — The Honest Version</div>
+        <div class="disc-body">
+          <b>We built HIL so we don't have to look at your stuff. And honestly — we prefer it that way.</b><br><br>
+          Your inventory is partitioned to your account. Casual browsing by HIL staff isn't possible through normal tools — it requires a deliberate, non-trivial technical action. If we ever access your account for support, we log it. If we ever do it without your knowledge, we'll tell you after the fact.
+        </div>
+      </div>
+      <div class="disc-block">
+        <div class="disc-title">Government Requests</div>
+        <div class="disc-body">If we receive a legal demand for your data, we'll notify you unless a court order prevents it. We'll push back on overbroad requests and keep a record of any government access.</div>
+      </div>
+    </div>
+
+    <!-- ═══ MY DATA ═══ -->
+    <div class="acct-section" id="sec-data">
+      <div class="card">
+        <div class="card-title">Export Your Data</div>
+        <div class="disc-body" style="margin-bottom:14px;">Download everything HIL has stored for your account as a JSON file. Your data, yours to keep.</div>
+        <div class="row-actions"><button class="btn btn-muted" id="btn-export">Export My Data</button></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Notification Preferences</div>
+        <div class="toggle-row">
+          <div class="toggle-label"><b>Ingestion confirmations</b>Notify me when a forwarded email is received</div>
+          <div class="switch on" id="tog-ingest"></div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label"><b>Exchange activity</b>Notify me on bids, trades, and completed transactions</div>
+          <div class="switch on" id="tog-exchange"></div>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label"><b>Platform updates</b>Occasional product news from HIL</div>
+          <div class="switch" id="tog-platform"></div>
+        </div>
+      </div>
+      <div class="card" style="border-color:var(--danger);">
+        <div class="card-title" style="color:var(--danger);">Danger Zone</div>
+        <div class="disc-body" style="margin-bottom:14px;">Deleting your account permanently removes all your inventory, photos, exchange listings, and ingestion history. This cannot be undone.</div>
+        <div class="row-actions"><button class="btn btn-danger" id="btn-delete">Delete My Account</button></div>
+      </div>
+    </div>
+
+  </div><!-- end acct-main -->
+</div><!-- end acct-wrap -->
+
+<script>
+window.openModal  = function(){};
+window.closeModal = function(){};
+
+const FB_BASE = 'https://www.gstatic.com/firebasejs/10.12.0';
+
+let currentUser   = null;
+let isHHAdmin     = false;
+
+let _col, _doc, _getDoc, _setDoc, _updateDoc, _addDoc,
+    _collection, _query, _where, _orderBy, _limit,
+    _getDocs, _onSnapshot, _serverTimestamp;
+
+async function initFirebase() {
+  const fs       = await import(`${FB_BASE}/firebase-firestore.js`);
+  _col           = fs.collection;
+  _doc           = fs.doc;
+  _getDoc        = fs.getDoc;
+  _setDoc        = fs.setDoc;
+  _updateDoc     = fs.updateDoc;
+  _addDoc        = fs.addDoc;
+  _collection    = fs.collection;
+  _query         = fs.query;
+  _where         = fs.where;
+  _orderBy       = fs.orderBy;
+  _limit         = fs.limit;
+  _getDocs       = fs.getDocs;
+  _onSnapshot    = fs.onSnapshot;
+  _serverTimestamp = fs.serverTimestamp;
+}
+
+const TITLES = {
+  overview:        ['MY ACCOUNT',        'Your HIL snapshot'],
+  staged:          ['STAGED ITEMS',       'Confirm or reject incoming receipts'],
+  email:           ['HIL INBOX',          'Forward receipts — we do the rest'],
+  household:       ['MY HOUSEHOLD',       'Your household members'],
+  'household-mgmt':['MANAGE HOUSEHOLD',   'Invite and manage household members'],
+  subscription:    ['PLAN & BILLING',     'Manage your subscription'],
+  disclosure:      ['FULL DISCLOSURE',    'What HIL does and doesn\'t do with your data'],
+  data:            ['MY DATA',            'Export, preferences, and account controls'],
+};
+
+HILShell.init({
+  toolId:      'account',
+  toolName:    'My Account',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+  currentUser = user;
+  await initFirebase();
+
+  const db = window.db;
+
+  document.getElementById('acct-wrap').style.display = 'grid';
+
+  // Identity
+  document.getElementById('ov-name').textContent  = user.displayName || '—';
+  document.getElementById('ov-email').textContent = user.email || '—';
+  const since = user.metadata && user.metadata.creationTime
+    ? new Date(user.metadata.creationTime).toLocaleDateString('en-US',{month:'short',year:'numeric'})
+    : '—';
+  document.getElementById('ov-since').textContent = since;
+
+  const addr = user.uid + '@hilsystem.com';
+  document.getElementById('ov-hil-email').textContent = addr;
+  document.getElementById('email-addr').textContent   = addr;
+
+  setupCopy('ov-copy-btn',    addr);
+  setupCopy('email-copy-btn', addr);
+
+  // Check household admin status
+  try {
+    const selfDoc = await _getDoc(_doc(db, 'users/' + user.uid + '/team_members/' + user.uid));
+    if (selfDoc.exists() && selfDoc.data().is_admin === true) {
+      isHHAdmin = true;
+      document.getElementById('nav-hh-mgmt').classList.add('visible');
+      document.getElementById('ov-role').textContent = 'Household Admin';
+      document.getElementById('ov-role').style.color = 'var(--amber)';
+    }
+  } catch(e) { console.warn('[account] role check', e); }
+
+  // Live badges
+  attachBadge(db, user.uid, 'staged_items',  'staged-badge',  [_where('status','==','pending')]);
+  attachBadge(db, user.uid, 'staged_items',  'ingest-badge',  [_where('source','==','email_ingest'), _where('status','==','pending')]);
+
+  // Load subscription
+  loadSubscription(db, user.uid);
+
+  // Nav wiring
+  document.querySelectorAll('.acct-nav-item[data-sec]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var sec = el.dataset.sec;
+      document.querySelectorAll('.acct-nav-item[data-sec]').forEach(function(n) {
+        n.classList.toggle('active', n.dataset.sec === sec);
+      });
+      document.querySelectorAll('.acct-section').forEach(function(s) {
+        s.classList.remove('active');
+      });
+      var target = document.getElementById('sec-' + sec);
+      if (target) target.classList.add('active');
+      var info = TITLES[sec] || [sec.toUpperCase(), ''];
+      document.getElementById('acct-title').textContent = info[0];
+      document.getElementById('acct-sub').textContent   = info[1];
+      if (sec === 'staged')          loadStaged(db, user.uid);
+      if (sec === 'email')           loadIngestLog(db, user.uid);
+      if (sec === 'household')       loadHousehold(db, user.uid);
+      if (sec === 'household-mgmt')  loadHouseholdMgmt(db, user.uid);
+    });
+  });
+
+  // Toggles
+  ['tog-ingest','tog-exchange','tog-platform'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', function() { this.classList.toggle('on'); });
+  });
+
+  // Buttons
+  document.getElementById('btn-upgrade').addEventListener('click', function() {
+    HILShell.toast('Subscription management coming soon!', 'info');
+  });
+  document.getElementById('btn-export').addEventListener('click', function() {
+    HILShell.toast('Data export coming soon.', 'info');
+  });
+  document.getElementById('btn-delete').addEventListener('click', function() {
+    if (!confirm('Permanently delete your HIL account and all data? This cannot be undone.')) return;
+    if (prompt('Type DELETE to confirm:') === 'DELETE')
+      HILShell.toast('Deletion request received. We\'ll confirm by email within 48 hours.', 'success');
+  });
+  document.getElementById('btn-send-invite').addEventListener('click', function() {
+    var email = document.getElementById('invite-email-input').value.trim();
+    if (!email) { HILShell.toast('Enter an email address', 'error'); return; }
+    HILShell.toast('Invite system coming soon. Note saved: ' + email, 'info');
+  });
+
+  // Load overview recent ingest
+  loadRecentIngest(db, user.uid);
+}
+
+// ── COPY HELPER ──
+function setupCopy(btnId, text) {
+  var btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = orig; }, 1500);
+    });
+  });
+}
+
+// ── LIVE BADGE ──
+function attachBadge(db, uid, colName, badgeId, extraWheres) {
+  try {
+    var conditions = [_where('owner_uid','==', uid)].concat(extraWheres);
+    var q = _query.apply(null, [_col(db, colName)].concat(conditions));
+    _onSnapshot(q, function(snap) {
+      document.getElementById(badgeId).textContent = snap.size || '0';
+    });
+  } catch(e) { console.warn('[account] badge', badgeId, e); }
+}
+
+// ── STAGED ITEMS ──
+async function loadStaged(db, uid) {
+  var listEl = document.getElementById('staged-list');
+  var countEl = document.getElementById('staged-count');
+  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    var q = _query(_col(db,'staged_items'),
+      _where('owner_uid','==',uid),
+      _where('status','==','pending'),
+      _orderBy('created_at','desc'),
+      _limit(30));
+    var snap = await _getDocs(q);
+    countEl.textContent = snap.size > 0 ? '(' + snap.size + ')' : '';
+    if (snap.empty) {
+      listEl.innerHTML = '<div class="empty-state">No staged items waiting.<br>Forward a receipt to get started.</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    snap.forEach(function(d) {
+      var data = d.data();
+      var row = document.createElement('div');
+      row.className = 'staged-row';
+      row.innerHTML =
+        '<div class="staged-info">' +
+          '<div class="staged-subject">' + (data.subject || '(no subject)') + '</div>' +
+          '<div class="staged-from">' + (data.from_address || data.source || '—') + '</div>' +
+        '</div>' +
+        '<div class="staged-actions">' +
+          '<button class="btn-confirm" data-id="' + d.id + '">Confirm ✓</button>' +
+          '<button class="btn-reject"  data-id="' + d.id + '">Reject</button>' +
+        '</div>';
+      row.querySelector('.btn-confirm').addEventListener('click', function() {
+        confirmStaged(db, uid, this.dataset.id, row);
+      });
+      row.querySelector('.btn-reject').addEventListener('click', function() {
+        rejectStaged(db, this.dataset.id, row);
+      });
+      listEl.appendChild(row);
+    });
+  } catch(e) {
+    listEl.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+  }
+}
+
+async function confirmStaged(db, uid, itemId, row) {
+  try {
+    var resp = await fetch('https://hil-admin-action-937314472168.us-central1.run.app/commit-staged', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + await currentUser.getIdToken()
+      },
+      body: JSON.stringify({ staged_item_id: itemId })
+    });
+    if (!resp.ok) throw new Error('Server error ' + resp.status);
+    row.style.opacity = '0.4';
+    row.style.pointerEvents = 'none';
+    HILShell.toast('Item confirmed and added to your Vault ✓', 'success');
+  } catch(e) {
+    HILShell.toast('Confirm failed: ' + e.message, 'error');
+  }
+}
+
+async function rejectStaged(db, itemId, row) {
+  if (!confirm('Reject this item? It will be discarded.')) return;
+  try {
+    var db2 = window.db;
+    await _updateDoc(_doc(db2,'staged_items',itemId), { status: 'rejected' });
+    row.style.opacity = '0.3';
+    row.style.pointerEvents = 'none';
+    HILShell.toast('Item rejected', 'info');
+  } catch(e) {
+    HILShell.toast('Reject failed: ' + e.message, 'error');
+  }
+}
+
+// ── INGEST LOG ──
+async function loadRecentIngest(db, uid) {
+  try {
+    var q = _query(_col(db,'staged_items'),
+      _where('owner_uid','==',uid),
+      _where('source','==','email_ingest'),
+      _orderBy('created_at','desc'),
+      _limit(3));
+    var snap = await _getDocs(q);
+    var el = document.getElementById('ov-recent');
+    if (snap.empty) { el.innerHTML = '<div class="empty-state">No emails ingested yet.</div>'; return; }
+    el.innerHTML = '';
+    snap.forEach(function(d) { el.appendChild(buildIngestRow(d.data())); });
+  } catch(e) { console.warn('[account] recent ingest', e); }
+}
+
+async function loadIngestLog(db, uid) {
+  var logEl   = document.getElementById('ingest-log');
+  var countEl = document.getElementById('ingest-count');
+  logEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    var q = _query(_col(db,'staged_items'),
+      _where('owner_uid','==',uid),
+      _where('source','==','email_ingest'),
+      _orderBy('created_at','desc'),
+      _limit(50));
+    var snap = await _getDocs(q);
+    countEl.textContent = snap.size > 0 ? '(' + snap.size + ')' : '';
+    if (snap.empty) { logEl.innerHTML = '<div class="empty-state">No emails ingested yet.<br>Forward a receipt to get started.</div>'; return; }
+    logEl.innerHTML = '';
+    snap.forEach(function(d) { logEl.appendChild(buildIngestRow(d.data())); });
+  } catch(e) {
+    logEl.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>';
+  }
+}
+
+function buildIngestRow(data) {
+  var ts = data.created_at && data.created_at.toDate
+    ? data.created_at.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
+    : '—';
+  var status = data.status || 'pending';
+  var row = document.createElement('div');
+  row.className = 'ingest-row';
+  row.innerHTML =
+    '<div class="i-dot ' + status + '"></div>' +
+    '<div class="i-from">'    + (data.from_address||'unknown') + '</div>' +
+    '<div class="i-subject">' + (data.subject||'(no subject)') + '</div>' +
+    '<div class="i-time">'    + ts + '</div>' +
+    '<div class="i-status '   + status + '">' + status + '</div>';
+  return row;
+}
+
+// ── HOUSEHOLD ──
+async function loadHousehold(db, uid) {
+  var el = document.getElementById('hh-members');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    var snap = await _getDocs(_col(db,'users/'+uid+'/team_members'));
+    if (snap.empty) { el.innerHTML = '<div class="empty-state">No household members yet.<br>Add family members in Manage Household.</div>'; return; }
+    el.innerHTML = '';
+    snap.forEach(function(d) {
+      var m = d.data();
+      var initials = (m.name||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+      var row = document.createElement('div');
+      row.className = 'member-row';
+      row.innerHTML =
+        '<div class="member-avatar">' + initials + '</div>' +
+        '<div class="member-info">' +
+          '<div class="member-name">' + (m.name||m.email||'Unknown') + '</div>' +
+          '<div class="member-role' + (m.is_admin?' admin':'') + '">' + (m.is_admin?'Household Admin':'Member') + '</div>' +
+        '</div>';
+      el.appendChild(row);
+    });
+  } catch(e) { el.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>'; }
+}
+
+async function loadHouseholdMgmt(db, uid) {
+  if (!isHHAdmin) return;
+  var el = document.getElementById('hh-manage-list');
+  el.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    var snap = await _getDocs(_col(db,'users/'+uid+'/team_members'));
+    if (snap.empty) { el.innerHTML = '<div class="empty-state">No members yet.</div>'; return; }
+    el.innerHTML = '';
+    snap.forEach(function(d) {
+      var m = d.data();
+      var mid = d.id;
+      var initials = (m.name||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+      var row = document.createElement('div');
+      row.className = 'member-row';
+      row.innerHTML =
+        '<div class="member-avatar">' + initials + '</div>' +
+        '<div class="member-info">' +
+          '<div class="member-name">' + (m.name||m.email||'Unknown') + '</div>' +
+          '<div class="member-role' + (m.is_admin?' admin':'') + '">' + (m.is_admin?'Admin':'Member') + '</div>' +
+        '</div>' +
+        (!m.is_admin ? '<button class="btn btn-danger" style="font-size:10px;padding:4px 10px;" data-mid="'+mid+'">Remove</button>' : '');
+      var removeBtn = row.querySelector('[data-mid]');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          if (!confirm('Remove this member from your household?')) return;
+          _updateDoc(_doc(db,'users/'+uid+'/team_members/'+mid), {status:'removed'})
+            .then(function() { row.remove(); HILShell.toast('Member removed', 'info'); })
+            .catch(function(e) { HILShell.toast('Error: '+e.message,'error'); });
+        });
+      }
+      el.appendChild(row);
+    });
+  } catch(e) { el.innerHTML = '<div class="empty-state">Error: ' + e.message + '</div>'; }
+}
+
+// ── SUBSCRIPTION ──
+async function loadSubscription(db, uid) {
+  try {
+    var snap = await _getDoc(_doc(db,'users',uid));
+    var tier = snap.exists() ? (snap.data().tier || 'free') : 'free';
+    document.getElementById('ov-plan').textContent = tier === 'free' ? 'Free' : 'Paid';
+    var badge = document.getElementById('tier-badge');
+    if (tier !== 'free') {
+      badge.className = 'tier-badge paid';
+      badge.innerHTML = '<span class="tdot"></span> PAID';
+      ['sub-inbox','sub-ai'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.textContent = 'Active'; el.style.color = 'var(--green)'; el.className = 'card-row-value green'; }
+      });
+      var cta = document.getElementById('upgrade-cta');
+      if (cta) cta.style.display = 'none';
+    }
+  } catch(e) { console.warn('[account] subscription', e); }
+}
+</script>
+</body>
+</html>
