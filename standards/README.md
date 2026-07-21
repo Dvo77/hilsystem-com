@@ -1,7 +1,7 @@
 # HIL STANDARDS INDEX
 **Single source of truth for every locked standard, protocol, and template across the HIL ecosystem.**
 **Owner:** Daniel Ray DeVoy
-**Index Version:** 1.2 — July 2026
+**Index Version:** 1.4 — July 2026
 **Canonical home:** `Dvo77/hilsystem-com` repo root (GitHub)
 **Mirror:** HIL Guild Incubator Wiki.js (community/shared section)
 
@@ -33,7 +33,19 @@
 
 ---
 
-## 1. SPATIAL / ADDRESS GRAMMAR
+## 1. FOUNDATIONAL DOCTRINE
+
+The root layer everything else answers to — the *why* behind the architecture, not a specific spec. Every other section describes *how* something is built; this describes *why it's built that way.*
+
+| Standard | Status | Location | Governs |
+|---|---|---|---|
+| HIL Sovereign Efficiency Doctrine | 🔒 | `standards/HIL-Sovereign-Efficiency-Doctrine-v1.md` | Core philosophy: maximum sovereignty with minimum waste. Lean Infrastructure, Green-Edge Architecture (durable knowledge local), Sovereignty by Direction not Purity, Right Workload/Right Place (local vs. cloud split), Knowledge Compounds (verified Wiki.js content reduces AI/API/web-search cost over time), Cloud is Scaffolding Not Ownership, Human Authority (AI retrieves/proposes, humans approve what becomes canonical) |
+
+**Why this matters for every other section below:** the Local-vs-Cloud workload split explains the Guild Incubator hosting decision (§7). "Knowledge Compounds" is the design intent behind the PATCH Query Escalation Ladder (§7). The PATCH + Wiki.js Write-Back Flow (§7) is related in spirit to "Human Authority" but is **explicitly deferred, not resolved** — Dan needs to see the Wiki pipeline mechanics in practice before deciding the rule; don't infer an answer from doctrine language.
+
+---
+
+## 2. SPATIAL / ADDRESS GRAMMAR
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
@@ -43,19 +55,20 @@
 
 ---
 
-## 2. PLATFORM / PRODUCT
+## 3. PLATFORM / PRODUCT
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
 | HIL Platform Concept | 🔒 | `HIL_Platform_Concept_v1.md` | Core Loop, Five Core Tenets, Flip Switch (Sell/Barter/Hold), Provenance Engine, deployment options |
 | HIL Exchange Spec | 🔒 | Memory / this project's chat history — **not yet a standalone doc** | Barter/Trade/Sell/Auction modes, Ring system (1/2/3), eBay baseline |
-| Business Model / Tiering | 🔒 | Memory — **not yet a standalone doc** | Free/Paid Tier 1/Paid Tier 2 feature split, Lemon Squeezy pricing anchor |
+| Business Model / Tiering | 🔒 (⚠️ revises prior model — see note) | Memory — **not yet a standalone doc** | **Simplified to single paid tier**, ~$9.99/month, all-or-nothing (supersedes earlier two-paid-tier split). **Free tier, confirmed concrete:** no login required to browse History Wall + Exchange/Barter listings; minimum email sign-in required to interact (post/respond) — Google, GitHub, and Email all live as sign-in options; all standalone tools (Stain Lookup, HIL Clean/Organize/Supply/Restore) free regardless of tier. **Not yet decided:** connecting free tools to AI + Wiki RAG to make them more powerful while staying free (minimal AI cost via Dan's own Wiki RAG rather than paid API calls) — early idea, not committed |
+| eBay API Value Integration | 🔴 GAP | API credentials acquired, not yet wired — no live implementation | Intended to compute a live adjusted baseline value per item, feeding three consumers: Insurance Report export (`exchange.ebay_baseline` field currently placeholder), Barter/Exchange Network pricing, general item valuation. Not built — this is the actual live-price engine behind features that currently reference a static/placeholder value |
 
-🔴 **GAP:** Exchange Spec and Tier/Pricing model are locked in principle but have no canonical file — both are candidates for formal write-ups.
+🔴 **GAP:** Exchange Spec and Business Model still have no canonical file despite being locked in principle — candidates for formal write-ups.
 
 ---
 
-## 3. DATA SCHEMA
+## 4. DATA SCHEMA
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
@@ -67,20 +80,20 @@
 
 ---
 
-## 4. INFRASTRUCTURE / DEVOPS
+## 5. INFRASTRUCTURE / DEVOPS
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
 | GitHub SSOT | 🔒 | `HIL-GitHub-SSOT-v2.md` | Git workflow (edit → add → commit → push), naming convention (`filename` / `filename-v1` / `filename-wip`), build/edit rules, connected services table |
 | Cloudflare SSOT | 🔒 | `HIL-Cloudflare-SSOT-v2_2.md` (supersedes `v2_1.md`) | Workers/Pages/R2/KV/Email Routing inventory and config |
 | Deploy State Protocol | 🔒 | `DEPLOY_STATE.md` (repo root) | Status legend (✅/🟡/🔴/⚠️), append-only changelog, Claude fetches first for any Cloudflare/Firestore/Cloud Run session |
-| hil-shell.js Universal Shell | 🔒 | Repo: `hil-shell.js` (currently v2.15) — added since v2.9: Patch & Scratch bot component (v2.9, see §5), Guild Media Viewer + Library panel + `renderForConcept()` (v2.12–v2.15) | Firebase init, Google Auth, shared globals, header/nav, auth gate, toast system, design tokens, `HILShell.init()` 3-line drop-in |
+| hil-shell.js Universal Shell | 🔒 | Repo: `hil-shell.js` (currently v2.15) — added since v2.9: Patch & Scratch bot component (v2.9, see §6), Guild Media Viewer + Library panel + `renderForConcept()` (v2.12–v2.15) | Firebase init, Google Auth, shared globals, header/nav, auth gate, toast system, design tokens, `HILShell.init()` 3-line drop-in |
 | Design Tokens | 🔒 | Enforced via `hil-shell.js` | Dark `#0a0c0b` bg, `#00cc66` green, `#cc8800` amber; Orbitron/Space Mono/Barlow Condensed fonts; hex compass logo |
 | Tool Doc / README Schema | 🔒 | `HIL-Tool-Doc-Schema-README.md` | Format every tool's README must follow |
 
 ---
 
-## 5. BRAND & CONTENT
+## 6. BRAND & CONTENT
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
@@ -94,7 +107,7 @@
 
 ---
 
-## 6. WIKI.JS / GUILD STANDARDS
+## 7. WIKI.JS / GUILD STANDARDS
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
@@ -102,12 +115,12 @@
 | Module Logging Standard | 🔒 | `__HIL_Guild___Module_Logging_Standard_v3.5` (supersedes v3.0) | Format for logging individual Guild module activity |
 | Efficiency Engine Template (STD-WIKI-002) | 🔒 | Wiki.js (not mirrored to GitHub) | Uniform article format for cross-domain technique retrieval; production pipeline is Dan researches → formats to template → GPT verifies/writes to Wiki.js |
 | PATCH Query Escalation Ladder | 🔒 | Memory — **not yet a standalone doc** | 4-stage lookup order: tool READMEs → verified Efficiency Engine → community Wiki.js → web search; honest "no answer" if all fail |
-| PATCH + Wiki.js Write-Back Flow | ⚠️ CONFLICTING | Memory (flagged unresolved July 19, 2026) | One description says confirm-gated (PATCH proposes/diffs, user confirms); another same-day summary says automatic. **Needs Dan's explicit reconciliation before either is treated as authoritative.** |
+| PATCH + Wiki.js Write-Back Flow | ⚠️ DEFERRED (not conflicting-by-accident — intentionally undecided) | Memory | Two prior descriptions exist (confirm-gated vs. automatic) — Dan has explicitly stated this isn't decidable yet: he needs to see the actual mechanics of the Wiki pipeline / MCP integration in practice before choosing the rule. **Do not resolve this by inference (including doctrine language in §1) — wait for Dan to see the pipeline built, then decide.** |
 | Guild Incubator Hosting Model | 🔒 | Memory — **not yet a standalone doc** | Wiki.js on N100/TrueNAS, Docker Compose via Dockge, 24-month tenancy, per-user GitHub repo backup, graduation mechanics |
 
 ---
 
-## 7. TOOL/BUILD SPECS (feature-specific, not platform-wide)
+## 8. TOOL/BUILD SPECS (feature-specific, not platform-wide)
 
 These are locked specs for individual features — listed for completeness, not duplicated here in full.
 
@@ -119,7 +132,7 @@ These are locked specs for individual features — listed for completeness, not 
 
 ---
 
-## 8. GUILD MEDIA / CONTENT LIBRARY
+## 9. GUILD MEDIA / CONTENT LIBRARY
 
 | Standard | Status | Location | Governs |
 |---|---|---|---|
@@ -132,7 +145,7 @@ These are locked specs for individual features — listed for completeness, not 
 
 ---
 
-## 9. AUTHORING PATTERNS / BEST PRACTICES
+## 10. AUTHORING PATTERNS / BEST PRACTICES
 
 Nothing here is "don't touch this without approval" — it's "this is what's worked, default to it, but it's fair game to improve." Codifies the habit without freezing it.
 
@@ -145,18 +158,20 @@ Nothing here is "don't touch this without approval" — it's "this is what's wor
 
 ---
 
-## 10. OPEN GAPS SUMMARY (candidates for next standards write-up)
+## 11. OPEN GAPS SUMMARY (candidates for next standards write-up)
 
 1. **HIL Exchange Spec** — locked in principle, no file
-2. **Business Model / Tiering** — locked in principle, no file
+2. **Business Model / Tiering** — locked in principle (now single-tier, $9.99/mo, free-tier rules concrete), no file yet
 3. **PATCH Query Escalation Ladder** — locked in principle, no file
-4. **PATCH + Wiki.js Write-Back Flow** — actively conflicting, needs resolution before documenting
+4. **PATCH + Wiki.js Write-Back Flow** — intentionally deferred pending Wiki pipeline mechanics, not a documentation gap so much as a genuine open decision
 5. **Firestore Security Rules** — live but console-only, never mirrored to a readable doc
 6. **Send It Lab Palette** — locked in principle, no standalone file
 7. **PATCH-side Guild Media surfacing** — the visual-aid-during-tutoring vision this feature was built for isn't wired up yet; `HILShell.media.cardHTML()` is ready for PATCH's agent to use, but the agent doesn't call `guild_media` or include a suggested asset in its responses
 8. **Cloudflare Worker Authoring Pattern verification** — only confirmed against `hilsystem-r2-signer.js`; `hil-admin-action` and `hil-patch-agent` not yet checked for drift
+9. **eBay API Value Integration** — credentials acquired, not yet wired to any live consumer (Insurance Report, Barter Network, general valuation all reference a placeholder value today)
+10. **Free tools + Wiki RAG connection** — idea stage only, would make free tools (Stain Lookup, etc.) more powerful using Dan's own Wiki RAG instead of paid AI calls; not committed
 
 ---
 
-*HIL Standards Index v1.2 — July 2026*
+*HIL Standards Index v1.4 — July 2026*
 *Maintained alongside `DEPLOY_STATE.md` — update only after a standard is confirmed locked, not mid-discussion.*
