@@ -1,7 +1,7 @@
 # HIL STANDARDS INDEX
 **Single source of truth for every locked standard, protocol, and template across the HIL ecosystem.**
 **Owner:** Daniel Ray DeVoy
-**Index Version:** 1.1 — July 2026
+**Index Version:** 1.2 — July 2026
 **Canonical home:** `Dvo77/hilsystem-com` repo root (GitHub)
 **Mirror:** HIL Guild Incubator Wiki.js (community/shared section)
 
@@ -29,6 +29,7 @@
 | 🔒 LOCKED | Confirmed standard, in active use, don't change without explicit re-approval |
 | 🟡 DRAFTED | Spec written, not fully deployed/enforced everywhere yet |
 | 🔴 GAP | Referenced repeatedly but never formally written down — candidate for next standards doc |
+| 💡 PATTERN | Recognized best practice — what we currently do, recommended as the default, but not enforced or immutable. Follow it unless there's a real reason not to; if a better approach emerges, this can change without "breaking" anything. |
 
 ---
 
@@ -131,7 +132,20 @@ These are locked specs for individual features — listed for completeness, not 
 
 ---
 
-## 9. OPEN GAPS SUMMARY (candidates for next standards write-up)
+## 9. AUTHORING PATTERNS / BEST PRACTICES
+
+Nothing here is "don't touch this without approval" — it's "this is what's worked, default to it, but it's fair game to improve." Codifies the habit without freezing it.
+
+| Pattern | Status | Confirmed against | Governs |
+|---|---|---|---|
+| Firestore Rules Authoring Pattern | 💡 | Live rules file (confirmed) | One `match /{collection}/{docId}` block per collection, logic delegated to four reusable helpers (`isSignedIn()`, `isOwner(uid)`, `isAdmin()`, `isApprovedTutor(uid)`), collection type decided by the Authority Layer split (frontend-writable "story" vs. backend-only "truth"), two-tier admin never conflated (`isAdmin()` platform-wide vs. `team_members.is_admin` household), default-deny catch-all at the end |
+| Cloudflare Worker Authoring Pattern | 💡 | `hilsystem-r2-signer.js` only — not yet checked against `hil-admin-action`/`hil-patch-agent` | CORS preflight (`OPTIONS` → 204) → reject non-POST → shared `json()` response helper → single `context`/route param driving a `switch` statement → specific, named error messages per validation branch (not generic "bad request") |
+
+🔴 **GAP (verification, not missing spec):** Worker pattern only confirmed against one of three live Workers — worth a quick check of `hil-admin-action` and `hil-patch-agent` source to see if they actually match this shape or drifted from it independently.
+
+---
+
+## 10. OPEN GAPS SUMMARY (candidates for next standards write-up)
 
 1. **HIL Exchange Spec** — locked in principle, no file
 2. **Business Model / Tiering** — locked in principle, no file
@@ -140,8 +154,9 @@ These are locked specs for individual features — listed for completeness, not 
 5. **Firestore Security Rules** — live but console-only, never mirrored to a readable doc
 6. **Send It Lab Palette** — locked in principle, no standalone file
 7. **PATCH-side Guild Media surfacing** — the visual-aid-during-tutoring vision this feature was built for isn't wired up yet; `HILShell.media.cardHTML()` is ready for PATCH's agent to use, but the agent doesn't call `guild_media` or include a suggested asset in its responses
+8. **Cloudflare Worker Authoring Pattern verification** — only confirmed against `hilsystem-r2-signer.js`; `hil-admin-action` and `hil-patch-agent` not yet checked for drift
 
 ---
 
-*HIL Standards Index v1.1 — July 2026*
+*HIL Standards Index v1.2 — July 2026*
 *Maintained alongside `DEPLOY_STATE.md` — update only after a standard is confirmed locked, not mid-discussion.*
