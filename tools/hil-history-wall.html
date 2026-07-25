@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History Wall — HIL System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0a0c0b;
+  --surface: #111310;
+  --surface2: #181b17;
+  --surface3: #1e2220;
+  --border:  #252a24;
+  --border2: #2e342c;
+  /* system green — kept for chrome */
+  --green:   #00cc66;
+  --green-dim: rgba(0,204,102,0.12);
+  /* amber — history wall soul */
+  --amber:   #cc8800;
+  --amber-bright: #e09a00;
+  --amber-dim: rgba(204,136,0,0.12);
+  --amber-glow: rgba(204,136,0,0.06);
+  /* type */
+  --text:    #d8e0d4;
+  --muted:   #5a6658;
+  --ghost:   #3a3e38;
+  --mono:    'Share Tech Mono', monospace;
+  --serif:   'Playfair Display', Georgia, serif;
+  --head:    'Barlow Condensed', sans-serif;
+  --body:    'Barlow', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
+.hil-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.hil-hex {
+  width: 36px;
+  height: 36px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hil-hex svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hil-hex span {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--green);
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.5px;
+}
+
+.hil-wordmark {
+  display: flex;
+  flex-direction: column;
+}
+
+.hil-wordmark .name {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+  letter-spacing: 2px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.hil-wordmark .sub {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.topbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+
+.topbar-section {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tb-btn {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 5px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.tb-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+.tb-btn.submit {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.tb-btn.submit:hover { background: var(--amber); color: #000; }
+
+/* ── HERO ── */
+.hero {
+  padding: 64px 24px 48px;
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+}
+
+.hero-eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: var(--amber);
+}
+
+.hero-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--amber);
+  opacity: 0.2;
+  max-width: 200px;
+}
+
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: clamp(48px, 8vw, 80px);
+  line-height: 0.92;
+  letter-spacing: -1px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--amber);
+}
+
+.hero-rule {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--amber) 0%, transparent 60%);
+  margin: 24px 0;
+  opacity: 0.4;
+}
+
+.hero-desc {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 560px;
+  margin-bottom: 32px;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.hstat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hstat-val {
+  font-family: var(--head);
+  font-weight: 900;
+  font-size: 32px;
+  color: var(--amber);
+  line-height: 1;
+}
+
+.hstat-lbl {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  position: sticky;
+  top: 56px;
+  z-index: 100;
+}
+
+.fcat {
+  padding: 13px 16px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  transition: all 0.12s;
+}
+
+.fcat:hover { color: var(--text); }
+.fcat.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+.filter-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  padding: 8px 0;
+  flex-shrink: 0;
+}
+
+.sort-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 5px 10px;
+  outline: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.sort-select option { background: var(--surface2); }
+
+/* ── LAYOUT ── */
+.layout {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── FEATURED ── */
+.featured-card {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--amber);
+  margin-bottom: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.featured-card:hover { border-left-color: var(--amber-bright); background: var(--surface3); }
+
+.featured-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--amber-glow);
+  pointer-events: none;
+}
+
+.featured-inner {
+  padding: 28px 28px 24px;
+  position: relative;
+}
+
+.featured-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.featured-flags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flag {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid;
+}
+
+.flag.story-of-week {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: var(--amber-dim);
+}
+
+.flag.cat {
+  color: var(--muted);
+  border-color: var(--border2);
+}
+
+.featured-addr {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 3px;
+  background: var(--amber-dim);
+  padding: 4px 10px;
+  border: 1px solid rgba(204,136,0,0.2);
+  flex-shrink: 0;
+}
+
+.featured-title {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.1;
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+.featured-title em { font-style: italic; color: var(--amber); }
+
+.featured-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--muted);
+  border-left: 2px solid var(--amber);
+  padding-left: 16px;
+  margin-bottom: 16px;
+  opacity: 0.85;
+}
+
+.featured-body-text {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.featured-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.featured-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-by {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.meta-by strong { color: var(--text); }
+
+.meta-date {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ghost);
+  letter-spacing: 1px;
+}
+
+/* VOTE BLOCK */
+.vote-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vote-btn {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vote-btn:hover { border-color: var(--amber); color: var(--amber); }
+.vote-btn.voted { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+
+.vote-num {
+  font-family: var(--head);
+  font-weight: 900;
+  font-size: 22px;
+  color: var(--amber);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ── STORY CARDS ── */
+.story-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.story-card:hover { background: var(--surface2); border-left-color: var(--amber); }
+.story-card:last-child { margin-bottom: 0; }
+
+.sc-vote-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px 6px;
+  border-right: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+.sc-vote-btn {
+  background: none;
+  border: none;
+  color: var(--ghost);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  transition: color 0.12s;
+  line-height: 1;
+}
+
+.sc-vote-btn:hover { color: var(--amber); }
+
+.sc-vote-num {
+  font-family: var(--head);
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.sc-body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sc-cat {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.sc-addr {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 2px;
+  background: var(--amber-dim);
+  padding: 1px 6px;
+  border: 1px solid rgba(204,136,0,0.15);
+  margin-left: auto;
+}
+
+.sc-title {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.25;
+  color: #fff;
+  transition: color 0.12s;
+}
+
+.story-card:hover .sc-title { color: var(--amber-bright); }
+
+.sc-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  border-left: 2px solid var(--border2);
+  padding-left: 10px;
+}
+
+.sc-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.sc-by {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ghost);
+  letter-spacing: 1px;
+}
+
+.sc-age {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ghost);
+  margin-left: auto;
+}
+
+/* ── SECTION LABEL ── */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin: 32px 0 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  background: var(--amber);
+  flex-shrink: 0;
+}
+
+.section-note {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ghost);
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 1px;
+}
+
+/* ── EMPTY STATE ── */
+.empty-wall {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 48px 28px;
+  text-align: center;
+}
+
+.empty-wall .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+}
+
+.empty-wall h3 {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.empty-wall p {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 420px;
+  margin: 0 auto 18px;
+  line-height: 1.6;
+}
+
+.empty-wall .tb-btn {
+  display: inline-block;
+}
+
+/* ── LOAD MORE ── */
+.load-more-row {
+  padding: 24px 0;
+  text-align: center;
+}
+
+.load-more-btn {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 10px 28px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.15s;
+}
+
+.load-more-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+/* ── SUBMIT SECTION ── */
+.submit-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  margin: 48px 0 0;
+  padding: 32px 28px;
+}
+
+.submit-section-hdr {
+  margin-bottom: 24px;
+}
+
+.submit-section-hdr .eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  margin-bottom: 8px;
+}
+
+.submit-section-hdr h2 {
+  font-family: var(--serif);
+  font-weight: 900;
+  font-size: 32px;
+  color: #fff;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.submit-section-hdr h2 em { font-style: italic; color: var(--amber); }
+
+.submit-section-hdr p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 520px;
+}
+
+/* FORM */
+.submit-form { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+.form-field.full { grid-column: 1 / -1; }
+
+.form-field label {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.form-field label .req { color: var(--amber); }
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus { border-color: var(--amber); }
+
+.form-field textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+.form-field select option { background: var(--surface2); }
+
+.form-divider {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.form-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ghost);
+  line-height: 1.6;
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-left: 2px solid var(--border2);
+}
+
+.submit-form-btn {
+  background: var(--amber);
+  border: none;
+  color: #000;
+  font-family: var(--head);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.submit-form-btn:hover { background: var(--amber-bright); }
+.submit-form-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── RULES BAR ── */
+.rules-bar {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.rule-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.rule-n {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--amber);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rule-text {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  margin-top: 64px;
+  padding: 32px 24px;
+}
+
+.footer-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+
+.footer-brand strong { color: var(--amber); }
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
+.footer-links a {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ghost);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.footer-links a:hover { color: var(--amber); }
+
+.footer-motto {
+  width: 100%;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ghost);
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface);
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 20px;
+  letter-spacing: 1px;
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.25s;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ANIMATIONS */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.story-card { animation: fadeUp 0.3s ease both; }
+.story-card:nth-child(1) { animation-delay: 0.05s; }
+.story-card:nth-child(2) { animation-delay: 0.1s; }
+.story-card:nth-child(3) { animation-delay: 0.15s; }
+.story-card:nth-child(4) { animation-delay: 0.2s; }
+.story-card:nth-child(5) { animation-delay: 0.25s; }
+.story-card:nth-child(6) { animation-delay: 0.3s; }
+
+@media (max-width: 600px) {
+  .hero { padding: 40px 16px 32px; }
+  .layout { padding: 24px 16px; }
+  .form-row { grid-template-columns: 1fr; }
+  .rules-bar { grid-template-columns: 1fr 1fr; }
+  .filter-bar { padding: 0 12px; }
+  .hero-stats { gap: 20px; }
+  .featured-inner { padding: 20px; }
+  .submit-section { padding: 24px 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a class="hil-logo" href="/">
+    <div class="hil-hex">
+      <svg viewBox="0 0 36 36" fill="none">
+        <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" stroke="#00cc66" stroke-width="1.5" fill="none"/>
+      </svg>
+      <span>HIL</span>
+    </div>
+    <div class="hil-wordmark">
+      <span class="name">HIL SYSTEM</span>
+      <span class="sub">Home Inventory Locator</span>
+    </div>
+  </a>
+  <div class="topbar-divider"></div>
+  <span class="topbar-section">History Wall</span>
+  <div class="topbar-right">
+    <button class="tb-btn" onclick="document.querySelector('.submit-section').scrollIntoView({behavior:'smooth'})">Submit a Story</button>
+    <button class="tb-btn" onclick="window.location.href='/'">← Back to HIL</button>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">Heritage Records · Open to All</div>
+  <h1>The History<br><em>Wall</em></h1>
+  <div class="hero-rule"></div>
+  <p class="hero-desc">The stories behind the objects people choose to preserve. Two generations old or more. Every piece with provenance. Nothing forgotten.</p>
+  <div class="hero-stats">
+    <div class="hstat"><div class="hstat-val" id="stat-stories">—</div><div class="hstat-lbl">Stories</div></div>
+    <div class="hstat"><div class="hstat-val" id="stat-contributors">—</div><div class="hstat-lbl">Contributors</div></div>
+    <div class="hstat"><div class="hstat-val">30+</div><div class="hstat-lbl">Yrs Min. Age</div></div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <button class="fcat active" onclick="setFilter(this,'all')">All</button>
+  <button class="fcat" onclick="setFilter(this,'Tools & Workshop')">Tools</button>
+  <button class="fcat" onclick="setFilter(this,'Sewing & Textiles')">Sewing</button>
+  <button class="fcat" onclick="setFilter(this,'Farm & Land')">Farm & Land</button>
+  <button class="fcat" onclick="setFilter(this,'Furniture')">Furniture</button>
+  <button class="fcat" onclick="setFilter(this,'Clocks & Instruments')">Clocks</button>
+  <button class="fcat" onclick="setFilter(this,'Military')">Military</button>
+  <button class="fcat" onclick="setFilter(this,'Documents & Letters')">Documents</button>
+  <div class="filter-right">
+    <select class="sort-select" id="sort-select" onchange="renderFeed()">
+      <option value="votes">Top Voted</option>
+      <option value="newest">Newest</option>
+    </select>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- FEATURED -->
+  <div class="section-label">★ Story of the Week</div>
+
+  <div class="featured-card" onclick="showToast('Full story view — coming soon')">
+    <div class="featured-inner">
+      <div class="featured-top">
+        <div class="featured-flags">
+          <span class="flag story-of-week">★ Featured</span>
+          <span class="flag cat">Farm & Land</span>
+        </div>
+        <div class="featured-addr">SH-MM-S2-M0</div>
+      </div>
+
+      <div class="featured-title">The Tractor That <em>Never Left</em></div>
+
+      <div class="featured-quote">"Purchased in 1939 for $1,050. My great-grandfather financed $700 and his daughter Doris put up the $350 cash down payment. It has never left the property. It still runs."</div>
+
+      <p class="featured-body-text">Dr. Harry Benjamin Piper's 1939 Ford 9N sat in the same machine shed in Sharon, Wisconsin for 87 years. Fully restored by his descendants and retained as a working historical artifact. The HL address it carries — SH-MM-S2-M0 — is the same physical location it has occupied since the day it arrived on the farm.</p>
+
+      <div class="featured-footer">
+        <div class="featured-meta">
+          <div class="meta-by">Submitted by <strong>Daniel DeVoy</strong></div>
+          <div class="meta-date">Sharon, Wisconsin · May 2026</div>
+        </div>
+        <div class="vote-block">
+          <button class="vote-btn" onclick="event.stopPropagation();featureVote(1)">▲</button>
+          <div class="vote-num" id="fv">847</div>
+          <button class="vote-btn" onclick="event.stopPropagation();featureVote(-1)">▼</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STORY FEED -->
+  <div class="section-label">Recent Stories <span class="section-note" id="feed-source-note"></span></div>
+  <div id="story-feed">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:24px;text-align:center;">Loading stories…</div>
+  </div>
+
+  <div class="load-more-row">
+    <button class="load-more-btn" onclick="loadMore()">Load More Stories →</button>
+  </div>
+
+  <!-- RULES -->
+  <div class="rules-bar">
+    <div class="rule-item"><span class="rule-n">01</span><span class="rule-text">30 years old minimum — or two generations removed</span></div>
+    <div class="rule-item"><span class="rule-n">02</span><span class="rule-text">Must include genuine provenance — origin, owner, use</span></div>
+    <div class="rule-item"><span class="rule-n">03</span><span class="rule-text">One story per item. Tell it well.</span></div>
+    <div class="rule-item"><span class="rule-n">04</span><span class="rule-text">No sales or appraisal requests. This is a record, not a market.</span></div>
+    <div class="rule-item"><span class="rule-n">05</span><span class="rule-text">HL address optional — but it makes the record permanent</span></div>
+  </div>
+
+  <!-- SUBMIT SECTION -->
+  <div class="submit-section" id="submit-section">
+    <div class="submit-section-hdr">
+      <div class="eyebrow">Share Your Story</div>
+      <h2>Put It on <em>The Wall</em></h2>
+      <p>Have a tool, heirloom, or object with a real history? Fill this out. We'll put it on the wall and it will be there as long as we are. A working email is required so we can reach you if we have questions before it goes live — it's never shown publicly.</p>
+    </div>
+
+    <form class="submit-form" id="submit-form" onsubmit="submitStory(event)">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Item Name <span class="req">*</span></label>
+          <input type="text" id="f-item-name" required placeholder="e.g. 1908 Champion Post Drill, Singer Treadle 1887">
+        </div>
+        <div class="form-field">
+          <label>Category</label>
+          <select id="f-category">
+            <option>Tools & Workshop</option>
+            <option>Sewing & Textiles</option>
+            <option>Farm & Land</option>
+            <option>Furniture</option>
+            <option>Clocks & Instruments</option>
+            <option>Military</option>
+            <option>Documents & Letters</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>Approximate Year Made</label>
+          <input type="text" id="f-year" placeholder="e.g. 1923, circa 1940s">
+        </div>
+        <div class="form-field">
+          <label>Manufacturer / Brand</label>
+          <input type="text" id="f-manufacturer" placeholder="e.g. Champion Blower & Forge, Singer, Ford">
+        </div>
+      </div>
+
+      <div class="form-field full">
+        <label>Original Owner & How It Came to You</label>
+        <input type="text" id="f-origin" placeholder="e.g. My grandfather James Piper, bought at a railroad auction in 1951">
+      </div>
+
+      <div class="form-field full">
+        <label>The Story — Where Did It Work? What Did It Build? <span class="req">*</span></label>
+        <textarea id="f-story" required placeholder="This is the record that will outlast all of us. Tell it well. Where did it work? What did it build or fix? Who used it and why does it matter?"></textarea>
+      </div>
+
+      <div class="form-field full">
+        <label>Photo</label>
+        <div id="photo-preview-wrap" style="display:none;margin-bottom:10px;">
+          <img id="photo-preview-img" src="" alt="" style="width:100%;max-height:220px;object-fit:cover;border:1px solid var(--border2);">
+          <button type="button" id="photo-remove-btn" style="font-family:var(--mono);font-size:10px;color:var(--amber);background:none;border:none;cursor:pointer;margin-top:6px;padding:0;text-transform:uppercase;letter-spacing:1px;">✕ Remove Photo</button>
+        </div>
+        <label for="f-photo-file" style="display:block;border:1px dashed var(--border2);background:var(--surface2);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;text-align:center;padding:14px;cursor:pointer;transition:border-color 0.15s;">
+          📷 Choose a Photo
+        </label>
+        <input type="file" id="f-photo-file" accept="image/*" style="display:none">
+        <div id="photo-status" style="font-family:var(--mono);font-size:9px;color:var(--ghost);margin-top:6px;min-height:14px;"></div>
+        <div class="form-hint" style="margin-top:6px;">A photo makes a much stronger entry — this is a wall people look at, not just read. Optional, but strongly worth including if you have one.</div>
+      </div>
+
+      <div class="form-field full">
+        <label>Legacy Note — For Whoever Comes Next</label>
+        <textarea id="f-legacy" style="min-height:70px" placeholder="What should the next generation know? What should they never do with it? What would you want said?"></textarea>
+      </div>
+
+      <div class="form-divider">HL System — Optional but Recommended</div>
+
+      <div class="form-hint">If you use the HIL System, add the HL address and it becomes a permanent, searchable record linked to the physical object. If you don't have one yet, leave it blank — the story still gets on the wall.</div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>HL Address</label>
+          <input type="text" id="f-hl-address" placeholder="e.g. GR-WS-S2-A1 or SH-MM-S2-M0" style="font-family:var(--mono);font-size:13px;text-transform:uppercase">
+        </div>
+        <div class="form-field">
+          <label>Current Location (plain language)</label>
+          <input type="text" id="f-location" placeholder="e.g. Workshop, south wall, second shelf">
+        </div>
+      </div>
+
+      <div class="form-divider">Contact — Required, Never Shown Publicly</div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>Your Name or Handle <span class="req">*</span></label>
+          <input type="text" id="f-submitter-name" required placeholder="Name or Reddit/community username">
+        </div>
+        <div class="form-field">
+          <label>Email <span class="req">*</span></label>
+          <input type="email" id="f-submitter-email" required placeholder="you@example.com">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>Community (if from one)</label>
+        <input type="text" id="f-community" placeholder="e.g. r/MacsToolHistory, r/vintagemachinery">
+      </div>
+
+      <button type="submit" class="submit-form-btn" id="submit-btn">Submit to the History Wall →</button>
+    </form>
+  </div>
+
+</div><!-- end layout -->
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <strong>HIL SYSTEM</strong> · History Wall · Free & Open Source
+    </div>
+    <div class="footer-links">
+      <a href="/">HIL System</a>
+      <a>GitHub</a>
+      <a>Reddit</a>
+      <a>hlsystem.org</a>
+      <a>spatialvectorgrammar.org</a>
+    </div>
+    <div class="footer-motto">Nothing is lost. Everything is logic.</div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// ── STANDALONE FIREBASE INIT (no Shell) ──
+// This page is intentionally standalone — public, no login required to browse,
+// only a name + email required to submit. Same Firebase project as the rest
+// of the platform, but this page never loads hil-shell.js.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore, collection, doc, setDoc, getDocs, query, where, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyARjQ3kD8iz9rD-2Fl1zNASnlVDmvDeVb4",
+  authDomain:        "project-97444efa-3b6f-493b-b96.firebaseapp.com",
+  projectId:         "project-97444efa-3b6f-493b-b96",
+  storageBucket:     "project-97444efa-3b6f-493b-b96.firebasestorage.app",
+  messagingSenderId: "937314472168",
+  appId:             "1:937314472168:web:5ad7b916ac01a9e649b95d"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// Collection: history_wall_submissions (top-level, public-facing, moderation-gated)
+// Firestore rules: create allowed by anyone with status=='pending' only;
+// read allowed only where status=='approved'; update/delete client-side blocked
+// entirely (moderation happens from hil-history-wall-admin.html, which is
+// gated by the admins/{uid} existence-check pattern).
+const SUBMISSIONS_COLLECTION = 'history_wall_submissions';
+
+let allStories = [];
+let visible = 6;
+let activeCat = 'all';
+let localVotes = {};              // client-side only vote nudges — NOT persisted (see limitations note below)
+
+// ── LOAD APPROVED SUBMISSIONS ──
+async function loadApprovedStories() {
+  try {
+    const q = query(collection(db, SUBMISSIONS_COLLECTION), where('status', '==', 'approved'));
+    const snap = await getDocs(q);
+    allStories = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    document.getElementById('feed-source-note').textContent = '';
+    updateStats();
+    renderFeed();
+  } catch (err) {
+    console.warn('History Wall load error:', err.message);
+    allStories = [];
+    document.getElementById('feed-source-note').textContent = '· live data unavailable right now';
+    updateStats();
+    renderFeed();
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-stories').textContent = allStories.length.toLocaleString();
+  const contributors = new Set(allStories.map(s => s.submitter_name)).size;
+  document.getElementById('stat-contributors').textContent = contributors.toLocaleString();
+}
+
+function ageLabel(ts) {
+  if (!ts) return '';
+  const date = ts.toDate ? ts.toDate() : new Date(ts);
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  if (days < 14) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+
+window.renderFeed = function renderFeed() {
+  const sortMode = document.getElementById('sort-select').value;
+  let data = activeCat === 'all' ? allStories : allStories.filter(s => s.cat === activeCat);
+
+  data = [...data].sort((a, b) => {
+    if (sortMode === 'newest') {
+      const at = a.submitted_at?.toMillis ? a.submitted_at.toMillis() : 0;
+      const bt = b.submitted_at?.toMillis ? b.submitted_at.toMillis() : 0;
+      return bt - at;
+    }
+    const av = (a.votes||0) + (localVotes[a.id]||0);
+    const bv = (b.votes||0) + (localVotes[b.id]||0);
+    return bv - av;
+  });
+
+  const feed = document.getElementById('story-feed');
+
+  if (!data.length) {
+    feed.innerHTML = `
+      <div class="empty-wall">
+        <div class="eyebrow">${activeCat === 'all' ? 'The Wall Is Waiting' : 'Nothing Here Yet'}</div>
+        <h3>${activeCat === 'all' ? 'Be the First Story on the Wall' : `No approved stories in ${escapeHtml(activeCat)} yet`}</h3>
+        <p>${activeCat === 'all'
+          ? 'Every wall starts empty. Submit the first heirloom, tool, or heritage record below and it\'ll be reviewed and posted here.'
+          : 'Try a different category, or be the first to submit one in this category.'}</p>
+        <button class="tb-btn submit" onclick="document.querySelector('.submit-section').scrollIntoView({behavior:'smooth'})">Submit a Story →</button>
+      </div>`;
+    return;
+  }
+
+  const slice = data.slice(0, visible);
+  feed.innerHTML = slice.map((s) => {
+    const id = s.id;
+    const displayVotes = (s.votes||0) + (localVotes[id]||0);
+    return `
+    <div class="story-card" onclick="showToast('Full story view — coming soon')">
+      <div class="sc-vote-col">
+        <button class="sc-vote-btn" onclick="event.stopPropagation();cardVote('${id}',1)">▲</button>
+        <div class="sc-vote-num" id="cv-${id}">${displayVotes}</div>
+        <button class="sc-vote-btn" onclick="event.stopPropagation();cardVote('${id}',-1)">▼</button>
+      </div>
+      <div class="sc-body">
+        <div class="sc-top">
+          <span class="sc-cat">${escapeHtml(s.cat||'')}</span>
+          ${s.hl_address ? `<span class="sc-addr">${escapeHtml(s.hl_address)}</span>` : ''}
+        </div>
+        ${s.public_photo_url ? `<img src="${s.public_photo_url}" alt="" style="width:100%;max-height:160px;object-fit:cover;border:1px solid var(--border2);margin:2px 0;">` : ''}
+        <div class="sc-title">${escapeHtml(s.item_name||'Untitled')}</div>
+        <div class="sc-quote">${escapeHtml(s.story_text||'')}</div>
+        <div class="sc-footer">
+          <span class="sc-by">by ${escapeHtml(s.submitter_name||'Anonymous')}</span>
+          <span class="sc-age">${ageLabel(s.submitted_at)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.cardVote = function cardVote(id, dir) {
+  localVotes[id] = Math.max(-((allStories.find(s=>(s.id||'')===id)?.votes)||0), (localVotes[id]||0) + dir);
+  renderFeed();
+  // NOTE: votes are client-side only right now, reset on reload.
+  // Persisting votes needs dedup (one vote per person) — not wired yet, backlog item.
+}
+
+window.featureVote = function featureVote(dir) {
+  const el = document.getElementById('fv');
+  el.textContent = Math.max(0, parseInt(el.textContent) + dir);
+}
+
+window.loadMore = function loadMore() {
+  visible += 3;
+  renderFeed();
+  showToast('More stories loaded');
+}
+
+window.setFilter = function setFilter(el, cat) {
+  document.querySelectorAll('.fcat').forEach(f => f.classList.remove('active'));
+  el.classList.add('active');
+  activeCat = cat;
+  visible = 6;
+  renderFeed();
+}
+
+// ── SUBMIT (email required, goes to moderation queue) ──
+const R2_WORKER = 'https://hilsystem-r2-signer.dvo77.workers.dev';
+
+// Wire photo input → local preview, hold the raw File until submit time
+window._pendingPhotoFile = null;
+document.getElementById('f-photo-file').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  window._pendingPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('photo-preview-img').src = ev.target.result;
+    document.getElementById('photo-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('photo-status').textContent = 'Photo ready — uploads when you submit';
+});
+document.getElementById('photo-remove-btn').addEventListener('click', () => {
+  window._pendingPhotoFile = null;
+  document.getElementById('f-photo-file').value = '';
+  document.getElementById('photo-preview-wrap').style.display = 'none';
+  document.getElementById('photo-preview-img').src = '';
+  document.getElementById('photo-status').textContent = '';
+});
+
+async function uploadPhotoToR2(file, submissionId) {
+  const status = document.getElementById('photo-status');
+  status.textContent = '⏳ Uploading photo…';
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
+  const res = await fetch(R2_WORKER, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename:    file.name,
+      contentType: file.type || 'image/jpeg',
+      data:        base64,
+      context:     'history_wall',   // worker maps this → history_wall/{itemId}/{slot}.{ext}, firestore_field public_photo_url
+      itemId:      submissionId,
+      slot:        'hero',
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) throw new Error(json.error || `Upload failed ${res.status}`);
+  status.innerHTML = '<span style="color:var(--amber)">✓ Photo uploaded</span>';
+  return json.publicUrl;
+}
+
+window.submitStory = async function submitStory(e) {
+  e.preventDefault();
+
+  const itemName = document.getElementById('f-item-name').value.trim();
+  const storyText = document.getElementById('f-story').value.trim();
+  const submitterName = document.getElementById('f-submitter-name').value.trim();
+  const submitterEmail = document.getElementById('f-submitter-email').value.trim();
+
+  if (!itemName || !storyText || !submitterName || !submitterEmail) {
+    showToast('Please fill in all required fields, including your email');
+    return;
+  }
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail);
+  if (!emailOk) {
+    showToast('That email doesn\'t look right — please check it');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  // Generate the id up front so the R2 photo path and the Firestore doc id match
+  const submissionId = crypto.randomUUID();
+
+  const submission = {
+    item_name:        itemName,
+    cat:               document.getElementById('f-category').value,
+    year_made:         document.getElementById('f-year').value.trim() || null,
+    manufacturer:      document.getElementById('f-manufacturer').value.trim() || null,
+    origin_owner:      document.getElementById('f-origin').value.trim() || null,
+    story_text:        storyText,
+    legacy_note:       document.getElementById('f-legacy').value.trim() || null,
+    hl_address:        document.getElementById('f-hl-address').value.trim().toUpperCase() || null,
+    location_plain:    document.getElementById('f-location').value.trim() || null,
+    submitter_name:    submitterName,
+    submitter_email:   submitterEmail,   // private — never rendered publicly, contact-only
+    community:         document.getElementById('f-community').value.trim() || null,
+    public_photo_url:  null,             // filled in below if a photo was chosen
+    status:            'pending',        // informal moderation — reviewed via hil-history-wall-admin.html before appearing on the wall
+    votes:             0,
+    submitted_at:      serverTimestamp(),
+  };
+
+  try {
+    if (window._pendingPhotoFile) {
+      try {
+        submission.public_photo_url = await uploadPhotoToR2(window._pendingPhotoFile, submissionId);
+      } catch (photoErr) {
+        showToast('Photo upload failed: ' + photoErr.message + ' — try again or submit without one');
+        btn.disabled = false;
+        btn.textContent = 'Submit to the History Wall →';
+        return;
+      }
+    }
+
+    await setDoc(doc(db, SUBMISSIONS_COLLECTION, submissionId), submission);
+    showToast('Story submitted — thank you. It will appear after review.');
+    document.getElementById('submit-form').reset();
+    window._pendingPhotoFile = null;
+    document.getElementById('photo-preview-wrap').style.display = 'none';
+    document.getElementById('photo-status').textContent = '';
+  } catch (err) {
+    console.warn('History Wall submit error:', err.message);
+    showToast('Submission failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit to the History Wall →';
+  }
+}
+
+window.showToast = function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+loadApprovedStories();
+</script>
+</body>
+</html>
