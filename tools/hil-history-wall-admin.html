@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>History Wall — Moderation</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0b; --surface: #111310; --surface2: #181b17; --surface3: #1e2220;
+  --border: #252a24; --border2: #2e342c;
+  --green: #00cc66; --amber: #cc8800; --amber-bright: #e09a00; --amber-dim: rgba(204,136,0,0.12);
+  --red: #cc3333; --red-dim: rgba(204,51,51,0.12);
+  --text: #d8e0d4; --muted: #5a6658; --ghost: #3a3e38;
+  --mono: 'Share Tech Mono', monospace; --serif: 'Playfair Display', Georgia, serif;
+  --head: 'Barlow Condensed', sans-serif; --body: 'Barlow', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--body); min-height: 100vh; }
+
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 0 24px; display: flex; align-items: center; height: 56px; gap: 16px;
+}
+.topbar .title { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: 3px; text-transform: uppercase; }
+.topbar .count-pill {
+  font-family: var(--mono); font-size: 10px; color: var(--amber); background: var(--amber-dim);
+  border: 1px solid rgba(204,136,0,0.2); padding: 3px 10px; margin-left: 8px;
+}
+
+.gate-screen {
+  min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; padding: 24px;
+}
+.gate-screen h1 { font-family: var(--serif); font-weight: 900; font-size: 28px; color: #fff; }
+.gate-screen p { color: var(--muted); font-size: 13px; max-width: 380px; line-height: 1.6; }
+.gate-btn {
+  background: var(--amber); border: none; color: #000; font-family: var(--head); font-weight: 900;
+  font-size: 15px; letter-spacing: 2px; text-transform: uppercase; padding: 12px 28px; cursor: pointer;
+}
+.gate-btn:hover { background: var(--amber-bright); }
+.denied { color: var(--red); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; }
+
+.layout { max-width: 820px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.empty-state {
+  font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: center; padding: 60px 24px;
+}
+
+.sub-card {
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--amber);
+}
+.sub-inner { padding: 20px 22px; }
+.sub-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px;
+}
+.sub-cat {
+  font-family: var(--mono); font-size: 8px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 2px; border: 1px solid var(--border2); padding: 3px 8px;
+}
+.sub-when { font-family: var(--mono); font-size: 9px; color: var(--ghost); }
+.sub-title { font-family: var(--serif); font-weight: 900; font-size: 22px; color: #fff; margin-bottom: 4px; }
+.sub-meta-line { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 12px; }
+.sub-meta-line strong { color: var(--amber); }
+.sub-field { margin-bottom: 10px; }
+.sub-field-lbl { font-family: var(--mono); font-size: 8px; color: var(--ghost); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 3px; }
+.sub-field-val { font-size: 14px; color: var(--text); line-height: 1.6; }
+.sub-field-val.story { font-family: var(--serif); font-style: italic; color: var(--muted); border-left: 2px solid var(--amber); padding-left: 12px; }
+.sub-photo { width: 100%; max-height: 260px; object-fit: cover; border: 1px solid var(--border2); margin-bottom: 12px; }
+.sub-contact {
+  font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--surface2);
+  border: 1px solid var(--border); padding: 8px 12px; margin-bottom: 14px;
+}
+.sub-actions { display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.act-btn {
+  flex: 1; border: 1px solid var(--border2); background: none; font-family: var(--head); font-weight: 900;
+  font-size: 13px; letter-spacing: 2px; text-transform: uppercase; padding: 10px; cursor: pointer; transition: all 0.15s;
+}
+.act-btn.approve { color: var(--green); border-color: var(--green); }
+.act-btn.approve:hover { background: var(--green); color: #000; }
+.act-btn.reject { color: var(--red); border-color: var(--red); }
+.act-btn.reject:hover { background: var(--red); color: #000; }
+.act-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface); border: 1px solid var(--amber); color: var(--amber);
+  font-family: var(--mono); font-size: 11px; padding: 10px 20px; letter-spacing: 1px;
+  z-index: 9999; opacity: 0; transition: all 0.25s; white-space: nowrap; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate-screen">
+  <h1>History Wall — Moderation</h1>
+  <p>Admin access only. Sign in with the account authorized in the <code>admins</code> collection.</p>
+  <button class="gate-btn" id="signin-btn">Sign In with Google</button>
+  <div id="gate-status" class="denied"></div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="topbar">
+    <span class="title">History Wall Moderation</span>
+    <span class="count-pill" id="count-pill">0 pending</span>
+    <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted);" id="who"></span>
+  </div>
+  <div class="layout" id="queue">
+    <div class="empty-state">Loading…</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, updateDoc, query, where, orderBy
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyARjQ3kD8iz9rD-2Fl1zNASnlVDmvDeVb4",
+  authDomain:        "project-97444efa-3b6f-493b-b96.firebaseapp.com",
+  projectId:         "project-97444efa-3b6f-493b-b96",
+  storageBucket:     "project-97444efa-3b6f-493b-b96.firebasestorage.app",
+  messagingSenderId: "937314472168",
+  appId:             "1:937314472168:web:5ad7b916ac01a9e649b95d"
+};
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+const SUBMISSIONS_COLLECTION = 'history_wall_submissions';
+
+document.getElementById('signin-btn').addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (err) {
+    document.getElementById('gate-status').textContent = 'Sign-in failed: ' + err.message;
+  }
+});
+
+onAuthStateChanged(auth, async (user) => {
+  const gateStatus = document.getElementById('gate-status');
+  if (!user) {
+    document.getElementById('gate').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    return;
+  }
+  // Existence-check pattern per HIL admin doctrine: admins/{uid}
+  try {
+    const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+    if (!adminDoc.exists()) {
+      gateStatus.textContent = `Access denied — ${user.email} is not in the admins collection.`;
+      document.getElementById('gate').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+      return;
+    }
+  } catch (err) {
+    gateStatus.textContent = 'Could not verify admin status: ' + err.message;
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('who').textContent = user.email;
+  loadQueue();
+});
+
+function ageLabel(ts) {
+  if (!ts) return '';
+  const date = ts.toDate ? ts.toDate() : new Date(ts);
+  const days = Math.floor((Date.now() - date.getTime()) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
+}
+
+async function loadQueue() {
+  const queueEl = document.getElementById('queue');
+  queueEl.innerHTML = '<div class="empty-state">Loading pending submissions…</div>';
+  try {
+    const q = query(
+      collection(db, SUBMISSIONS_COLLECTION),
+      where('status', '==', 'pending'),
+      orderBy('submitted_at', 'desc')
+    );
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    document.getElementById('count-pill').textContent = `${items.length} pending`;
+
+    if (!items.length) {
+      queueEl.innerHTML = '<div class="empty-state">No pending submissions. All caught up.</div>';
+      return;
+    }
+
+    queueEl.innerHTML = items.map(s => `
+      <div class="sub-card" id="card-${s.id}">
+        <div class="sub-inner">
+          <div class="sub-top">
+            <span class="sub-cat">${s.cat || 'Uncategorized'}</span>
+            <span class="sub-when">${ageLabel(s.submitted_at)}</span>
+          </div>
+          ${s.public_photo_url ? `<img class="sub-photo" src="${s.public_photo_url}" alt="">` : ''}
+          <div class="sub-title">${escapeHtml(s.item_name || 'Untitled')}</div>
+          <div class="sub-meta-line">
+            ${s.year_made ? `<strong>${escapeHtml(s.year_made)}</strong> · ` : ''}${s.manufacturer ? escapeHtml(s.manufacturer) : ''}
+            ${s.hl_address ? ` · <strong>${escapeHtml(s.hl_address)}</strong>` : ''}
+          </div>
+
+          ${s.origin_owner ? `<div class="sub-field"><div class="sub-field-lbl">Origin / Owner</div><div class="sub-field-val">${escapeHtml(s.origin_owner)}</div></div>` : ''}
+
+          <div class="sub-field"><div class="sub-field-lbl">Story</div><div class="sub-field-val story">${escapeHtml(s.story_text || '')}</div></div>
+
+          ${s.legacy_note ? `<div class="sub-field"><div class="sub-field-lbl">Legacy Note</div><div class="sub-field-val">${escapeHtml(s.legacy_note)}</div></div>` : ''}
+
+          ${s.location_plain ? `<div class="sub-field"><div class="sub-field-lbl">Location</div><div class="sub-field-val">${escapeHtml(s.location_plain)}</div></div>` : ''}
+
+          <div class="sub-contact">
+            <strong>${escapeHtml(s.submitter_name || 'Anonymous')}</strong> · ${escapeHtml(s.submitter_email || 'no email')}
+            ${s.community ? ` · ${escapeHtml(s.community)}` : ''}
+          </div>
+
+          <div class="sub-actions">
+            <button class="act-btn approve" onclick="window.moderate('${s.id}','approved',this)">✓ Approve</button>
+            <button class="act-btn reject" onclick="window.moderate('${s.id}','rejected',this)">✕ Reject</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+    queueEl.innerHTML = `<div class="empty-state">Error loading queue: ${escapeHtml(err.message)}<br><br>If this mentions a missing index, Firestore needs a composite index on (status, submitted_at) — the console will give you a direct link to create it.</div>`;
+  }
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+
+window.moderate = async function moderate(id, newStatus, btnEl) {
+  const card = document.getElementById(`card-${id}`);
+  const buttons = card.querySelectorAll('.act-btn');
+  buttons.forEach(b => b.disabled = true);
+  try {
+    await updateDoc(doc(db, SUBMISSIONS_COLLECTION, id), {
+      status: newStatus,
+      moderated_at: new Date(),
+    });
+    card.style.opacity = '0.3';
+    showToast(newStatus === 'approved' ? 'Approved — now live on the wall' : 'Rejected');
+    setTimeout(() => { card.remove(); refreshCount(); }, 400);
+  } catch (err) {
+    showToast('Failed: ' + err.message);
+    buttons.forEach(b => b.disabled = false);
+  }
+};
+
+function refreshCount() {
+  const remaining = document.querySelectorAll('.sub-card').length;
+  document.getElementById('count-pill').textContent = `${remaining} pending`;
+  if (!remaining) {
+    document.getElementById('queue').innerHTML = '<div class="empty-state">No pending submissions. All caught up.</div>';
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
