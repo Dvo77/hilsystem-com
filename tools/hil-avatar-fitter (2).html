@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Avatar Fitter</title>
+<style>
+  :root {
+    --bg: #0a0c0b;
+    --panel: #141714;
+    --border: #2a2f2b;
+    --green: #00cc66;
+    --amber: #cc8800;
+    --text: #e8ece9;
+    --text-dim: #8a938c;
+    --danger: #cc4433;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', Arial, sans-serif;
+    margin: 0;
+    padding: 16px;
+  }
+  h1 {
+    font-family: 'Orbitron', Arial, sans-serif;
+    color: var(--green);
+    font-size: 20px;
+    letter-spacing: 1px;
+    margin: 0 0 16px 0;
+  }
+
+  /* ---- GATE ---- */
+  .gate-screen{
+    position:fixed; inset:0; background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px; z-index:999;
+  }
+  .gate-screen.hidden{ display:none; }
+  .gate-text{ font-family:'Space Mono', monospace; font-size:13px; color:var(--text-dim); letter-spacing:0.08em; }
+  .gate-text.err{ color:var(--danger); }
+  .gate-sub{ font-size:13px; color:#545b56; font-family:'Space Mono',monospace; }
+  .gate-btn{
+    margin-top:8px; font-family:'Space Mono', monospace; font-size:12px;
+    background:var(--panel); border:1px solid var(--green); color:var(--green);
+    padding:8px 18px; border-radius:5px; cursor:pointer;
+  }
+  #app-root{ display:none; }
+  #app-root.active{ display:block; }
+
+  .layout {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .stage-wrap {
+    flex: 0 0 auto;
+  }
+  #stage {
+    position: relative;
+    width: 600px;
+    height: 600px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #baseBody {
+    position: absolute;
+    top: 0; left: 0;
+    width: 600px;
+    height: 600px;
+    pointer-events: none;
+  }
+  #guideLines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 600px;
+    height: 600px;
+    pointer-events: none;
+    display: none;
+  }
+  #guideLines.show { display: block; }
+  #assetLayer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 600px;
+    height: 600px;
+    pointer-events: none;
+  }
+  #referenceLayer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 600px;
+    height: 600px;
+    pointer-events: none;
+  }
+  .ref-img {
+    position: absolute;
+    pointer-events: none;
+    opacity: 0.45;
+    filter: saturate(0.6);
+  }
+  #assetImg {
+    position: absolute;
+    cursor: grab;
+    pointer-events: auto;
+    user-select: none;
+    -webkit-user-drag: none;
+    transform-origin: center center;
+  }
+  #assetImg:active { cursor: grabbing; }
+  #assetImg.hidden { display: none; }
+
+  .panel {
+    flex: 1 1 280px;
+    min-width: 280px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px;
+  }
+  .panel h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--amber);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 10px 0;
+  }
+  .field { margin-bottom: 12px; }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  input[type="file"], input[type="text"], select {
+    width: 100%;
+    background: #0f120f;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px;
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+  input[type="range"] { width: 100%; accent-color: var(--green); }
+  .rangeval {
+    float: right;
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+  }
+  .row { display: flex; gap: 8px; }
+  .row .field { flex: 1; }
+  button {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    padding: 8px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 8px;
+    margin-bottom: 8px;
+  }
+  button:hover { background: rgba(0,204,102,0.1); }
+  button:disabled{ opacity:0.4; cursor:wait; }
+  button.amber { border-color: var(--amber); color: var(--amber); }
+  button.amber:hover { background: rgba(204,136,0,0.1); }
+  textarea {
+    width: 100%;
+    height: 160px;
+    background: #0f120f;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 10px;
+    border-radius: 3px;
+    resize: vertical;
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .anchor-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+  .field-checkbox-row{ display:flex; align-items:center; gap:8px; margin:10px 0; }
+  .field-checkbox-row label{ margin:0; }
+  .status-line{ font-family:'Space Mono',monospace; font-size:11px; margin-top:8px; min-height:14px; }
+  .status-line.ok{ color:var(--green); }
+  .status-line.err{ color:var(--danger); }
+  .catalog-row{
+    display:flex; justify-content:space-between; align-items:center; padding:6px 9px;
+    background:#0f120f; border:1px solid var(--border); border-radius:4px; cursor:pointer;
+    font-size:13px; color:var(--text-dim); margin-bottom:4px;
+  }
+  .catalog-row:hover{ border-color:var(--text-dim); }
+  .catalog-row.ref-active{ border-color:var(--amber); }
+  .catalog-row-left{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  .ref-toggle{
+    flex-shrink:0; width:22px; height:22px; border-radius:4px; border:1px solid var(--border);
+    background:#0f120f; display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; color:var(--text-dim);
+  }
+  .ref-toggle.on{ border-color:var(--amber); color:var(--amber); background:rgba(204,136,0,0.12); }
+  .catalog-pill{ font-family:'Space Mono',monospace; font-size:9px; padding:2px 6px; border-radius:3px; }
+  .catalog-pill.pub{ background:#0a2614; color:var(--green); }
+  .catalog-pill.draft{ background:#1c201e; border:1px solid var(--border); color:var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div id="gate-loading" class="gate-screen">
+  <div class="gate-text">CHECKING CREDENTIALS…</div>
+</div>
+<div id="gate-signedout" class="gate-screen hidden">
+  <div class="gate-text">SIGN IN REQUIRED</div>
+  <div class="gate-sub">HIL Avatar Fitter is restricted to authenticated admin accounts</div>
+  <button class="gate-btn" id="btn-google-signin">SIGN IN WITH GOOGLE</button>
+</div>
+<div id="gate-denied" class="gate-screen hidden">
+  <div class="gate-text err">ACCESS DENIED</div>
+  <div class="gate-sub" id="gate-denied-sub">Signed in, but this account does not have is_admin === true</div>
+  <button class="gate-btn" id="btn-signout" style="border-color:#cc4433;color:#cc4433;">SIGN OUT</button>
+</div>
+<div id="gate-error" class="gate-screen hidden">
+  <div class="gate-text err">CONNECTION ERROR</div>
+  <div class="gate-sub" id="gate-error-sub">Could not reach Firestore.</div>
+</div>
+
+<div id="app-root">
+
+<h1>HIL AVATAR FITTER <span style="color:var(--amber); font-size:12px; font-family:'Space Mono',monospace; letter-spacing:0;">— wired to avatar_catalog</span></h1>
+
+<div class="layout">
+
+  <div class="stage-wrap">
+    <div id="stage">
+      <div id="baseBody"></div>
+      <svg id="guideLines" width="600" height="600" viewBox="0 0 1000 1000">
+        <line x1="0" y1="255" x2="1000" y2="255" stroke="#00cc66" stroke-width="2" opacity="0.5"/>
+        <line x1="0" y1="390" x2="1000" y2="390" stroke="#00cc66" stroke-width="2" opacity="0.5"/>
+        <line x1="0" y1="620" x2="1000" y2="620" stroke="#00cc66" stroke-width="2" opacity="0.5"/>
+        <line x1="0" y1="875" x2="1000" y2="875" stroke="#00cc66" stroke-width="2" opacity="0.5"/>
+        <circle cx="315" cy="610" r="10" fill="#cc8800"/>
+        <circle cx="685" cy="610" r="10" fill="#cc8800"/>
+        <circle cx="500" cy="500" r="6" fill="red" opacity="0.6"/>
+      </svg>
+      <div id="referenceLayer"></div>
+      <div id="assetLayer">
+        <img id="assetImg" class="hidden" src="" alt="asset">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>1. Asset</h2>
+    <div class="field">
+      <label>Upload asset (PNG / SVG / WebP)</label>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="field">
+      <label>Slot (category in avatar_catalog)</label>
+      <select id="slotSelect">
+        <option value="head">head</option>
+        <option value="eyes">eyes</option>
+        <option value="outerwear">outerwear</option>
+        <option value="hand">hand</option>
+        <option value="frame_pin">frame_pin</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Label</label>
+      <input type="text" id="labelInput" placeholder="Claw Hammer 16oz">
+    </div>
+    <div class="field-checkbox-row">
+      <input type="checkbox" id="colorableCheck" />
+      <label for="colorableCheck">colorable (flat SVG, currentColor tinting)</label>
+    </div>
+    <div class="field-checkbox-row" id="mirrorableRow">
+      <input type="checkbox" id="mirrorableCheck" checked />
+      <label for="mirrorableCheck">mirrorable (safe to auto-flip for left-handed members — uncheck for anything with text/readouts/directional detail, e.g. multimeter, files)</label>
+    </div>
+    <div class="field-checkbox-row">
+      <input type="checkbox" id="publishedCheck" />
+      <label for="publishedCheck">published (visible in Workshop once Guild ships)</label>
+    </div>
+    <button id="toggleGuides">Toggle Guide Lines</button>
+
+    <h2 style="margin-top:20px;">2. Transform</h2>
+    <div class="field">
+      <label>Scale <span class="rangeval" id="scaleVal">1.00</span></label>
+      <input type="range" id="scaleRange" min="0.1" max="3" step="0.01" value="1">
+    </div>
+    <div class="field">
+      <label>Rotation <span class="rangeval" id="rotVal">0°</span></label>
+      <input type="range" id="rotRange" min="-180" max="180" step="1" value="0">
+    </div>
+    <div class="field">
+      <label>Opacity <span class="rangeval" id="opVal">1.00</span></label>
+      <input type="range" id="opRange" min="0" max="1" step="0.01" value="1">
+    </div>
+    <button id="flipBtn">Flip Horizontal</button>
+    <button id="resetBtn" class="amber">Reset Position</button>
+    <p class="hint">Drag the asset directly on the canvas to position it. Use sliders for scale/rotation/opacity.</p>
+
+    <div class="anchor-note">
+      Guide lines: green = eye / shoulder / waist / feet lines. Amber dots = left/right hand anchors (315,610) and (685,610) in 1000-unit space.
+      <br><br>
+      <b style="color:var(--amber);">Base body is a placeholder stick figure.</b> Swap the BASE_SVG constant in this file for your real canonical body art whenever it's ready — anchor math stays valid since it's ratio-based.
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>3. Save to Catalog</h2>
+    <button id="saveBtn">Save to avatar_catalog</button>
+    <div class="status-line" id="save-status"></div>
+    <p class="hint">Uploads the asset via R2, writes to <code>avatar_catalog/{id}</code> with <code>category</code> = slot. No <code>unlocked_by</code> field — unlocking is <code>avatar_unlocks</code>, backend-only, not built yet.</p>
+
+    <h2 style="margin-top:18px;">Debug JSON</h2>
+    <button id="previewJsonBtn" class="amber">Preview JSON</button>
+    <textarea id="output" readonly placeholder="Click 'Preview JSON' to see the record shape before saving..."></textarea>
+
+    <h2 style="margin-top:18px;">Catalog — click to re-fit, 👁 to overlay as reference</h2>
+    <div id="catalog-list"><div class="hint">loading…</div></div>
+  </div>
+
+</div>
+
+</div><!-- /app-root -->
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, query, where,
+  orderBy, limit, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Same config as hil-admin.html — this tool shares the same project.
+const firebaseConfig = {
+  apiKey: "AIzaSyARjQ3kD8iz9rD-2Fl1zNASnlVDmvDeVb4",
+  authDomain: "project-97444efa-3b6f-493b-b96.firebaseapp.com",
+  projectId: "project-97444efa-3b6f-493b-b96",
+  storageBucket: "project-97444efa-3b6f-493b-b96.firebasestorage.app",
+  messagingSenderId: "937314472168",
+  appId: "1:937314472168:web:5ad7b916ac01a9e649b95d"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const R2_SIGNER_URL = "https://hilsystem-r2-signer.dvo77.workers.dev";
+
+let currentUid = null;
+
+function showGate(id){
+  ["gate-loading","gate-signedout","gate-denied","gate-error"].forEach(g=>{
+    document.getElementById(g).classList.toggle("hidden", g!==id);
+  });
+  document.getElementById("app-root").classList.remove("active");
+}
+
+document.getElementById("btn-google-signin").onclick = ()=>{
+  signInWithPopup(auth, new GoogleAuthProvider()).catch(e=>console.error("[Fitter] sign-in error", e));
+};
+document.getElementById("btn-signout").onclick = ()=> signOut(auth);
+
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ currentUid = null; showGate("gate-signedout"); return; }
+  showGate("gate-loading");
+  currentUid = user.uid;
+  try{
+    // Same is_admin gate pattern as hil-admin.html (team_members.is_admin,
+    // NOT the separate admins/{uid} platform-level check).
+    let memberDoc = await getDoc(doc(db, "users", user.uid, "team_members", user.uid));
+    let memberData = memberDoc.exists() ? memberDoc.data() : null;
+    if(!memberData){
+      const q = query(collection(db, "users", user.uid, "team_members"),
+                       where("linked_uid","==", user.uid), limit(1));
+      const snap = await getDocs(q);
+      if(!snap.empty) memberData = snap.docs[0].data();
+    }
+    if(!memberData || memberData.is_admin !== true){
+      document.getElementById("gate-denied-sub").textContent =
+        `Signed in as ${user.email || user.uid}, but is_admin !== true on team_members.`;
+      showGate("gate-denied");
+      return;
+    }
+    document.getElementById("app-root").classList.add("active");
+    ["gate-loading","gate-signedout","gate-denied","gate-error"].forEach(g=>document.getElementById(g).classList.add("hidden"));
+    loadCatalogList();
+  }catch(e){
+    console.error("[Fitter] auth gate error", e);
+    document.getElementById("gate-error-sub").textContent = e.message || "Unknown Firestore error.";
+    showGate("gate-error");
+  }
+});
+
+/* ================= ORIGINAL FITTER MECHANICS (unchanged) ================= */
+const BASE_SVG = `<svg width="600" height="600" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <g id="body_paths" fill="#3a3f3b" stroke="#54594f" stroke-width="4">
+    <circle id="head" cx="500" cy="250" r="100" />
+    <path id="torso" d="M 400 390 L 600 390 L 580 620 C 580 620 500 650 420 620 L 400 390 Z" />
+    <g id="left_arm">
+      <line x1="405" y1="400" x2="330" y2="600" stroke="#54594f" stroke-width="25" stroke-linecap="round"/>
+      <circle id="left_hand_anchor" cx="315" cy="610" r="15" fill="#40453f" stroke="none"/>
+    </g>
+    <g id="right_arm">
+      <line x1="595" y1="400" x2="670" y2="600" stroke="#54594f" stroke-width="25" stroke-linecap="round"/>
+      <circle id="right_hand_anchor" cx="685" cy="610" r="15" fill="#40453f" stroke="none"/>
+    </g>
+    <g id="legs" fill="none" stroke="#54594f" stroke-width="35" stroke-linecap="round">
+        <line x1="450" y1="630" x2="430" y2="875" />
+        <line x1="550" y1="630" x2="570" y2="875" />
+    </g>
+  </g>
+</svg>`;
+document.getElementById('baseBody').innerHTML = BASE_SVG;
+
+const DISPLAY = 600;
+const VBOX = 1000;
+const SCALE_FACTOR = DISPLAY / VBOX;
+
+const assetImg = document.getElementById('assetImg');
+const fileInput = document.getElementById('fileInput');
+const slotSelect = document.getElementById('slotSelect');
+const labelInput = document.getElementById('labelInput');
+const scaleRange = document.getElementById('scaleRange');
+const rotRange = document.getElementById('rotRange');
+const opRange = document.getElementById('opRange');
+const scaleVal = document.getElementById('scaleVal');
+const rotVal = document.getElementById('rotVal');
+const opVal = document.getElementById('opVal');
+const output = document.getElementById('output');
+const guideLines = document.getElementById('guideLines');
+
+let posX = DISPLAY / 2;
+let posY = DISPLAY / 2;
+let scale = 1;
+let rotation = 0;
+let opacity = 1;
+let flipped = false;
+let naturalW = 100, naturalH = 100;
+let pendingFile = null; // set on upload, cleared after successful save
+let loadedFromCatalogId = null; // if editing an existing item, its doc id
+let catalogItemsCache = {}; // id -> item data, populated by loadCatalogList
+let activeReferenceIds = new Set(); // ids currently shown as dimmed reference overlays
+
+function applyTransform() {
+  assetImg.style.left = (posX - (naturalW * scale) / 2) + 'px';
+  assetImg.style.top = (posY - (naturalH * scale) / 2) + 'px';
+  assetImg.style.width = (naturalW * scale) + 'px';
+  assetImg.style.height = (naturalH * scale) + 'px';
+  const flipTransform = flipped ? ' scaleX(-1)' : '';
+  assetImg.style.transform = `rotate(${rotation}deg)${flipTransform}`;
+  assetImg.style.opacity = opacity;
+}
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingFile = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    assetImg.src = ev.target.result;
+    assetImg.classList.remove('hidden');
+    assetImg.onload = () => {
+      const maxDim = 150;
+      const ratio = assetImg.naturalWidth / assetImg.naturalHeight;
+      if (assetImg.naturalWidth > assetImg.naturalHeight) {
+        naturalW = maxDim; naturalH = maxDim / ratio;
+      } else {
+        naturalH = maxDim; naturalW = maxDim * ratio;
+      }
+      posX = DISPLAY / 2; posY = DISPLAY / 2;
+      scale = 1; rotation = 0; flipped = false;
+      scaleRange.value = 1; rotRange.value = 0;
+      scaleVal.textContent = '1.00'; rotVal.textContent = '0°';
+      applyTransform();
+    };
+  };
+  reader.readAsDataURL(file);
+});
+
+let dragging = false;
+let dragStartX = 0, dragStartY = 0, startPosX = 0, startPosY = 0;
+assetImg.addEventListener('pointerdown', (e) => {
+  dragging = true; dragStartX = e.clientX; dragStartY = e.clientY;
+  startPosX = posX; startPosY = posY;
+  assetImg.setPointerCapture(e.pointerId);
+});
+assetImg.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  posX = startPosX + (e.clientX - dragStartX);
+  posY = startPosY + (e.clientY - dragStartY);
+  applyTransform();
+});
+assetImg.addEventListener('pointerup', () => { dragging = false; });
+assetImg.addEventListener('pointercancel', () => { dragging = false; });
+
+scaleRange.addEventListener('input', () => { scale = parseFloat(scaleRange.value); scaleVal.textContent = scale.toFixed(2); applyTransform(); });
+rotRange.addEventListener('input', () => { rotation = parseFloat(rotRange.value); rotVal.textContent = rotation + '°'; applyTransform(); });
+opRange.addEventListener('input', () => { opacity = parseFloat(opRange.value); opVal.textContent = opacity.toFixed(2); applyTransform(); });
+document.getElementById('flipBtn').addEventListener('click', () => { flipped = !flipped; applyTransform(); });
+document.getElementById('resetBtn').addEventListener('click', () => {
+  posX = DISPLAY / 2; posY = DISPLAY / 2; scale = 1; rotation = 0; flipped = false;
+  scaleRange.value = 1; rotRange.value = 0; scaleVal.textContent = '1.00'; rotVal.textContent = '0°';
+  applyTransform();
+});
+document.getElementById('toggleGuides').addEventListener('click', () => { guideLines.classList.toggle('show'); });
+
+function syncMirrorableVisibility(){
+  document.getElementById('mirrorableRow').style.display = (slotSelect.value === 'hand') ? 'flex' : 'none';
+}
+slotSelect.addEventListener('change', syncMirrorableVisibility);
+syncMirrorableVisibility();
+
+function buildRecord(){
+  const unitX = posX / SCALE_FACTOR;
+  const unitY = posY / SCALE_FACTOR;
+  const offsetX = Math.round(unitX - 500);
+  const offsetY = Math.round(unitY - 500);
+  return {
+    category: slotSelect.value,
+    label: labelInput.value.trim() || "unnamed",
+    status: document.getElementById('publishedCheck').checked ? "published" : "draft",
+    colorable: document.getElementById('colorableCheck').checked,
+    mirrorable: document.getElementById('mirrorableCheck').checked,
+    transform: {
+      offsetX, offsetY,
+      scale: parseFloat(scale.toFixed(3)),
+      rotation,
+      flippedH: flipped
+    },
+    opacity: parseFloat(opacity.toFixed(2)),
+    zIndex: 50
+  };
+}
+
+document.getElementById('previewJsonBtn').addEventListener('click', () => {
+  output.value = JSON.stringify(buildRecord(), null, 2);
+});
+
+/* ================= NEW: real save to Firestore + R2 ================= */
+function fileToBase64(file){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result.split(",")[1]);
+    r.onerror = ()=> reject(new Error("File read failed"));
+    r.readAsDataURL(file);
+  });
+}
+
+function setSaveStatus(msg, cls){
+  const el = document.getElementById("save-status");
+  el.textContent = msg;
+  el.className = "status-line" + (cls ? " " + cls : "");
+}
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('saveBtn');
+  const label = labelInput.value.trim();
+  if(!label){ alert("label required"); return; }
+
+  btn.disabled = true;
+  setSaveStatus("saving…", "");
+  try{
+    const slot = slotSelect.value;
+    const id = loadedFromCatalogId || `${slot}-${label.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")}`;
+
+    let file_r2_path = null;
+    if(pendingFile){
+      setSaveStatus("uploading asset…", "");
+      const base64 = await fileToBase64(pendingFile);
+      const uploadResp = await fetch(R2_SIGNER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: pendingFile.name,
+          contentType: pendingFile.type || "image/png",
+          data: base64,
+          context: "avatar_item",
+          uid: currentUid,
+          itemId: id,
+        }),
+      });
+      const uploadData = await uploadResp.json();
+      if(!uploadResp.ok || !uploadData.success) throw new Error(uploadData.error || "R2 upload failed");
+      file_r2_path = uploadData.publicUrl;
+    }
+
+    const record = buildRecord();
+    const payload = {
+      ...record,
+      availableColors: record.colorable ? ['#00cc66','#4a9eed','#ffd84c','#ff5c5c','#cc8800','#8a6de0','#4cd9ff','#ff8fb3'] : [],
+      updated_at: serverTimestamp(),
+    };
+    if(file_r2_path) payload.file_r2_path = file_r2_path;
+    // If re-saving an existing item without a new upload, keep its existing file_r2_path
+    // by merging (setDoc merge:true below won't overwrite it if we don't include the key).
+
+    await setDoc(doc(db, "avatar_catalog", id), payload, { merge: true });
+    loadedFromCatalogId = id;
+    pendingFile = null;
+    setSaveStatus(`saved — ${id}`, "ok");
+    output.value = JSON.stringify(payload, null, 2);
+    loadCatalogList();
+  }catch(e){
+    console.error("[Fitter] save failed", e);
+    setSaveStatus("error: " + e.message, "err");
+  }finally{
+    btn.disabled = false;
+  }
+});
+
+async function loadCatalogList(){
+  const listEl = document.getElementById("catalog-list");
+  try{
+    const slots = ['head','eyes','outerwear','hand','frame_pin'];
+    const snap = await getDocs(query(collection(db, "avatar_catalog"), where("category", "in", slots)));
+    catalogItemsCache = {};
+    if(snap.empty){ listEl.innerHTML = `<div class="hint">catalog empty</div>`; return; }
+    listEl.innerHTML = "";
+    snap.forEach(d=>{
+      const it = d.data();
+      catalogItemsCache[d.id] = it;
+      const row = document.createElement("div");
+      row.className = "catalog-row" + (activeReferenceIds.has(d.id) ? " ref-active" : "");
+      row.innerHTML = `
+        <div class="catalog-row-left">
+          <div class="ref-toggle ${activeReferenceIds.has(d.id)?'on':''}" data-ref-toggle="${d.id}" title="show as reference overlay">👁</div>
+          <span>${it.label||d.id} <span style="color:var(--text-dim);">— ${it.category}</span></span>
+        </div>
+        <span class="catalog-pill ${it.status==='published'?'pub':'draft'}">${it.status||'draft'}</span>
+      `;
+      row.querySelector("[data-ref-toggle]").onclick = (ev)=>{
+        ev.stopPropagation();
+        if(activeReferenceIds.has(d.id)) activeReferenceIds.delete(d.id);
+        else activeReferenceIds.add(d.id);
+        row.classList.toggle("ref-active", activeReferenceIds.has(d.id));
+        row.querySelector("[data-ref-toggle]").classList.toggle("on", activeReferenceIds.has(d.id));
+        renderReferenceLayers();
+      };
+      row.addEventListener("click", (ev)=>{
+        if(ev.target.closest("[data-ref-toggle]")) return; // eye click handled above, don't also load into editor
+        loadItemIntoEditor(d.id, it);
+      });
+      listEl.appendChild(row);
+    });
+    renderReferenceLayers(); // catalog may have refreshed after a save — keep overlays in sync
+  }catch(e){
+    console.error("[Fitter] catalog list load failed", e);
+    listEl.innerHTML = `<div class="hint" style="color:var(--danger);">error: ${e.message}</div>`;
+  }
+}
+
+function renderReferenceLayers(){
+  const layer = document.getElementById("referenceLayer");
+  layer.innerHTML = "";
+  activeReferenceIds.forEach(id=>{
+    const it = catalogItemsCache[id];
+    if(!it || !it.file_r2_path) return;
+    // Don't show the item currently loaded in the editor as a reference too —
+    // it's already visible as the active (bright) asset, would just be a duplicate.
+    if(id === loadedFromCatalogId) return;
+
+    const t = it.transform || {};
+    const img = document.createElement("img");
+    img.className = "ref-img";
+    img.src = it.file_r2_path;
+    img.onload = ()=>{
+      const maxDim = 150;
+      const ratio = img.naturalWidth / img.naturalHeight;
+      let w, h;
+      if(img.naturalWidth > img.naturalHeight){ w = maxDim; h = maxDim / ratio; }
+      else { h = maxDim; w = maxDim * ratio; }
+      const scaledW = w * (t.scale || 1);
+      const scaledH = h * (t.scale || 1);
+      const unitX = 500 + (t.offsetX || 0);
+      const unitY = 500 + (t.offsetY || 0);
+      const px = unitX * SCALE_FACTOR;
+      const py = unitY * SCALE_FACTOR;
+      img.style.left = (px - scaledW/2) + 'px';
+      img.style.top = (py - scaledH/2) + 'px';
+      img.style.width = scaledW + 'px';
+      img.style.height = scaledH + 'px';
+      const flip = t.flippedH ? ' scaleX(-1)' : '';
+      img.style.transform = `rotate(${t.rotation||0}deg)${flip}`;
+    };
+    layer.appendChild(img);
+  });
+}
+
+function loadItemIntoEditor(id, it){
+  loadedFromCatalogId = id;
+  pendingFile = null;
+  labelInput.value = it.label || "";
+  slotSelect.value = it.category || "head";
+  document.getElementById('colorableCheck').checked = !!it.colorable;
+  document.getElementById('mirrorableCheck').checked = it.mirrorable !== false; // default true for older records without the field
+  document.getElementById('publishedCheck').checked = it.status === "published";
+  syncMirrorableVisibility();
+
+  const t = it.transform || {};
+  scale = t.scale || 1;
+  rotation = t.rotation || 0;
+  flipped = !!t.flippedH;
+  opacity = it.opacity ?? 1;
+  scaleRange.value = scale; rotRange.value = rotation; opRange.value = opacity;
+  scaleVal.textContent = scale.toFixed(2); rotVal.textContent = rotation + '°'; opVal.textContent = opacity.toFixed(2);
+
+  // Convert stored offset (relative to unit-space center) back to stage px position
+  const unitX = 500 + (t.offsetX || 0);
+  const unitY = 500 + (t.offsetY || 0);
+  posX = unitX * SCALE_FACTOR;
+  posY = unitY * SCALE_FACTOR;
+
+  if(it.file_r2_path){
+    assetImg.src = it.file_r2_path;
+    assetImg.classList.remove('hidden');
+    assetImg.onload = () => {
+      const maxDim = 150;
+      const ratio = assetImg.naturalWidth / assetImg.naturalHeight;
+      if (assetImg.naturalWidth > assetImg.naturalHeight) { naturalW = maxDim; naturalH = maxDim / ratio; }
+      else { naturalH = maxDim; naturalW = maxDim * ratio; }
+      applyTransform();
+    };
+  } else {
+    applyTransform();
+  }
+  setSaveStatus(`editing ${id} — upload a new file to replace the image, or adjust transform and save`, "");
+  renderReferenceLayers();
+}
+
+applyTransform();
+</script>
+
+</body>
+</html>
