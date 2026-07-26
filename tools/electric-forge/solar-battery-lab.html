@@ -7,9 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="../hil-shell.js"></script>
 <style>
-  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
-     :root block here. --solar/--batt are genuinely module-specific accent
-     colors (not platform tokens) so they stay declared locally. */
   :root{ --solar:#ff9f5a; --batt:#5fd68a; }
   *{box-sizing:border-box;}
   .wrap{max-width:1040px;margin:0 auto;padding:22px 18px 50px;}
@@ -57,10 +54,11 @@
   .formula .lbl{color:var(--hil-text-muted);}
   .formula .num{color:var(--solar);}
 
-  /* Breadcrumb + active-member strip — module-specific nav context, not
-     something hil-shell.js provides itself. The old hand-rolled fake header
-     and fake "Patch: calm" status dot are gone — the real header and real
-     PATCH bubble now come from HILShell.init() below. */
+  .calc-map{margin-top:14px;padding:12px 14px;background:var(--hil-surface-2);border:1px solid var(--hil-border);border-radius:4px;}
+  .calc-map .cm-title{font-family:var(--font-mono);font-size:11px;color:var(--solar);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+  .calc-map .cm-row{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-family:var(--font-ui);font-size:12.5px;color:var(--hil-text-muted);}
+  .calc-map .cm-addr{flex-shrink:0;font-family:var(--font-mono);font-size:11.5px;color:var(--solar);border:1px solid var(--solar);border-radius:3px;padding:1px 7px;}
+
   .gms-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
   .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
   .gms-crumb b{color:var(--hil-green);}
@@ -152,6 +150,14 @@
     <div class="status" id="statusBox"></div>
 
     <div class="formula" id="formulaBox"></div>
+
+    <div class="calc-map">
+      <div class="cm-title">Same math, on a physical calculator</div>
+      <div class="cm-row"><span class="cm-addr">C4</span><span>× — Ah × V gives you Wh, the battery's real capacity</span></div>
+      <div class="cm-row"><span class="cm-addr">E5</span><span>% — sun conditions and controller efficiency both cut into the panel's rated output as percentages</span></div>
+      <div class="cm-row"><span class="cm-addr">B4</span><span>− — solar output minus load is your net flow: positive means charging, negative means draining</span></div>
+      <div class="cm-row"><span class="cm-addr">D4</span><span>÷ — current divided by amp-hour capacity is the C-rate, the number that tells you if you're pushing the battery too hard</span></div>
+    </div>
   </div>
 
   <div class="panel wrapup-panel">
@@ -192,7 +198,7 @@ const statusBox = document.getElementById('statusBox');
 const formulaBox = document.getElementById('formulaBox');
 
 const CTRL_EFF = { mppt: 0.97, pwm: 0.80 };
-const MAX_SAFE_C = 1.0; // typical LiFePO4 continuous limit, for teaching purposes
+const MAX_SAFE_C = 1.0;
 
 function compute(){
   const Wh = capacity * voltage;
@@ -206,7 +212,6 @@ function compute(){
   netFlow.textContent = (net>=0?'+':'') + net.toFixed(0) + ' W';
   netFlow.style.color = net >= 0 ? 'var(--batt)' : 'var(--hil-danger)';
 
-  // battery bar
   battFill.style.width = soc + '%';
   battFill.style.background = soc > 50 ? 'var(--batt)' : soc > 20 ? 'var(--hil-amber)' : 'var(--hil-danger)';
   battLabel.textContent = soc + '% · ' + Wh.toFixed(0) + ' Wh capacity';
@@ -243,9 +248,7 @@ function compute(){
 
 function draw(solarActual, net){
   ctx.fillStyle = '#0a0c0b'; ctx.fillRect(0,0,W,H);
-  const midY = 130;
 
-  // Panel icon (left)
   ctx.strokeStyle = '#ff9f5a'; ctx.fillStyle = 'rgba(255,159,90,0.15)';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.rect(60,70,120,80); ctx.fill(); ctx.stroke();
@@ -256,14 +259,12 @@ function draw(solarActual, net){
   ctx.fillStyle = '#ff9f5a';
   ctx.fillText(solarActual.toFixed(0)+'W', 120, 60);
 
-  // Controller box (middle)
   ctx.strokeStyle = '#3a453e'; ctx.fillStyle = '#1c201e';
   ctx.beginPath(); ctx.rect(420,90,140,60); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#6b7d72';
   ctx.fillText('CHARGE', 490, 115);
   ctx.fillText('CONTROLLER', 490, 130);
 
-  // Battery box (right)
   ctx.strokeStyle = '#5fd68a'; ctx.fillStyle = 'rgba(95,214,138,0.12)';
   ctx.beginPath(); ctx.rect(780,70,160,80); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.rect(940,90,10,40); ctx.fill();
@@ -271,14 +272,12 @@ function draw(solarActual, net){
   ctx.fillText('BATTERY', 860, 168);
   ctx.fillText(voltage+'V / '+capacity+'Ah', 860, 60);
 
-  // Load icon (bottom right)
   ctx.strokeStyle = '#3a453e';
   ctx.beginPath(); ctx.arc(860,220,22,0,Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(848,220); ctx.lineTo(872,220); ctx.moveTo(860,208); ctx.lineTo(860,232); ctx.stroke();
   ctx.fillStyle = '#6b7d72';
   ctx.fillText('LOAD', 860, 250);
 
-  // wires + flow arrows
   ctx.strokeStyle = '#3a453e'; ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(180,110); ctx.lineTo(420,110);
@@ -318,14 +317,6 @@ compute();
 <script type="module">
   import { SessionLogger, resolveActiveMember, writeSessionLogEntry } from '../session-logger.js';
 
-  // ─── MODULE MANIFEST (HIL-Guild-Module-Logging-Standard-v3.md, Part 4) ─────
-  // scoringPath "none" — matches the Universal Scoring Spec's mapping table
-  // ("Wrap Up + heartbeat only, no score") and the live code's own hardcoded
-  // outcome:"explored". Not touching that call — it was already correct.
-  // conceptTags note: this module doesn't appear at all in the Concept Index
-  // example (Part 6), not just missing a tag — flagging that the Index needs
-  // a solar-battery-lab entry added, same "compiled, not hand-maintained"
-  // gap noted in Wire Lab's manifest.
   const MODULE_MANIFEST = {
     moduleId:    'solar-battery-lab',
     subjects:    ['physics', 'engineering'],
@@ -343,10 +334,6 @@ compute();
 
   let activeMember = null;
 
-  // KNOWN OPEN ITEM (same one flagged in every Electric Forge module so
-  // far): hil-guild.html's module cards don't pass a ?member= param, so a
-  // standalone launch has no way to know which household member is active.
-  // Falling back to the same auto-select hil-guild-scores.html uses.
   async function resolveMember(user) {
     activeMember = await resolveActiveMember(window.db, user.uid);
     if (activeMember) {
@@ -365,7 +352,7 @@ compute();
     onAuth: async (user) => {
       if (!user) return;
       await resolveMember(user);
-      logger.start(); // module is interactive as soon as auth + member resolve
+      logger.start();
     }
   });
 
@@ -391,16 +378,14 @@ compute();
   }
 
   wrapUpBtn.addEventListener('click', async () => {
-    wrapUpBtn.disabled = true; // session-scoped duplicate guard (Part 3)
+    wrapUpBtn.disabled = true;
     const entry = await logger.wrapUp({
-      // no outcome passed — scoringPath "none" means SessionLogger sets
-      // outcome to "explored" itself, per Part 5's controlled vocabulary.
       description: `Modeled a ${capacity}Ah/${voltage}V system with a ${panel}W array against a ${load}W load.`,
     });
     if (entry) {
       renderLedgerPreview(entry);
     } else {
-      wrapUpBtn.disabled = false; // wrapUp() returned null (already wrapped / not started) — nothing changed
+      wrapUpBtn.disabled = false;
     }
   });
 </script>
