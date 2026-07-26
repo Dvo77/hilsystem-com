@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Circuit Lab — Series &amp; Parallel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#181b21; --panel:#20242c; --grid:#343b47; --ink:#e9e7e1; --dim:#8b93a3;
+    --lime:#a8e05f; --green:#49c78d; --red:#ff5d5d; --blue:#5ac8e8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  .wrap{max-width:1040px;margin:0 auto;padding:22px 18px 50px;}
+  header{border-bottom:2px solid var(--grid);padding-bottom:12px;margin-bottom:16px;}
+  h1{font-family:'Teko',sans-serif;font-weight:600;font-size:42px;letter-spacing:0.5px;margin:0;}
+  h1 span{color:var(--lime);}
+  .subtitle{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;}
+
+  .stage{position:relative;border:1px solid var(--grid);border-radius:4px;overflow:hidden;background:#12151a;}
+  canvas{display:block;width:100%;height:auto;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid);border-radius:4px;padding:16px 18px;margin-top:14px;}
+
+  .modebar{display:flex;gap:8px;margin-bottom:14px;}
+  .modebar button{flex:1;font-family:'Teko',sans-serif;font-size:18px;font-weight:600;background:#171a20;border:1px solid var(--grid);color:var(--dim);padding:10px 6px;border-radius:4px;cursor:pointer;}
+  .modebar button.active{border-color:var(--lime);color:var(--lime);background:rgba(168,224,95,0.08);}
+
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:600px){.controls{grid-template-columns:1fr;}}
+  .field label{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .field label b{color:var(--ink);font-size:14px;}
+  input[type=range]{width:100%;accent-color:var(--lime);}
+  select{width:100%;background:#171a20;border:1px solid var(--grid);color:var(--ink);font-family:'IBM Plex Mono',monospace;padding:7px 8px;border-radius:3px;font-size:13px;}
+
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--grid);}
+  th{color:var(--dim);text-transform:uppercase;font-size:10px;letter-spacing:0.5px;}
+  td.num{color:var(--lime);}
+
+  .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px;}
+  @media (max-width:600px){.summary{grid-template-columns:1fr;}}
+  .scard{background:#171a20;border:1px solid var(--grid);border-radius:4px;padding:12px 14px;text-align:center;}
+  .scard .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;}
+  .scard .val{font-family:'Teko',sans-serif;font-size:28px;color:var(--lime);font-weight:600;}
+
+  .callout{margin-top:14px;padding:10px 14px;border-radius:4px;background:rgba(90,200,232,0.1);border:1px solid rgba(90,200,232,0.4);color:var(--blue);font-size:13.5px;line-height:1.6;}
+
+  .formula{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.9;border-left:2px solid var(--lime);padding:2px 0 2px 14px;}
+  .formula .lbl{color:var(--dim);}
+  .formula .num{color:var(--lime);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>CIRCUIT <span>LAB</span></h1>
+    <div class="subtitle">series vs. parallel — why combining resistors doesn't just add them up</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="canvas" width="1000" height="360"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="modebar" id="modebar">
+      <button data-t="series" class="active">Series</button>
+      <button data-t="parallel">Parallel</button>
+      <button data-t="combo">Series-Parallel</button>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label>Battery voltage <b id="battVal">12 V</b></label>
+        <input type="range" id="battery" min="3" max="24" value="12" step="1">
+      </div>
+      <div class="field">
+        <label>R1</label>
+        <select id="r1select">
+          <option value="100">100 Ω</option>
+          <option value="220" selected>220 Ω</option>
+          <option value="470">470 Ω</option>
+          <option value="1000">1 kΩ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>R2</label>
+        <select id="r2select">
+          <option value="100">100 Ω</option>
+          <option value="220">220 Ω</option>
+          <option value="470" selected>470 Ω</option>
+          <option value="1000">1 kΩ</option>
+        </select>
+      </div>
+      <div class="field" id="r3wrap" style="display:none;">
+        <label>R3</label>
+        <select id="r3select">
+          <option value="100">100 Ω</option>
+          <option value="220" selected>220 Ω</option>
+          <option value="470">470 Ω</option>
+          <option value="1000">1 kΩ</option>
+        </select>
+      </div>
+    </div>
+
+    <table id="resultsTable">
+      <thead><tr><th>Component</th><th>Voltage</th><th>Current</th><th>Power</th></tr></thead>
+      <tbody id="resultsBody"></tbody>
+    </table>
+
+    <div class="summary">
+      <div class="scard"><div class="lbl">Total Resistance</div><div class="val" id="reqVal"></div></div>
+      <div class="scard"><div class="lbl">Total Current</div><div class="val" id="itotVal"></div></div>
+      <div class="scard"><div class="lbl">Total Power</div><div class="val" id="ptotVal"></div></div>
+    </div>
+
+    <div class="callout" id="callout"></div>
+
+    <div class="formula" id="formulaBox"></div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let topo = 'series';
+let battery = 12;
+let R1 = 220, R2 = 470, R3 = 220;
+
+const modebar = document.getElementById('modebar');
+const battInput = document.getElementById('battery');
+const battVal = document.getElementById('battVal');
+const r1select = document.getElementById('r1select');
+const r2select = document.getElementById('r2select');
+const r3select = document.getElementById('r3select');
+const r3wrap = document.getElementById('r3wrap');
+const resultsBody = document.getElementById('resultsBody');
+const reqVal = document.getElementById('reqVal');
+const itotVal = document.getElementById('itotVal');
+const ptotVal = document.getElementById('ptotVal');
+const callout = document.getElementById('callout');
+const formulaBox = document.getElementById('formulaBox');
+
+function fmtOhm(r){ return r >= 1000 ? (r/1000).toFixed(2)+' kΩ' : r.toFixed(1)+' Ω'; }
+
+function compute(){
+  let rows = [], Req, Itot;
+
+  if(topo === 'series'){
+    Req = R1 + R2;
+    Itot = battery / Req;
+    const V1 = Itot*R1, V2 = Itot*R2;
+    rows = [
+      { name:'R1', v:V1, i:Itot, p:V1*Itot },
+      { name:'R2', v:V2, i:Itot, p:V2*Itot },
+    ];
+    formulaBox.innerHTML = `<span class="lbl">Series:</span> R<sub>eq</sub> = R1 + R2 = ${R1} + ${R2} = <span class="num">${fmtOhm(Req)}</span>
+      &nbsp; I = V/R<sub>eq</sub> = ${battery}/${Req} = <span class="num">${Itot.toFixed(3)}A</span> — same current through every component`;
+    callout.textContent = `Same current flows through R1 and R2 — they're the only path, one after another. Voltage splits between them in proportion to resistance.`;
+  }
+
+  else if(topo === 'parallel'){
+    Req = 1/(1/R1 + 1/R2);
+    Itot = battery / Req;
+    const I1 = battery/R1, I2 = battery/R2;
+    rows = [
+      { name:'R1', v:battery, i:I1, p:battery*I1 },
+      { name:'R2', v:battery, i:I2, p:battery*I2 },
+    ];
+    const smallest = Math.min(R1,R2);
+    formulaBox.innerHTML = `<span class="lbl">Parallel:</span> 1/R<sub>eq</sub> = 1/R1 + 1/R2 &nbsp;→&nbsp; R<sub>eq</sub> = <span class="num">${fmtOhm(Req)}</span>
+      &nbsp; I<sub>total</sub> = I1 + I2 = ${I1.toFixed(3)} + ${I2.toFixed(3)} = <span class="num">${Itot.toFixed(3)}A</span>`;
+    callout.textContent = `Total resistance (${fmtOhm(Req)}) is LESS than even the smallest resistor (${fmtOhm(smallest)}) — every extra parallel path gives current another way through, so total resistance always drops.`;
+  }
+
+  else { // combo: R1 in series with (R2 || R3)
+    const Rp = 1/(1/R2 + 1/R3);
+    Req = R1 + Rp;
+    Itot = battery / Req;
+    const Vp = Itot * Rp;
+    const I2 = Vp/R2, I3 = Vp/R3;
+    const V1 = Itot*R1;
+    rows = [
+      { name:'R1', v:V1, i:Itot, p:V1*Itot },
+      { name:'R2', v:Vp, i:I2, p:Vp*I2 },
+      { name:'R3', v:Vp, i:I3, p:Vp*I3 },
+    ];
+    formulaBox.innerHTML = `<span class="lbl">R2 ∥ R3:</span> R<sub>p</sub> = ${fmtOhm(Rp)} &nbsp; <span class="lbl">then in series with R1:</span> R<sub>eq</sub> = R1 + R<sub>p</sub> = <span class="num">${fmtOhm(Req)}</span>
+      &nbsp; I<sub>total</sub> = V/R<sub>eq</sub> = <span class="num">${Itot.toFixed(3)}A</span>`;
+    callout.textContent = `All of R1's current (${Itot.toFixed(3)}A) passes through it, then splits between R2 and R3 in the parallel section, then recombines on the way back to the battery.`;
+  }
+
+  resultsBody.innerHTML = rows.map(r=>
+    `<tr><td>${r.name}</td><td class="num">${r.v.toFixed(2)}V</td><td class="num">${r.i.toFixed(3)}A</td><td class="num">${(r.p*1000).toFixed(0)}mW</td></tr>`
+  ).join('');
+  reqVal.textContent = fmtOhm(Req);
+  itotVal.textContent = Itot.toFixed(3)+' A';
+  ptotVal.textContent = (battery*Itot*1000).toFixed(0)+' mW';
+
+  draw();
+}
+
+function drawResistorH(x1,x2,y,label){
+  ctx.strokeStyle = '#e9e7e1'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x1,y);
+  const zz=6, w=(x2-x1)/zz;
+  for(let i=0;i<zz;i++){ ctx.lineTo(x1+w*(i+0.5), y+(i%2===0?-13:13)); }
+  ctx.lineTo(x2,y); ctx.stroke();
+  ctx.fillStyle = '#8b93a3'; ctx.font = '12px "IBM Plex Mono", monospace'; ctx.textAlign='center';
+  ctx.fillText(label, (x1+x2)/2, y+34);
+}
+function drawResistorV(x,y1,y2,label){
+  ctx.strokeStyle = '#e9e7e1'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x,y1);
+  const zz=6, h=(y2-y1)/zz;
+  for(let i=0;i<zz;i++){ ctx.lineTo(x+(i%2===0?-13:13), y1+h*(i+0.5)); }
+  ctx.lineTo(x,y2); ctx.stroke();
+  ctx.fillStyle = '#8b93a3'; ctx.font = '12px "IBM Plex Mono", monospace'; ctx.textAlign='center';
+  ctx.fillText(label, x+34, (y1+y2)/2);
+}
+function drawBattery(x,y){
+  ctx.strokeStyle = '#e9e7e1'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x,y-24); ctx.lineTo(x,y+24);
+  ctx.moveTo(x+10,y-14); ctx.lineTo(x+10,y+14);
+  ctx.stroke();
+  ctx.fillStyle = '#ffc93c'; ctx.font = '12px "IBM Plex Mono", monospace'; ctx.textAlign='center';
+  ctx.fillText(battery+'V', x+5, y-34);
+}
+
+function draw(){
+  ctx.fillStyle = '#12151a'; ctx.fillRect(0,0,W,H);
+  const midY = 180;
+
+  if(topo === 'series'){
+    drawBattery(90,midY);
+    ctx.strokeStyle = '#5b6373'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(100,midY); ctx.lineTo(280,midY);
+    ctx.moveTo(350,midY); ctx.lineTo(430,midY);
+    ctx.moveTo(500,midY); ctx.lineTo(650,midY);
+    ctx.moveTo(100,midY); ctx.lineTo(100,280); ctx.lineTo(650,280); ctx.lineTo(650,midY);
+    ctx.stroke();
+    drawResistorH(280,350,midY,'R1 = '+R1+'Ω');
+    drawResistorH(430,500,midY,'R2 = '+R2+'Ω');
+  }
+
+  else if(topo === 'parallel'){
+    drawBattery(90,midY);
+    const topY=90, botY=270;
+    ctx.strokeStyle = '#5b6373'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(100,midY); ctx.lineTo(100,topY); ctx.lineTo(750,topY);
+    ctx.moveTo(100,midY); ctx.lineTo(100,botY); ctx.lineTo(750,botY);
+    ctx.moveTo(750,topY); ctx.lineTo(750,botY);
+    ctx.stroke();
+    drawResistorV(350,topY,botY,'R1 = '+R1+'Ω');
+    drawResistorV(580,topY,botY,'R2 = '+R2+'Ω');
+  }
+
+  else { // combo
+    drawBattery(90,midY);
+    ctx.strokeStyle = '#5b6373'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(100,midY); ctx.lineTo(220,midY);
+    ctx.stroke();
+    drawResistorH(220,300,midY,'R1='+R1+'Ω');
+    const topY=100, botY=260, jx=340, rx=640;
+    ctx.beginPath();
+    ctx.moveTo(300,midY); ctx.lineTo(jx,midY); ctx.lineTo(jx,topY); ctx.lineTo(rx,topY);
+    ctx.moveTo(jx,midY); ctx.lineTo(jx,botY); ctx.lineTo(rx,botY);
+    ctx.moveTo(rx,topY); ctx.lineTo(rx,midY); ctx.lineTo(750,midY);
+    ctx.moveTo(rx,botY); ctx.lineTo(rx,midY);
+    ctx.moveTo(100,midY); ctx.lineTo(100,300); ctx.lineTo(750,300); ctx.lineTo(750,midY);
+    ctx.stroke();
+    drawResistorV(460,topY,botY,'R2='+R2+'Ω');
+    drawResistorV(560,topY,botY,'R3='+R3+'Ω');
+  }
+}
+
+modebar.addEventListener('click',(e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  topo = btn.dataset.t;
+  [...modebar.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  r3wrap.style.display = topo==='combo' ? 'block' : 'none';
+  compute();
+});
+battInput.addEventListener('input',()=>{ battery=parseFloat(battInput.value); battVal.textContent=battery+' V'; compute(); });
+r1select.addEventListener('change',()=>{ R1=parseFloat(r1select.value); compute(); });
+r2select.addEventListener('change',()=>{ R2=parseFloat(r2select.value); compute(); });
+r3select.addEventListener('change',()=>{ R3=parseFloat(r3select.value); compute(); });
+
+compute();
+</script>
+</body>
+</html>

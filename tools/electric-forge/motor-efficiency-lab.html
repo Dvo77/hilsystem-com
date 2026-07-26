@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AC vs DC — Motor Efficiency Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#181b21; --panel:#20242c; --grid:#343b47; --ink:#e9e7e1; --dim:#8b93a3;
+    --dc:#ffb454; --ac:#5ac8e8; --bldc:#b48ce8; --green:#49c78d; --red:#ff5d5d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  .wrap{max-width:1040px;margin:0 auto;padding:22px 18px 50px;}
+  header{border-bottom:2px solid var(--grid);padding-bottom:12px;margin-bottom:16px;}
+  h1{font-family:'Teko',sans-serif;font-weight:600;font-size:42px;letter-spacing:0.5px;margin:0;}
+  h1 span{color:var(--dc);}
+  h1 span.ac{color:var(--ac);}
+  .subtitle{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);letter-spacing:0.5px;text-transform:uppercase;}
+
+  .stage{position:relative;border:1px solid var(--grid);border-radius:4px;overflow:hidden;background:#12151a;}
+  canvas{display:block;width:100%;height:auto;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid);border-radius:4px;padding:16px 18px;margin-top:14px;}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:640px){.controls{grid-template-columns:1fr;}}
+  .field label{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .field label b{color:var(--ink);font-size:14px;}
+  input[type=range]{width:100%;accent-color:var(--ink);}
+  select{width:100%;background:#171a20;border:1px solid var(--grid);color:var(--ink);font-family:'IBM Plex Mono',monospace;padding:7px 8px;border-radius:3px;font-size:13px;}
+
+  .presets{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .presets button{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;background:transparent;border:1px solid var(--grid);color:var(--dim);padding:5px 10px;border-radius:3px;cursor:pointer;}
+  .presets button.active{border-color:var(--ink);color:var(--ink);}
+  .presets button:hover{border-color:var(--ink);color:var(--ink);}
+
+  .winner{margin-top:14px;padding:10px 14px;border-radius:4px;font-family:'Teko',sans-serif;font-size:20px;font-weight:600;text-align:center;}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px;}
+  @media (max-width:820px){.cards{grid-template-columns:1fr;}}
+  .mcard{border-radius:4px;padding:14px 16px;border:1px solid var(--grid);background:#171a20;}
+  .mcard.dc{border-top:3px solid var(--dc);}
+  .mcard.ac{border-top:3px solid var(--ac);}
+  .mcard.bldc{border-top:3px solid var(--bldc);}
+  .mcard h3{font-family:'Teko',sans-serif;font-size:22px;font-weight:600;margin:0 0 10px;}
+  .mcard.dc h3{color:var(--dc);}
+  .mcard.ac h3{color:var(--ac);}
+  .mcard.bldc h3{color:var(--bldc);}
+  .statline{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:4px 0;border-bottom:1px solid #262b34;}
+  .statline .v{color:var(--ink);}
+  .lossbar{display:flex;height:14px;border-radius:3px;overflow:hidden;margin:10px 0 6px;}
+  .lossseg{height:100%;}
+  .legend{display:flex;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:4px;}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block;}
+
+  .formula{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.9;border-left:2px solid var(--dim);padding:2px 0 2px 14px;}
+  .formula .lbl{color:var(--dim);}
+  .formula .num{color:var(--ink);}
+
+  .calc-map{margin-top:14px;padding:12px 14px;background:#171a20;border:1px solid var(--grid);border-radius:4px;}
+  .calc-map .cm-title{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+  .calc-map .cm-row{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-family:'Inter',sans-serif;font-size:12.5px;color:var(--dim);}
+  .calc-map .cm-addr{flex-shrink:0;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--green);border:1px solid var(--green);border-radius:3px;padding:1px 7px;}
+
+  .whygrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:6px;}
+  @media (max-width:820px){.whygrid{grid-template-columns:1fr;}}
+  .whycol h4{font-family:'Teko',sans-serif;font-size:18px;margin:0 0 6px;}
+  .whycol.dc h4{color:var(--dc);}
+  .whycol.ac h4{color:var(--ac);}
+  .whycol.bldc h4{color:var(--bldc);}
+  .whycol ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1><span>DC</span> vs <span class="ac">AC</span> vs <span style="color:var(--bldc);">Brushless</span></h1>
+    <div class="subtitle">same load, three motor types, three different ways to lose (or not lose) power</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="canvas" width="1000" height="420"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label>Load <b id="loadVal">100%</b> of rated</label>
+        <input type="range" id="load" min="10" max="150" value="100" step="1">
+      </div>
+      <div class="field">
+        <label>Motor size</label>
+        <select id="ratedPower">
+          <option value="186">1/4 HP (186 W)</option>
+          <option value="373">1/2 HP (373 W)</option>
+          <option value="746" selected>1 HP (746 W)</option>
+          <option value="1492">2 HP (1492 W)</option>
+          <option value="3730">5 HP (3730 W)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label>Supply voltage (for current draw)</label>
+      <div class="presets" id="voltPresets">
+        <button data-v="12">12V</button>
+        <button data-v="24">24V</button>
+        <button data-v="48">48V</button>
+        <button data-v="120" class="active">120V</button>
+        <button data-v="240">240V</button>
+      </div>
+    </div>
+
+    <div class="winner" id="winner"></div>
+
+    <div class="cards">
+      <div class="mcard dc">
+        <h3>DC Motor (brushed)</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="dcOut"></span></div>
+        <div class="statline"><span>Input power</span><span class="v" id="dcIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="dcEff"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="dcAmps"></span></div>
+        <div class="lossbar" id="dcLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#8b93a3;"></i>friction/brush (fixed)</span>
+          <span><i class="dot" style="background:var(--dc);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+
+      <div class="mcard ac">
+        <h3>AC Motor (induction)</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="acOut"></span></div>
+        <div class="statline"><span>Input power (real)</span><span class="v" id="acIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="acEff"></span></div>
+        <div class="statline"><span>Power factor</span><span class="v" id="acPF"></span></div>
+        <div class="statline"><span>Apparent power</span><span class="v" id="acApp"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="acAmps"></span></div>
+        <div class="lossbar" id="acLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#8b93a3;"></i>core+windage (fixed)</span>
+          <span><i class="dot" style="background:var(--ac);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+
+      <div class="mcard bldc">
+        <h3>Brushless DC</h3>
+        <div class="statline"><span>Output power</span><span class="v" id="bldcOut"></span></div>
+        <div class="statline"><span>Input power</span><span class="v" id="bldcIn"></span></div>
+        <div class="statline"><span>Efficiency</span><span class="v" id="bldcEff"></span></div>
+        <div class="statline"><span>Current drawn</span><span class="v" id="bldcAmps"></span></div>
+        <div class="lossbar" id="bldcLossBar"></div>
+        <div class="legend">
+          <span><i class="dot" style="background:#8b93a3;"></i>core+ESC switching (fixed)</span>
+          <span><i class="dot" style="background:var(--bldc);"></i>copper I²R (variable)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula">
+      <span class="lbl">Efficiency:</span> η = P<sub>out</sub> / P<sub>in</sub> &nbsp; where &nbsp; P<sub>in</sub> = P<sub>out</sub> + P<sub>fixed</sub> + P<sub>variable</sub>·(load)²
+      <br>
+      <span class="lbl">AC power factor:</span> PF = I<sub>real</sub> / I<sub>apparent</sub> &nbsp; — the motor always draws magnetizing current, even at no load
+      <br>
+      <span class="lbl">Current drawn:</span> DC: I = P<sub>in</sub> / V &nbsp;&nbsp; AC: I = P<sub>in</sub> / (V × PF)
+    </div>
+
+    <div class="calc-map">
+      <div class="cm-title">Same math, on a physical calculator</div>
+      <div class="cm-row"><span class="cm-addr">F5</span><span>x² — square the load fraction first, since the variable-loss term scales with load squared, not load itself</span></div>
+      <div class="cm-row"><span class="cm-addr">A4</span><span>+ — add output power, fixed losses, and variable losses together to get total input power</span></div>
+      <div class="cm-row"><span class="cm-addr">D4</span><span>÷ — output divided by input is efficiency; input divided by voltage is current drawn</span></div>
+      <div class="cm-row"><span class="cm-addr">F4</span><span>√ — AC power factor needs a square root: square the load and the magnetizing current, add them, then root the total</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="subtitle" style="margin-bottom:8px;">Why they lose power differently</div>
+    <div class="whygrid">
+      <div class="whycol dc">
+        <h4>DC (brushed)</h4>
+        <ul>
+          <li>Physical brushes riding on a commutator create constant friction, win or lose — that loss doesn't care how loaded the motor is.</li>
+          <li>Steady magnetic field means almost no core loss — no alternating flux, nothing to reverse-magnetize.</li>
+          <li>All electrical input is real power — no power factor to worry about, no reactive current.</li>
+        </ul>
+      </div>
+      <div class="whycol ac">
+        <h4>AC (induction)</h4>
+        <ul>
+          <li>No brushes — that source of friction loss is gone entirely.</li>
+          <li>Alternating magnetic field means real core losses — hysteresis and eddy currents reversing 50/60 times a second.</li>
+          <li>Needs a magnetizing current just to sustain the rotating field, regardless of load — that's why power factor collapses at light load, drawing more current than the real power alone suggests.</li>
+        </ul>
+      </div>
+      <div class="whycol bldc">
+        <h4>Brushless DC</h4>
+        <ul>
+          <li>No brushes, same as AC — friction loss gone.</li>
+          <li>Permanent-magnet rotor means the field is just there — no induced rotor current, no "slip" loss like an induction motor has to pay.</li>
+          <li>No continuous magnetizing current needed either, so it stays efficient even lightly loaded — why cordless tools and fans (which rarely run at full rated load) switched to it.</li>
+          <li>Tradeoff: the electronic controller (ESC) that commutates it has its own small switching losses — real, just smaller than what it eliminates.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const DC = { fixedFrac: 0.07, varFrac: 0.11 };
+const AC = { fixedFrac: 0.05, varFrac: 0.07, pfRated: 0.894, imFrac: 0.5 };
+const BLDC = { fixedFrac: 0.035, varFrac: 0.045 };
+
+let loadPct = 100;
+let ratedPower = 746;
+let voltage = 120;
+
+const loadInput = document.getElementById('load');
+const loadVal = document.getElementById('loadVal');
+const ratedSelect = document.getElementById('ratedPower');
+const voltPresets = document.getElementById('voltPresets');
+const winnerBox = document.getElementById('winner');
+
+function effDC(x){
+  return x / (x + DC.fixedFrac + DC.varFrac * x * x);
+}
+function pfAC(x){
+  return x / Math.sqrt(x*x + AC.imFrac*AC.imFrac);
+}
+function effAC(x){
+  return x / (x + AC.fixedFrac + AC.varFrac * x * x);
+}
+function effBLDC(x){
+  return x / (x + BLDC.fixedFrac + BLDC.varFrac * x * x);
+}
+
+function computeDC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = DC.fixedFrac * P_rated;
+  const varr = DC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const I = Pin / V;
+  return { Pout, Pin, fixed, varr, eff, I };
+}
+function computeAC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = AC.fixedFrac * P_rated;
+  const varr = AC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const pf = pfAC(x);
+  const S = Pin / pf;
+  const I = S / V;
+  return { Pout, Pin, fixed, varr, eff, pf, S, I };
+}
+function computeBLDC(x, P_rated, V){
+  const Pout = x * P_rated;
+  const fixed = BLDC.fixedFrac * P_rated;
+  const varr = BLDC.varFrac * P_rated * x * x;
+  const Pin = Pout + fixed + varr;
+  const eff = Pout / Pin;
+  const I = Pin / V;
+  return { Pout, Pin, fixed, varr, eff, I };
+}
+
+function fmtW(w){
+  return w >= 1000 ? (w/1000).toFixed(2)+' kW' : w.toFixed(1)+' W';
+}
+
+function update(){
+  const x = loadPct / 100;
+  loadVal.textContent = loadPct + '%';
+
+  const dc = computeDC(x, ratedPower, voltage);
+  const ac = computeAC(x, ratedPower, voltage);
+  const bldc = computeBLDC(x, ratedPower, voltage);
+
+  document.getElementById('dcOut').textContent = fmtW(dc.Pout);
+  document.getElementById('dcIn').textContent = fmtW(dc.Pin);
+  document.getElementById('dcEff').textContent = (dc.eff*100).toFixed(1) + '%';
+  document.getElementById('dcAmps').textContent = dc.I.toFixed(2) + ' A';
+
+  document.getElementById('acOut').textContent = fmtW(ac.Pout);
+  document.getElementById('acIn').textContent = fmtW(ac.Pin);
+  document.getElementById('acEff').textContent = (ac.eff*100).toFixed(1) + '%';
+  document.getElementById('acPF').textContent = ac.pf.toFixed(2);
+  document.getElementById('acApp').textContent = fmtW(ac.S).replace('W','VA');
+  document.getElementById('acAmps').textContent = ac.I.toFixed(2) + ' A';
+
+  document.getElementById('bldcOut').textContent = fmtW(bldc.Pout);
+  document.getElementById('bldcIn').textContent = fmtW(bldc.Pin);
+  document.getElementById('bldcEff').textContent = (bldc.eff*100).toFixed(1) + '%';
+  document.getElementById('bldcAmps').textContent = bldc.I.toFixed(2) + ' A';
+
+  const dcFixedPct = dc.fixed / dc.Pin * 100;
+  const dcVarPct = dc.varr / dc.Pin * 100;
+  document.getElementById('dcLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-dcFixedPct-dcVarPct)}%;background:${'#49c78d'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${dcFixedPct}%;background:#8b93a3;"></div>
+     <div class="lossseg" style="width:${dcVarPct}%;background:var(--dc);"></div>`;
+
+  const acFixedPct = ac.fixed / ac.Pin * 100;
+  const acVarPct = ac.varr / ac.Pin * 100;
+  document.getElementById('acLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-acFixedPct-acVarPct)}%;background:${'#49c78d'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${acFixedPct}%;background:#8b93a3;"></div>
+     <div class="lossseg" style="width:${acVarPct}%;background:var(--ac);"></div>`;
+
+  const bldcFixedPct = bldc.fixed / bldc.Pin * 100;
+  const bldcVarPct = bldc.varr / bldc.Pin * 100;
+  document.getElementById('bldcLossBar').innerHTML =
+    `<div class="lossseg" style="width:${(100-bldcFixedPct-bldcVarPct)}%;background:${'#49c78d'};opacity:0.35;"></div>
+     <div class="lossseg" style="width:${bldcFixedPct}%;background:#8b93a3;"></div>
+     <div class="lossseg" style="width:${bldcVarPct}%;background:var(--bldc);"></div>`;
+
+  const results = [
+    { name: 'DC (brushed)', eff: dc.eff, color: 'var(--dc)' },
+    { name: 'AC (induction)', eff: ac.eff, color: 'var(--ac)' },
+    { name: 'Brushless DC', eff: bldc.eff, color: 'var(--bldc)' }
+  ].sort((a,b) => b.eff - a.eff);
+  const best = results[0], second = results[1];
+  const gap = (best.eff - second.eff) * 100;
+  winnerBox.style.background = 'rgba(180,140,232,0.10)';
+  winnerBox.style.color = best.color;
+  if(gap < 0.3){
+    winnerBox.textContent = `Essentially tied at this load — ${results.map(r=>r.name+' '+(r.eff*100).toFixed(1)+'%').join(' · ')}`;
+  } else {
+    winnerBox.textContent = `${best.name} wins at this load — ${(best.eff*100).toFixed(1)}% vs ${second.name} at ${(second.eff*100).toFixed(1)}%`;
+  }
+
+  renderChart(x);
+}
+
+function renderChart(currentX){
+  ctx.fillStyle = '#12151a';
+  ctx.fillRect(0,0,W,H);
+
+  const marginL = 60, marginR = 30, marginT = 30, marginB = 50;
+  const plotW = W - marginL - marginR;
+  const plotH = H - marginT - marginB;
+  const xMin = 0.1, xMax = 1.5;
+  const yMin = 0, yMax = 100;
+
+  function px(x){ return marginL + (x - xMin)/(xMax - xMin) * plotW; }
+  function py(y){ return marginT + plotH - (y - yMin)/(yMax - yMin) * plotH; }
+
+  ctx.strokeStyle = '#262b34';
+  ctx.lineWidth = 1;
+  ctx.font = '11px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5b6373';
+  for(let y=0; y<=100; y+=20){
+    const yy = py(y);
+    ctx.beginPath(); ctx.moveTo(marginL, yy); ctx.lineTo(W-marginR, yy); ctx.stroke();
+    ctx.fillText(y+'%', 8, yy+4);
+  }
+  for(let xv=0.25; xv<=1.5; xv+=0.25){
+    const xx = px(xv);
+    ctx.beginPath(); ctx.moveTo(xx, marginT); ctx.lineTo(xx, H-marginB); ctx.stroke();
+    ctx.fillText(Math.round(xv*100)+'%', xx-14, H-marginB+18);
+  }
+  ctx.fillStyle = '#8b93a3';
+  ctx.fillText('LOAD (% of rated)', W/2-55, H-12);
+
+  ctx.strokeStyle = '#3a3f49';
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(px(1), marginT); ctx.lineTo(px(1), H-marginB); ctx.stroke();
+  ctx.setLineDash([]);
+
+  function drawCurve(effFn, color){
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for(let i=0;i<=100;i++){
+      const xv = xMin + (xMax-xMin)*i/100;
+      const yv = effFn(xv)*100;
+      const p1 = px(xv), p2 = py(yv);
+      if(i===0) ctx.moveTo(p1,p2); else ctx.lineTo(p1,p2);
+    }
+    ctx.stroke();
+  }
+  drawCurve(effDC, '#ffb454');
+  drawCurve(effAC, '#5ac8e8');
+  drawCurve(effBLDC, '#b48ce8');
+
+  function marker(effFn, color){
+    const yv = effFn(currentX)*100;
+    const p1 = px(currentX), p2 = py(yv);
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(p1,p2,5,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#12151a'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  marker(effDC, '#ffb454');
+  marker(effAC, '#5ac8e8');
+  marker(effBLDC, '#b48ce8');
+
+  ctx.font = '13px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#ffb454';
+  ctx.fillText('● DC (brushed)', marginL, 20);
+  ctx.fillStyle = '#5ac8e8';
+  ctx.fillText('● AC (induction)', marginL+150, 20);
+  ctx.fillStyle = '#b48ce8';
+  ctx.fillText('● Brushless DC', marginL+300, 20);
+}
+
+loadInput.addEventListener('input', ()=>{
+  loadPct = parseFloat(loadInput.value);
+  update();
+});
+ratedSelect.addEventListener('change', ()=>{
+  ratedPower = parseFloat(ratedSelect.value);
+  update();
+});
+voltPresets.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  voltage = parseFloat(btn.dataset.v);
+  [...voltPresets.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  update();
+});
+
+update();
+</script>
+</body>
+</html>
