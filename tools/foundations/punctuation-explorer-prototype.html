@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punctuation Explorer — HIL Guild (prototype)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+  :root{
+    --hil-green:#00cc66; --hil-bg:#0a0a0a; --hil-surface:#111111; --hil-surface-2:#1a1a1a;
+    --hil-border:#222222; --hil-text:#e0e0e0; --hil-text-muted:#666666; --hil-danger:#cc3333;
+    --hil-amber:#cc8800; --hil-green-dim:#0a3a22;
+    --font-display:'Orbitron',monospace; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--hil-bg); color:var(--hil-text); font-family:var(--font-ui); padding:20px 16px 60px;}
+  .wrap{max-width:900px; margin:0 auto;}
+
+  .proto-banner{background:#2a1f0a; border:1px solid #7a5a1a; color:#e0b565; font-family:var(--font-mono);
+    font-size:11.5px; padding:8px 14px; text-align:center; letter-spacing:0.4px; margin-bottom:16px; border-radius:4px;}
+
+  header{border-bottom:2px solid var(--hil-border); padding-bottom:12px; margin-bottom:16px;}
+  h1{font-family:var(--font-display); font-weight:900; font-size:26px; letter-spacing:0.03em; margin:0;}
+  h1 span{color:var(--hil-green);}
+  .subtitle{font-family:var(--font-mono); font-size:12px; color:var(--hil-text-muted); letter-spacing:0.5px; text-transform:uppercase;}
+
+  .mode-toggle{display:flex; gap:8px; margin:16px 0;}
+  .mode-toggle button{flex:1; padding:10px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--hil-green); color:var(--hil-green); background:var(--hil-green-dim);}
+
+  .mark-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:8px; margin-bottom:16px;}
+  .mark-key{position:relative; padding:14px 4px 10px; text-align:center; border-radius:6px; cursor:pointer;
+    border:1px solid var(--hil-border); background:var(--hil-surface-2); transition:transform .08s ease;}
+  .mark-key:active{transform:scale(0.95);}
+  .mark-key.confusable{border-color:var(--hil-green);}
+  .mark-key .mk-symbol{font-family:var(--font-display); font-size:22px; color:var(--hil-text); line-height:1;}
+  .mark-key .mk-name{font-family:var(--font-mono); font-size:8.5px; color:var(--hil-text-muted); margin-top:6px; letter-spacing:0.5px;}
+  .mark-key.viewed::after{content:'✓'; position:absolute; top:3px; right:5px; font-size:9px; color:var(--hil-green);}
+
+  .lesson{background:var(--hil-surface-2); border:1px solid var(--hil-border); border-radius:6px; padding:18px; display:none;}
+  .lesson.show{display:block;}
+  .lesson h3{font-family:var(--font-display); font-size:18px; margin:0 0 6px;}
+  .lesson .symbol-badge{display:inline-block; font-family:var(--font-display); font-size:26px; color:var(--hil-green);
+    border:1px solid var(--hil-green); padding:4px 14px; border-radius:8px; margin-bottom:10px;}
+  .lesson p{font-size:14px; line-height:1.55; margin:0 0 10px; color:var(--hil-text);}
+  .lesson .example{font-family:var(--font-mono); background:#04100a; border:1px solid var(--hil-border);
+    padding:10px 12px; border-radius:4px; color:var(--hil-green); font-size:13px; margin-bottom:10px; line-height:1.6;}
+  .lesson .mistake{background:rgba(204,51,51,0.1); border:1px solid var(--hil-danger); border-radius:4px;
+    padding:8px 12px; font-size:12.5px; color:#ff8888; margin-bottom:10px;}
+  .deep-toggle{width:100%; text-align:left; padding:10px 14px; border-radius:6px; background:var(--hil-green-dim);
+    border:1px solid var(--hil-green); color:var(--hil-green); font-family:var(--font-mono); font-size:12px; font-weight:700;
+    cursor:pointer; display:flex; justify-content:space-between; align-items:center; margin-top:6px;}
+  .deep-panel{display:none; margin-top:10px; padding:14px; background:#04100a; border:1px solid var(--hil-border); border-radius:6px;}
+  .deep-panel.open{display:block;}
+  .deep-panel h4{font-family:var(--font-display); font-size:11px; color:var(--hil-green); text-transform:uppercase;
+    letter-spacing:0.06em; margin:12px 0 6px;}
+  .deep-panel h4:first-child{margin-top:0;}
+  .deep-panel p{font-size:13px; line-height:1.5; margin:0 0 4px;}
+  .close-btn{margin-top:14px; background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted);
+    padding:6px 14px; border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+
+  .practice-panel{background:var(--hil-surface-2); border:1px solid var(--hil-amber); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .pp-hint{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-score{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-sentence{font-size:18px; line-height:1.6; margin-bottom:14px; font-family:var(--font-ui);}
+  .pp-blank{display:inline-block; min-width:34px; border-bottom:2px solid var(--hil-amber); text-align:center; color:var(--hil-amber); font-weight:700;}
+  .pp-blank.filled{border-bottom-color:var(--hil-green); color:var(--hil-green);}
+  .pp-candidates{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .pp-candidate{padding:8px 16px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface);
+    color:var(--hil-text); font-family:var(--font-display); font-size:16px; cursor:pointer;}
+  .pp-candidate:hover{border-color:var(--hil-amber);}
+  .pp-feedback{margin-top:8px; font-family:var(--font-mono); font-size:12px; font-weight:700; line-height:1.5;}
+  .pp-feedback.correct{color:var(--hil-green);}
+  .pp-feedback.wrong{color:var(--hil-danger);}
+  .pp-actions{display:flex; gap:8px; margin-top:12px;}
+  .pp-actions button{background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted); padding:7px 14px;
+    border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+  .pp-actions button:hover{border-color:var(--hil-amber); color:var(--hil-amber);}
+  .pp-next{border-color:var(--hil-green) !important; color:var(--hil-green) !important;}
+
+  .legend{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted); margin-top:12px; display:flex; gap:16px; flex-wrap:wrap;}
+  .legend .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">PROTOTYPE — matched-pair sibling to Calculator Explorer. Same Learn/Practice pattern, no hil-shell/session-logger wiring yet.</div>
+
+<div class="wrap">
+  <header>
+    <h1>PUNCTUATION <span>EXPLORER</span></h1>
+    <div class="subtitle">Comma, semicolon, apostrophe, dash — what each mark actually does, and when to reach for it</div>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="modeLearnBtn" class="active" onclick="setMode('learn')">Learn</button>
+    <button id="modePracticeBtn" onclick="setMode('practice')">Practice</button>
+  </div>
+
+  <div id="learnView">
+    <div class="mark-grid" id="markGrid"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--hil-green)"></span>Green border — genuinely confusable, worth the deep-dive</span>
+      <span><span class="dot" style="background:var(--hil-text-muted)"></span>Gray — usually just needs the one-line refresher</span>
+    </div>
+
+    <div class="lesson" id="lessonCard" style="margin-top:16px;">
+      <div class="symbol-badge" id="lessonSymbol"></div>
+      <h3 id="lessonTitle"></h3>
+      <p id="lessonExplain"></p>
+      <div class="example" id="lessonExample"></div>
+      <div class="mistake" id="lessonMistake" style="display:none;"></div>
+      <div id="deepToggleWrap"></div>
+      <div class="deep-panel" id="deepPanel"></div>
+      <button class="close-btn" onclick="closeLesson()">Close</button>
+    </div>
+  </div>
+
+  <div id="practiceView" style="display:none;">
+    <div class="practice-panel" id="practicePanel"></div>
+  </div>
+</div>
+
+<script>
+const MARKS = [
+  {sym:',', name:'Comma', confusable:true,
+    explain:'Separates items in a list, sets off an introductory phrase, or joins two complete sentences ONLY when paired with a conjunction like "and" or "but".',
+    example:'I packed a sweater, boots, and a hat.\nAfter the rain stopped, we went outside.',
+    mistake:'Common mistake: using a comma alone to join two complete sentences ("I was tired, I went home.") — that\'s a comma splice. Use a semicolon, a period, or add "and"/"but".',
+    deep:{
+      whatItIs:'A comma marks a short pause — shorter than a period, meant to keep a sentence from running everything together without fully stopping it.',
+      whyItMatters:'Most comma mistakes fall into two buckets: forgetting one where a pause is needed, or using one where a full stop (period or semicolon) was actually required. The second one — the comma splice — is the single most common punctuation error in casual writing.',
+      connections:[
+        'Oxford comma: the comma before "and" in a list ("apples, oranges, and bananas") — optional in casual writing, but leaving it out can occasionally create genuine confusion',
+        'Comma splice fix: "I was tired; I went home." or "I was tired, so I went home." or just two sentences',
+        'Introductory phrases: "After the rain stopped, we went outside" — the comma marks where the setup ends and the main sentence begins'
+      ]
+    }},
+  {sym:'.', name:'Period', confusable:false,
+    explain:'Ends a complete sentence, or marks an abbreviation.',
+    example:'The store closes at 9pm.\nDr. Smith will see you now.'},
+  {sym:'?', name:'Question Mark', confusable:false,
+    explain:'Ends a direct question.',
+    example:'What time does the store close?'},
+  {sym:'!', name:'Exclamation Point', confusable:false,
+    explain:'Ends a sentence with strong emotion or emphasis. Use sparingly — overuse weakens the effect.',
+    example:'Watch out!'},
+  {sym:"'", name:'Apostrophe', confusable:true,
+    explain:'Does two unrelated jobs: shows possession ("the dog\'s bone") or marks a contraction where letters are missing ("don\'t" = "do not").',
+    example:"The dog's bone. (possession)\nIt's raining. (it is)",
+    mistake:'Classic trap: "it\'s" always means "it is" — the possessive form of "it" is "its", with NO apostrophe. "The dog wagged its tail" is correct; "The dog wagged it\'s tail" is wrong.',
+    deep:{
+      whatItIs:'Apostrophes mark two completely different things that happen to look identical: ownership (whose is it?) and missing letters (what got contracted?). English never gave them different symbols, which is exactly why they get confused.',
+      whyItMatters:'"Its" vs. "it\'s" and "whose" vs. "who\'s" are the two most common apostrophe mistakes, and both follow the exact same trap: the possessive pronoun (its, whose, your, their) never takes an apostrophe, but the contraction (it\'s, who\'s, you\'re, they\'re) always does.',
+      connections:[
+        'Singular possessive: add \'s — "the cat\'s toy" (one cat)',
+        'Plural possessive (word already ends in s): add just an apostrophe — "the cats\' toys" (multiple cats)',
+        'Irregular plural possessive: add \'s like normal — "the children\'s toys" (children doesn\'t end in s)',
+        'Never use an apostrophe just to make a word plural — "the 1990s" not "the 1990\'s"'
+      ]
+    }},
+  {sym:'" "', name:'Quotation Marks', confusable:false,
+    explain:'Surround someone\'s exact spoken or written words, or the title of a short work.',
+    example:'She said, "I\'ll be there at noon."'},
+  {sym:':', name:'Colon', confusable:true,
+    explain:'Introduces a list, an explanation, or a quote — but only after a complete sentence.',
+    example:'Bring the following: a pencil, paper, and a calculator.',
+    mistake:'Common mistake: using a colon after an incomplete sentence, like "My favorite foods are: pizza and tacos." Drop the colon — "are" already sets up the list.',
+    deep:{
+      whatItIs:'A colon is a formal, controlled kind of pause — a verbal "here it comes." It tells the reader that what follows explains, lists, or expands on what came before.',
+      whyItMatters:'The rule that trips people up: everything BEFORE the colon has to be able to stand alone as a complete sentence. If you can\'t put a period where the colon is and still have it make sense, the colon is wrong.',
+      connections:[
+        'Introducing a list: "She packed three things: a map, water, and a flashlight."',
+        'Introducing an explanation: "He had one goal: to win."',
+        'Time and ratios keep their own separate convention: 3:45, a 2:1 ratio — unrelated to the sentence-punctuation colon'
+      ]
+    }},
+  {sym:';', name:'Semicolon', confusable:true,
+    explain:'Joins two complete, closely related sentences without a conjunction. Stronger pause than a comma, softer than a period.',
+    example:'I have a big test tomorrow; I can\'t go out tonight.',
+    mistake:'Common mistake: using a semicolon where a comma belongs, like after an introductory phrase ("After the game; we went home."). If either side of the semicolon can\'t stand alone as a full sentence, it\'s the wrong mark.',
+    deep:{
+      whatItIs:'A semicolon is a period and a comma sharing one job: it fully separates two complete sentences (like a period) while signaling they\'re closely enough related to stay in the same sentence (like a comma).',
+      whyItMatters:'The one hard rule: both sides of a semicolon must be able to stand alone as complete sentences. If you could replace the semicolon with a period and both halves would still make sense on their own, it\'s correct. If not, you probably wanted a comma.',
+      connections:[
+        'Test it: "I have a big test tomorrow. I can\'t go out tonight." — both work alone, so the semicolon is valid',
+        'Semicolons also separate items in a list when the items themselves contain commas: "I\'ve lived in Portland, Oregon; Austin, Texas; and Reno, Nevada."',
+        'Never follow a semicolon with a conjunction like "and" or "but" — that\'s what a comma is for'
+      ]
+    }},
+  {sym:'-', name:'Hyphen', confusable:true,
+    explain:'Joins words into a single compound idea, or splits a word across a line break. Shortest of the three dash-family marks.',
+    example:'A well-known author. A five-year-old child.',
+    deep:{
+      whatItIs:'The hyphen, en dash, and em dash look almost identical but do three different jobs — and they get harder to tell apart the shorter they are on screen.',
+      whyItMatters:'Mixing them up rarely breaks meaning, but it reads as inconsistent in anything formal. The length is the tell: hyphen (-) is shortest, en dash (–) is medium, em dash (—) is longest.',
+      connections:[
+        'Hyphen (-): joins compound words — "well-known", "five-year-old", "self-aware"',
+        'En dash (–): shows a range — "pages 10–20", "the 2020–2021 season" — think of it as a short "to"',
+        'Em dash (—): sets off a dramatic interruption or an emphasized aside — "The answer was obvious — or so I thought."'
+      ]
+    }},
+  {sym:'–', name:'En Dash', confusable:true,
+    explain:'Shows a range of numbers or dates — think of it as standing in for the word "to".',
+    example:'Pages 10–20. Monday–Friday.',
+    deep:{
+      whatItIs:'Named for its width — roughly the width of a lowercase "n". It sits between a hyphen and an em dash in both length and job.',
+      whyItMatters:'It\'s the one people most often skip entirely, typing a hyphen instead ("pages 10-20") — not technically wrong in casual writing, but the en dash is the more correct choice for a range.',
+      connections:[
+        'Ranges: "Monday–Friday", "pages 10–20", "the 2020–2021 season"',
+        'Can also connect two related but independent items: "the New York–London flight"'
+      ]
+    }},
+  {sym:'—', name:'Em Dash', confusable:true,
+    explain:'Sets off a dramatic pause, an interruption, or an emphasized aside — more forceful than a comma, less formal than parentheses.',
+    example:'The answer was obvious — or so I thought.',
+    deep:{
+      whatItIs:'Named for its width — roughly the width of a capital "M". It\'s the longest and most visually dramatic of the three dash-family marks.',
+      whyItMatters:'An em dash can often replace a comma, semicolon, or parentheses — but it changes the tone. It\'s more conversational and emphatic than any of those.',
+      connections:[
+        'Interruption or aside: "The answer was obvious — or so I thought."',
+        'Can replace parentheses for a punchier feel: "She finally answered (after three tries) the phone." vs. "She finally answered — after three tries — the phone."',
+        'Never overuse — a sentence with three em dashes reads as breathless rather than emphatic'
+      ]
+    }},
+  {sym:'…', name:'Ellipsis', confusable:false,
+    explain:'Shows an omitted word or a trailing-off thought.',
+    example:'"I was going to say... never mind."'},
+  {sym:'( )', name:'Parentheses', confusable:false,
+    explain:'Add extra, non-essential information — the sentence should still make sense if you deleted everything inside them.',
+    example:'The meeting (originally scheduled for Monday) was moved to Friday.'},
+  {sym:'[ ]', name:'Brackets', confusable:false,
+    explain:'Show an editorial change or clarification inserted into a quote that isn\'t part of the original words.',
+    example:'She said the plan "[would] work eventually."'},
+];
+
+const BY_SYM = Object.fromEntries(MARKS.map(m=>[m.sym,m]));
+const viewed = new Set();
+let MODE = 'learn';
+
+const markGrid = document.getElementById('markGrid');
+function renderGrid(){
+  markGrid.innerHTML = '';
+  MARKS.forEach(m=>{
+    const k = document.createElement('div');
+    k.className = 'mark-key ' + (m.confusable?'confusable':'') + (viewed.has(m.sym)?' viewed':'');
+    k.innerHTML = '<div class="mk-symbol">'+m.sym+'</div><div class="mk-name">'+m.name+'</div>';
+    k.onclick = ()=>openLesson(m.sym);
+    markGrid.appendChild(k);
+  });
+}
+renderGrid();
+
+function openLesson(sym){
+  const m = BY_SYM[sym];
+  if(!m) return;
+  viewed.add(sym);
+
+  document.getElementById('lessonSymbol').textContent = m.sym;
+  document.getElementById('lessonTitle').textContent = m.name;
+  document.getElementById('lessonExplain').textContent = m.explain;
+  document.getElementById('lessonExample').textContent = m.example;
+
+  const mistakeEl = document.getElementById('lessonMistake');
+  if(m.mistake){ mistakeEl.textContent = m.mistake; mistakeEl.style.display = 'block'; }
+  else{ mistakeEl.style.display = 'none'; }
+
+  const toggleWrap = document.getElementById('deepToggleWrap');
+  const deepPanel = document.getElementById('deepPanel');
+  toggleWrap.innerHTML = '';
+  deepPanel.classList.remove('open');
+  deepPanel.innerHTML = '';
+
+  if(m.deep){
+    const btn = document.createElement('button');
+    btn.className = 'deep-toggle';
+    btn.innerHTML = '<span>Go deeper — what it actually does, and the common trap</span><span>▾</span>';
+    btn.onclick = ()=>{
+      deepPanel.classList.toggle('open');
+      btn.querySelector('span:last-child').textContent = deepPanel.classList.contains('open') ? '▴' : '▾';
+      if(deepPanel.classList.contains('open') && !deepPanel.innerHTML){
+        deepPanel.innerHTML =
+          '<h4>What it actually does</h4><p>'+m.deep.whatItIs+'</p>'+
+          '<h4>Why it trips people up</h4><p>'+m.deep.whyItMatters+'</p>'+
+          '<h4>Where you\'ll use it</h4><ul style="margin:6px 0 0;padding-left:18px;">'+
+            m.deep.connections.map(c=>'<li style="font-size:13px;line-height:1.5;margin-bottom:6px;">'+c+'</li>').join('')+
+          '</ul>';
+      }
+    };
+    toggleWrap.appendChild(btn);
+  }
+
+  document.getElementById('lessonCard').classList.add('show');
+  renderGrid();
+}
+function closeLesson(){
+  document.getElementById('lessonCard').classList.remove('show');
+}
+
+function setMode(mode){
+  MODE = mode;
+  document.getElementById('modeLearnBtn').classList.toggle('active', mode==='learn');
+  document.getElementById('modePracticeBtn').classList.toggle('active', mode==='practice');
+  document.getElementById('learnView').style.display = mode==='learn' ? 'block' : 'none';
+  document.getElementById('practiceView').style.display = mode==='practice' ? 'block' : 'none';
+  if(mode==='practice') startPractice();
+}
+
+// ---------- PRACTICE MODE ----------
+// Fill-in-the-blank against real sentences, not multiple-choice trivia —
+// candidates are a small, deliberately confusable set so getting it right
+// means actually knowing the rule, not just recognizing the "normal" mark.
+const PRACTICE_QUESTIONS = [
+  {sentence:'I have a big test tomorrow___ I can\u2019t go out tonight.', candidates:[',',';',':'], correct:';',
+    explain:'Both halves are complete sentences on their own, so a semicolon is correct — a comma alone here would be a comma splice.'},
+  {sentence:'The company changed ___ logo last year.', candidates:["it's","its"], correct:'its',
+    explain:'This is possessive (the logo belonging to the company), not a contraction of "it is" — so no apostrophe.'},
+  {sentence:'Bring the following items___ a pencil, paper, and a calculator.', candidates:[',',';',':'], correct:':',
+    explain:'"Bring the following items" is a complete sentence on its own, so a colon correctly introduces the list.'},
+  {sentence:'She packed a sweater, boots___ and a hat.', candidates:[',',';'], correct:',',
+    explain:'This is a simple list — the comma before "and" (the Oxford comma) separates the last two items.'},
+  {sentence:'___ coming to the party tonight?', candidates:["Who's",'Whose'], correct:"Who's",
+    explain:'"Who\'s" is the contraction of "who is" — that\'s what this sentence means. "Whose" would ask about ownership instead.'},
+  {sentence:'The answer was obvious___ or so I thought.', candidates:[',',';','\u2014'], correct:'\u2014',
+    explain:'An em dash sets off this kind of dramatic, conversational aside better than a comma or semicolon would here.'},
+  {sentence:'The ___ toys were scattered everywhere.', candidates:['kids',"kid's","kids'"], correct:"kids'",
+    explain:'Multiple kids own the toys, and "kids" already ends in s, so the possessive only needs a trailing apostrophe.'},
+];
+let practiceIndex = 0;
+let practiceOrder = [];
+let practiceScore = {correct:0, attempted:0};
+
+function shuffleOrder(){
+  practiceOrder = PRACTICE_QUESTIONS.map((_,i)=>i);
+  for(let i=practiceOrder.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [practiceOrder[i],practiceOrder[j]] = [practiceOrder[j],practiceOrder[i]];
+  }
+}
+function currentQ(){ return PRACTICE_QUESTIONS[practiceOrder[practiceIndex]]; }
+
+function startPractice(){
+  shuffleOrder();
+  practiceIndex = 0;
+  practiceScore = {correct:0, attempted:0};
+  renderPractice(null);
+}
+function renderPractice(feedback){
+  const q = currentQ();
+  const panel = document.getElementById('practicePanel');
+  const sentenceHtml = q.sentence.replace('___', '<span class="pp-blank'+(feedback?' filled':'')+'">'+(feedback?feedback.picked:'___')+'</span>');
+  panel.innerHTML =
+    '<div class="pp-top"><span class="pp-hint">Question '+(practiceIndex+1)+' of '+PRACTICE_QUESTIONS.length+'</span>'+
+    '<span class="pp-score">Score: '+practiceScore.correct+'/'+practiceScore.attempted+'</span></div>'+
+    '<div class="pp-sentence">'+sentenceHtml+'</div>'+
+    (!feedback ? '<div class="pp-candidates">'+q.candidates.map(c=>'<button class="pp-candidate" onclick="checkAnswer(\''+c.replace(/'/g,"\\'")+'\')">'+c+'</button>').join('')+'</div>' : '')+
+    (feedback ? '<div class="pp-feedback '+(feedback.correct?'correct':'wrong')+'">'+(feedback.correct?'Correct! ':'Not quite — the answer is "'+q.correct+'". ')+q.explain+'</div>' : '')+
+    '<div class="pp-actions">'+
+      (!feedback ? '<button onclick="skipQuestion()">Skip</button>' : '<button class="pp-next" onclick="nextQuestion()">Next question</button>')+
+    '</div>';
+}
+function checkAnswer(picked){
+  const q = currentQ();
+  practiceScore.attempted++;
+  const correct = picked === q.correct;
+  if(correct) practiceScore.correct++;
+  renderPractice({correct, picked});
+}
+function skipQuestion(){ nextQuestion(); }
+function nextQuestion(){
+  practiceIndex = (practiceIndex+1) % PRACTICE_QUESTIONS.length;
+  if(practiceIndex === 0) shuffleOrder();
+  renderPractice(null);
+}
+</script>
+</body>
+</html>
