@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Solar &amp; Battery Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="../hil-shell.js"></script>
+<style>
+  :root{ --solar:#ff9f5a; --batt:#5fd68a; --clip:#ff5d5d; }
+  *{box-sizing:border-box;}
+  .wrap{max-width:1040px;margin:0 auto;padding:22px 18px 50px;}
+  header.moduleheader{border-bottom:2px solid var(--hil-border);padding-bottom:12px;margin-bottom:16px;}
+  h1{font-family:var(--font-display);font-weight:900;font-size:28px;letter-spacing:0.04em;margin:0;}
+  h1 span{color:var(--solar);}
+  .subtitle{font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);letter-spacing:0.5px;text-transform:uppercase;}
+
+  .stage{position:relative;border:1px solid var(--hil-border);border-radius:4px;overflow:hidden;background:#0a0c0b;}
+  canvas{display:block;width:100%;height:auto;}
+
+  .panel{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:4px;padding:16px 18px;margin-top:14px;}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:600px){.controls{grid-template-columns:1fr;}}
+  .field label{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;}
+  .field label b{color:var(--hil-text);font-size:14px;}
+  input[type=range]{width:100%;accent-color:var(--solar);}
+  select{width:100%;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text);font-family:var(--font-mono);padding:7px 8px;border-radius:3px;font-size:13px;}
+
+  .presets{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .presets button{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;background:transparent;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:5px 10px;border-radius:3px;cursor:pointer;}
+  .presets button.active{border-color:var(--hil-text);color:var(--hil-text);}
+
+  .togglegroup{display:flex;gap:8px;}
+  .togglegroup button{flex:1;font-family:var(--font-ui);font-size:17px;font-weight:600;background:#1c201e;border:1px solid var(--hil-border);color:var(--hil-text-muted);padding:8px;border-radius:4px;cursor:pointer;}
+  .togglegroup button.active{border-color:var(--solar);color:var(--solar);background:rgba(255,159,90,0.08);}
+
+  .battbar{margin-top:16px;background:#0a0c0b;border:1px solid var(--hil-border);border-radius:4px;height:34px;position:relative;overflow:hidden;}
+  .battfill{height:100%;transition:width 0.2s ease;}
+  .battlabel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-ui);font-size:18px;font-weight:600;color:#0c1510;}
+
+  .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px;}
+  @media (max-width:700px){.summary{grid-template-columns:1fr;}}
+  .scard{background:#1c201e;border:1px solid var(--hil-border);border-radius:4px;padding:12px 14px;text-align:center;}
+  .scard .lbl{font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .scard .val{font-family:var(--font-ui);font-size:22px;font-weight:600;}
+
+  .status{margin-top:14px;padding:10px 14px;border-radius:4px;font-size:13.5px;line-height:1.6;}
+  .status.good{background:rgba(73,199,141,0.12);color:var(--hil-green);border:1px solid rgba(73,199,141,0.4);}
+  .status.warn{background:rgba(255,201,60,0.12);color:var(--hil-amber, #cc8800);border:1px solid rgba(255,201,60,0.4);}
+  .status.bad{background:rgba(255,93,93,0.12);color:var(--hil-danger);border:1px solid rgba(255,93,93,0.4);}
+  .status .sub{display:block;font-family:var(--font-mono);font-size:11.5px;margin-top:3px;opacity:0.85;}
+
+  .formula{margin-top:14px;font-family:var(--font-mono);font-size:12.5px;line-height:1.9;border-left:2px solid var(--solar);padding:2px 0 2px 14px;}
+  .formula .lbl{color:var(--hil-text-muted);}
+  .formula .num{color:var(--solar);}
+
+  .calc-map{margin-top:14px;padding:12px 14px;background:var(--hil-surface-2);border:1px solid var(--hil-border);border-radius:4px;}
+  .calc-map .cm-title{font-family:var(--font-mono);font-size:11px;color:var(--solar);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+  .calc-map .cm-row{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-family:var(--font-ui);font-size:12.5px;color:var(--hil-text-muted);}
+  .calc-map .cm-addr{flex-shrink:0;font-family:var(--font-mono);font-size:11.5px;color:var(--solar);border:1px solid var(--solar);border-radius:3px;padding:1px 7px;}
+  a.cm-addr{text-decoration:none;cursor:pointer;}
+  a.cm-addr:hover{background:rgba(255,159,90,0.12);}
+  .calc-map.calc-keys{margin-top:10px;}
+  .btn-practice-link{margin-top:10px; width:100%; padding:9px; border-radius:4px; background:transparent;
+    border:1px solid var(--solar); color:var(--solar); font-family:var(--font-mono); font-size:11.5px;
+    text-transform:uppercase; letter-spacing:0.5px; cursor:pointer;}
+  .btn-practice-link:hover{background:rgba(255,159,90,0.1);}
+
+  .gms-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
+  .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-crumb b{color:var(--hil-green);}
+  .gms-member{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-member .name{color:var(--hil-text);font-weight:700;}
+  .gms-member .pill{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:10px;padding:3px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;}
+
+  .wrapup-panel{text-align:center;}
+  .btn-wrapup{font-family:var(--font-display);font-size:12px;letter-spacing:0.05em;background:var(--hil-green);color:#04140a;border:none;padding:10px 18px;border-radius:20px;cursor:pointer;font-weight:700;}
+  .btn-wrapup:hover{background:#00e673;}
+  .btn-wrapup:disabled{background:var(--hil-border-lt, #3a453e);color:var(--hil-text-muted);cursor:default;}
+  .ledger-panel{border:1px solid var(--hil-border);border-radius:8px;background:var(--hil-surface);margin-top:14px;}
+  .ledger-header{padding:10px 16px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .ledger-pre{margin:0;padding:16px;font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--hil-green);overflow-x:auto;}
+  .ledger-pre .k{color:var(--blue,#38bdf8);} .ledger-pre .s{color:var(--hil-amber, #cc8800);}
+
+  .proto-banner{background:#2a1f0a;border:1px solid #7a5a1a;color:#e0b565;font-family:var(--font-mono, monospace);font-size:11.5px;padding:8px 14px;text-align:center;letter-spacing:0.4px;}
+</style>
+</head>
+<body>
+
+  <div class="proto-banner">PROTOTYPE — tuning build, not wired into the live repo yet. Orientation now reshapes the curve, not just its height.</div>
+
+  <div class="gms-topbar">
+    <div class="gms-crumb">Guild &nbsp;&rsaquo;&nbsp; Electric Forge &nbsp;&rsaquo;&nbsp; <b>Solar &amp; Battery Lab</b></div>
+    <div class="gms-member">
+      <span class="name" id="memberName">—</span>
+      <span class="pill" id="memberPill">resolving member…</span>
+    </div>
+  </div>
+
+<div class="wrap">
+
+  <header class="moduleheader">
+    <h1>SOLAR <span>&amp;</span> BATTERY LAB</h1>
+    <div class="subtitle">Array azimuth tuning, tilt angles, inverter clipping, and flattening the midday curve</div>
+  </header>
+
+  <div class="stage">
+    <canvas id="canvas" width="1000" height="260"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label>Battery capacity <b id="capVal">100 Ah</b></label>
+        <input type="range" id="capacity" min="20" max="400" value="100" step="5">
+      </div>
+      <div class="field">
+        <label>System voltage</label>
+        <div class="presets" id="voltPresets">
+          <button data-v="12">12V</button>
+          <button data-v="24" class="active">24V</button>
+          <button data-v="48">48V</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Current charge <b id="socVal">50%</b></label>
+        <input type="range" id="soc" min="0" max="100" value="50" step="1">
+      </div>
+      <div class="field">
+        <label>Load (device draw) <b id="loadVal">300 W</b></label>
+        <input type="range" id="load" min="0" max="3000" value="300" step="10">
+      </div>
+      <div class="field">
+        <label>Solar array rating <b id="panelVal">800 W</b></label>
+        <input type="range" id="panel" min="100" max="2000" value="800" step="50">
+      </div>
+      <div class="field">
+        <label>Inverter max limit <b id="inverterVal">600 W</b></label>
+        <input type="range" id="inverter" min="200" max="2000" value="600" step="50">
+      </div>
+      <div class="field">
+        <label>Array orientation / azimuth <b id="orientVal">Split East / West</b></label>
+        <div class="presets" id="orientPresets">
+          <button data-o="south">Dead South (Peak Noon)</button>
+          <button data-o="split" class="active">Split East/West (Flattened)</button>
+          <button data-o="flat">Flat Horizontal (0°)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Sun conditions <b id="sunVal">80%</b></label>
+        <input type="range" id="sun" min="0" max="100" value="80" step="5">
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label>Charge controller</label>
+      <div class="togglegroup" id="controllerToggle">
+        <button data-c="mppt" class="active">MPPT (~97%)</button>
+        <button data-c="pwm">PWM (~80%)</button>
+      </div>
+    </div>
+
+    <div class="battbar">
+      <div class="battfill" id="battFill"></div>
+      <div class="battlabel" id="battLabel"></div>
+    </div>
+
+    <div class="summary">
+      <div class="scard"><div class="lbl">Raw Solar Gen (peak)</div><div class="val" id="solarRaw" style="color:var(--solar);"></div></div>
+      <div class="scard"><div class="lbl">Post-Inverter Output</div><div class="val" id="solarOut" style="color:var(--solar);"></div></div>
+      <div class="scard"><div class="lbl">Net Power Flow</div><div class="val" id="netFlow"></div></div>
+    </div>
+
+    <div class="status" id="statusBox"></div>
+
+    <div class="formula" id="formulaBox"></div>
+
+    <div class="calc-map">
+      <div class="cm-title">Field Math &amp; Array Optimization</div>
+      <div class="cm-row"><span class="cm-addr">Azimuth</span><span>Splitting east and west doesn't just shrink the noon spike — it reshapes the day into two smaller peaks (morning + afternoon) with a dip at solar noon, because neither half of the array is ever pointed straight at the sun.</span></div>
+      <div class="cm-row"><span class="cm-addr">Clipping</span><span>When raw generation exceeds your inverter limit, the excess is chopped flat — overpaneling captures early/late sun at the expense of noon waste.</span></div>
+      <div class="cm-row"><span class="cm-addr">C-Rate</span><span>Current divided by amp-hour capacity verifies your storage bank can handle the charge rate safely without thermal degradation.</span></div>
+    </div>
+
+    <div class="calc-map calc-keys">
+      <div class="cm-title">Calculator Keys For This Lab</div>
+      <div class="cm-row"><a class="cm-addr" href="../hil-calculator-explorer.html?addr=C4" target="_blank" rel="noopener">C4 ×</a><span>Wh = Ah × V, and Raw Solar = panel × sun% × efficiency × orientation — every step in this lab that combines two numbers into one bigger one uses Multiply.</span></div>
+      <div class="cm-row"><a class="cm-addr" href="../hil-calculator-explorer.html?addr=E5" target="_blank" rel="noopener">E5 %</a><span>Sun conditions, controller efficiency, and the orientation factor are all percentages cutting into the panel's rated output.</span></div>
+      <div class="cm-row"><a class="cm-addr" href="../hil-calculator-explorer.html?addr=B4" target="_blank" rel="noopener">B4 −</a><span>Net Flow = Actual Output − Load. Subtract tells you whether you're charging or draining.</span></div>
+      <div class="cm-row"><a class="cm-addr" href="../hil-calculator-explorer.html?addr=D4" target="_blank" rel="noopener">D4 ÷</a><span>Used twice: Net ÷ Voltage gets you current, then Current ÷ Ah gets you the C-rate.</span></div>
+      <div class="cm-row"><span class="cm-addr" style="opacity:0.6;cursor:default;">— no key —</span><span>Capping raw solar at the inverter limit (min of the two) isn't a button — it's a judgment call you make by comparing the two numbers yourself.</span></div>
+      <button class="btn-practice-link" id="practiceInCalcBtn">Practice these formulas in the Calculator &rarr;</button>
+    </div>
+  </div>
+
+  <div class="panel wrapup-panel">
+    <button class="btn-wrapup" id="wrapUpBtn">Wrap Up &rarr;</button>
+  </div>
+
+  <div class="ledger-panel">
+    <div class="ledger-header">Session Log Entry — what this Wrap Up wrote to the Ledger</div>
+    <pre class="ledger-pre" id="ledgerPreview">— click Wrap Up to log this session —</pre>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let capacity = 100, voltage = 24, soc = 50, load = 300, panel = 800, inverterLimit = 600, sun = 80, controller = 'mppt', orientation = 'split';
+
+const capInput = document.getElementById('capacity');
+const capVal = document.getElementById('capVal');
+const voltPresets = document.getElementById('voltPresets');
+const socInput = document.getElementById('soc');
+const socVal = document.getElementById('socVal');
+const loadInput = document.getElementById('load');
+const loadVal = document.getElementById('loadVal');
+const panelInput = document.getElementById('panel');
+const panelVal = document.getElementById('panelVal');
+const inverterInput = document.getElementById('inverter');
+const inverterVal = document.getElementById('inverterVal');
+const orientPresets = document.getElementById('orientPresets');
+const orientVal = document.getElementById('orientVal');
+const sunInput = document.getElementById('sun');
+const sunVal = document.getElementById('sunVal');
+const controllerToggle = document.getElementById('controllerToggle');
+const battFill = document.getElementById('battFill');
+const battLabel = document.getElementById('battLabel');
+const solarRawEl = document.getElementById('solarRaw');
+const solarOut = document.getElementById('solarOut');
+const netFlow = document.getElementById('netFlow');
+const statusBox = document.getElementById('statusBox');
+const formulaBox = document.getElementById('formulaBox');
+
+const CTRL_EFF = { mppt: 0.97, pwm: 0.80 };
+const MAX_SAFE_C = 1.0;
+
+// Orientation factors: how much lower the *peak* wattage is vs. dead-south,
+// because the array is never pointed straight at the sun for that orientation.
+// These are illustrative teaching constants, not derived from a solar model —
+// tune against real production data before treating them as accurate.
+const ORIENT_PEAK_FACTOR = { south: 1.0, split: 0.78, flat: 0.70 };
+
+// Returns a 0..1 shape multiplier for a given x position (60..940 = 06:00..18:00)
+// and orientation. This is what actually reshapes the curve, separate from the
+// peak-height factor above.
+function curveShape(x, orientation){
+  const solarNoonX = 500;
+  if(orientation === 'south'){
+    const n = (x - solarNoonX) / 220;
+    return Math.exp(-n*n);
+  }
+  if(orientation === 'flat'){
+    // wider, softer single hump — flat panels catch light all day but never optimally
+    const n = (x - solarNoonX) / 320;
+    return Math.exp(-n*n);
+  }
+  // split east/west: two humps (morning + afternoon), noon dip ~47% of peak
+  const eastX = 320, westX = 680, sigma = 150;
+  const eastLobe = Math.exp(-Math.pow((x - eastX) / sigma, 2));
+  const westLobe = Math.exp(-Math.pow((x - westX) / sigma, 2));
+  return Math.min(1, eastLobe + westLobe);
+}
+
+function compute(){
+  const Wh = capacity * voltage;
+  const eff = CTRL_EFF[controller];
+  const peakFactor = ORIENT_PEAK_FACTOR[orientation];
+
+  const rawSolar = panel * (sun/100) * eff * peakFactor;
+  const actualSolar = Math.min(rawSolar, inverterLimit);
+  const clippedW = Math.max(0, rawSolar - inverterLimit);
+
+  const net = actualSolar - load;
+  const Inet = net / voltage;
+  const cRate = Math.abs(Inet) / capacity;
+
+  solarRawEl.textContent = rawSolar.toFixed(0) + ' W';
+  solarOut.textContent = actualSolar.toFixed(0) + ' W' + (clippedW > 0 ? ` (${clippedW.toFixed(0)}W clipped)` : '');
+  netFlow.textContent = (net>=0?'+':'') + net.toFixed(0) + ' W';
+  netFlow.style.color = net >= 0 ? 'var(--batt)' : 'var(--hil-danger)';
+
+  battFill.style.width = soc + '%';
+  battFill.style.background = soc > 50 ? 'var(--batt)' : soc > 20 ? 'var(--hil-amber, #cc8800)' : 'var(--hil-danger)';
+  battLabel.textContent = soc + '% · ' + Wh.toFixed(0) + ' Wh capacity';
+
+  let statusCls, statusHtml;
+  if(cRate > MAX_SAFE_C){
+    statusCls = 'bad';
+    const verb = net>=0 ? 'charging' : 'discharging';
+    statusHtml = `⚠ ${(cRate).toFixed(2)}C — ${verb} faster than safe continuous limits (${MAX_SAFE_C}C). <span class="sub">At ${capacity}Ah, max safe continuous current is ~${(capacity*MAX_SAFE_C).toFixed(0)}A — system is drawing ${Math.abs(Inet).toFixed(1)}A.</span>`;
+  } else if(clippedW > 0){
+    statusCls = 'warn';
+    statusHtml = `Inverter Clipping Active — array peak exceeds inverter capacity by <b>${clippedW.toFixed(0)}W</b> at its strongest point. <span class="sub">Overpaneling safely captures morning/evening energy, but peak wattage is throttled.</span>`;
+  } else if(net > 0){
+    const remainingWh = Wh * (1 - soc/100);
+    const hoursToFull = remainingWh / net;
+    statusCls = 'good';
+    statusHtml = `Charging — full in about <b>${hoursToFull.toFixed(1)} hours</b> at this rate. <span class="sub">${cRate.toFixed(2)}C charge rate — well within safe limits.</span>`;
+  } else if(net < 0){
+    const remainingWh = Wh * (soc/100);
+    const hoursToEmpty = remainingWh / Math.abs(net);
+    statusCls = soc < 20 ? 'warn' : 'good';
+    statusHtml = `Discharging — empty in about <b>${hoursToEmpty.toFixed(1)} hours</b> at current load. <span class="sub">${cRate.toFixed(2)}C discharge rate.</span>`;
+  } else {
+    statusCls = 'good';
+    statusHtml = `Holding steady — solar generation perfectly matches load.`;
+  }
+  statusBox.className = 'status ' + statusCls;
+  statusBox.innerHTML = statusHtml;
+
+  formulaBox.innerHTML = `<span class="lbl">Raw Solar (peak):</span> ${panel}W × ${sun}% × ${(eff*100).toFixed(0)}% × orient(${orientation}) = <span class="num">${rawSolar.toFixed(0)}W</span>
+    &nbsp; <span class="lbl">Capped Output:</span> min(Raw, Inverter ${inverterLimit}W) = <span class="num">${actualSolar.toFixed(0)}W</span>
+    <br><span class="lbl">Net Flow:</span> Actual (${actualSolar.toFixed(0)}W) − Load (${load}W) = <span class="num">${net.toFixed(0)}W</span>
+    &nbsp; <span class="lbl">C-rate:</span> |I| / Ah = ${Math.abs(Inet).toFixed(1)} / ${capacity} = <span class="num">${cRate.toFixed(2)}C</span>`;
+
+  draw(rawSolar, actualSolar, clippedW, net);
+}
+
+function draw(rawSolar, actualSolar, clippedW, net){
+  ctx.fillStyle = '#0a0c0b'; ctx.fillRect(0,0,W,H);
+
+  ctx.strokeStyle = '#3a453e'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(60, 200); ctx.lineTo(940, 200); ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#6b7d72'; ctx.font = '11px var(--font-mono)'; ctx.textAlign = 'left';
+  ctx.fillText('06:00 Sunrise', 60, 220);
+  ctx.textAlign = 'center';
+  ctx.fillText('12:00 Solar Noon', 500, 220);
+  ctx.textAlign = 'right';
+  ctx.fillText('18:00 Sunset', 940, 220);
+
+  // Shared y-axis scale so the clip line and the curve always agree with each other,
+  // and always fit on-canvas regardless of how extreme the sliders are set.
+  const yBase = 200, yTop = 20;
+  const chartMaxW = Math.max(rawSolar, inverterLimit, 1) * 1.15;
+  const wToY = (w) => yBase - Math.min(1, w / chartMaxW) * (yBase - yTop);
+
+  ctx.beginPath();
+  ctx.moveTo(60, yBase);
+  for(let x = 60; x <= 940; x+=6){
+    const shape = curveShape(x, orientation);
+    ctx.lineTo(x, wToY(rawSolar * shape));
+  }
+  ctx.lineTo(940, yBase);
+  ctx.fillStyle = 'rgba(255,159,90,0.12)';
+  ctx.fill();
+  ctx.strokeStyle = '#ff9f5a'; ctx.lineWidth = 2; ctx.stroke();
+
+  if(clippedW > 0){
+    const invY = wToY(inverterLimit);
+    ctx.strokeStyle = '#ff5d5d'; ctx.lineWidth = 2; ctx.setLineDash([2,2]);
+    ctx.beginPath(); ctx.moveTo(80, invY); ctx.lineTo(920, invY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff5d5d'; ctx.font = '10px var(--font-mono)'; ctx.textAlign = 'center';
+    ctx.fillText('INVERTER CLIP LIMIT (' + inverterLimit + 'W)', 500, invY - 8);
+  }
+
+  ctx.fillStyle = '#ff9f5a'; ctx.font = 'bold 13px var(--font-mono)'; ctx.textAlign = 'left';
+  ctx.fillText(`ORIENTATION: ${orientation.toUpperCase()}`, 60, 35);
+  ctx.fillStyle = net >= 0 ? '#5fd68a' : '#ff5d5d';
+  ctx.textAlign = 'right';
+  ctx.fillText(`NET FLOW: ${(net>=0?'+':'')}${net.toFixed(0)}W`, 940, 35);
+  ctx.textAlign = 'left';
+}
+
+capInput.addEventListener('input',()=>{ capacity=parseFloat(capInput.value); capVal.textContent=capacity+' Ah'; compute(); });
+voltPresets.addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  voltage=parseFloat(btn.dataset.v);
+  [...voltPresets.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  compute();
+});
+socInput.addEventListener('input',()=>{ soc=parseFloat(socInput.value); socVal.textContent=soc+'%'; compute(); });
+loadInput.addEventListener('input',()=>{ load=parseFloat(loadInput.value); loadVal.textContent=load+' W'; compute(); });
+panelInput.addEventListener('input',()=>{ panel=parseFloat(panelInput.value); panelVal.textContent=panel+' W'; compute(); });
+inverterInput.addEventListener('input',()=>{ inverterLimit=parseFloat(inverterInput.value); inverterVal.textContent=inverterLimit+' W'; compute(); });
+orientPresets.addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  orientation=btn.dataset.o;
+  orientVal.textContent = orientation === 'south' ? 'Dead South (Peak)' : orientation === 'split' ? 'Split East / West' : 'Flat Horizontal (0°)';
+  [...orientPresets.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  compute();
+});
+sunInput.addEventListener('input',()=>{ sun=parseFloat(sunInput.value); sunVal.textContent=sun+'%'; compute(); });
+controllerToggle.addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  controller=btn.dataset.c;
+  [...controllerToggle.children].forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  compute();
+});
+
+compute();
+
+// Hands this module's own real formulas to the Calculator Explorer's Practice
+// mode via the practiceSet URL contract. This is the module side of the
+// infrastructure/module split — the calculator's code never changes, only
+// this list does, whenever the lab's formulas change.
+document.getElementById('practiceInCalcBtn').addEventListener('click', () => {
+  const actualNow = Math.round(Math.min(panel*(sun/100)*CTRL_EFF[controller], inverterLimit));
+  const questions = [
+    {
+      prompt: `A ${capacity}Ah battery at ${voltage}V — what's its Wh capacity?`,
+      solutionExpr: `${capacity}*${voltage}`,
+      sourceModule: 'Solar & Battery Lab',
+      steps: [{addr:'C4', note:'Multiply Ah × V'}],
+    },
+    {
+      prompt: `Your panel outputs ${actualNow}W and your load draws ${load}W. What's the net power flow?`,
+      solutionExpr: `${actualNow}-${load}`,
+      sourceModule: 'Solar & Battery Lab',
+      steps: [{addr:'B4', note:'Subtract load from output'}],
+    },
+    {
+      prompt: `You're drawing 20A from a ${capacity}Ah battery. What's the C-rate?`,
+      solutionExpr: `20/${capacity}`,
+      sourceModule: 'Solar & Battery Lab',
+      steps: [{addr:'D4', note:'Divide current by Ah capacity'}],
+    },
+    {
+      prompt: `Your panel is rated ${panel}W but sun conditions are only ${sun}%. How much are you actually getting (before controller efficiency losses)?`,
+      solutionExpr: `${panel}*(${sun}/100)`,
+      sourceModule: 'Solar & Battery Lab',
+      steps: [{addr:'E5', note:'Percent — turn '+sun+'% into a decimal factor'},{addr:'C4', note:'Multiply the panel rating by that factor'}],
+    },
+  ];
+  const url = '../hil-calculator-explorer.html?practiceSet=' + encodeURIComponent(JSON.stringify(questions));
+  window.open(url, '_blank', 'noopener');
+});
+</script>
+
+<script type="module">
+  import { SessionLogger, resolveActiveMember, writeSessionLogEntry } from '../session-logger.js';
+
+  const MODULE_MANIFEST = {
+    moduleId:    'solar-battery-lab',
+    subjects:    ['physics', 'engineering'],
+    conceptTags: ['wh-capacity', 'c-rate', 'array-orientation', 'inverter-clipping', 'bimodal-generation-curve'],
+    ageRange:    null,
+    timeModel:   'active_session',
+    scoringPath: 'none',
+  };
+
+  const logger = new SessionLogger(MODULE_MANIFEST);
+  const wrapUpBtn = document.getElementById('wrapUpBtn');
+  const ledgerPreview = document.getElementById('ledgerPreview');
+  const memberNameEl = document.getElementById('memberName');
+  const memberPillEl = document.getElementById('memberPill');
+
+  let activeMember = null;
+
+  async function resolveMember(user) {
+    activeMember = await resolveActiveMember(window.db, user.uid);
+    if (activeMember) {
+      memberNameEl.textContent = activeMember.name || 'Unnamed member';
+      memberPillEl.textContent = 'auto-selected';
+    } else {
+      memberNameEl.textContent = 'No member set up';
+      memberPillEl.textContent = 'add a member in Guild';
+    }
+  }
+
+  HILShell.init({
+    toolId: 'solar-battery-lab',
+    toolName: 'Solar & Battery Lab',
+    requireAuth: true,
+    onAuth: async (user) => {
+      if (!user) return;
+      await resolveMember(user);
+      logger.start();
+    }
+  });
+
+  logger.onWrapUp = async (entry) => {
+    if (!window.currentUser || !activeMember) {
+      HILShell.toast('Sign in (and make sure a household member exists) to save this session', 'error');
+      return;
+    }
+    try {
+      await writeSessionLogEntry(window.db, window.currentUser.uid, activeMember.id, entry);
+      HILShell.toast('Session logged to the Ledger', 'success');
+    } catch (err) {
+      console.error('Solar & Battery Lab: session log write failed', err);
+      HILShell.toast('Could not save this session — try again', 'error');
+    }
+  };
+
+  function renderLedgerPreview(entry) {
+    const json = JSON.stringify(entry, null, 2)
+      .replace(/"(entryId|moduleId|entryType|timestampStart|timestampEnd|activeMinutes|subjectsTagged|conceptTags|outcome|accuracy|verifiedBy|tier|description|auto_flushed)":/g, '<span class="k">"$1"</span>:')
+      .replace(/: "([^"]+)"/g, ': <span class="s">"$1"</span>');
+    ledgerPreview.innerHTML = json;
+  }
+
+  wrapUpBtn.addEventListener('click', async () => {
+    wrapUpBtn.disabled = true;
+    const entry = await logger.wrapUp({
+      description: `Configured solar lab with ${panel}W array (${orientation} orientation, ${inverterLimit}W inverter cap) against ${capacity}Ah/${voltage}V battery and ${load}W load.`,
+    });
+    if (entry) {
+      renderLedgerPreview(entry);
+    } else {
+      wrapUpBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
