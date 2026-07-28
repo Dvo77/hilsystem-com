@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruler Simulator — HIL Guild (prototype)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+  :root{
+    --hil-green:#00cc66; --hil-bg:#0a0a0a; --hil-surface:#111111; --hil-surface-2:#1a1a1a;
+    --hil-border:#222222; --hil-text:#e0e0e0; --hil-text-muted:#666666; --hil-danger:#cc3333;
+    --hil-amber:#cc8800; --hil-green-dim:#0a3a22;
+    --font-display:'Orbitron',monospace; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--hil-bg); color:var(--hil-text); font-family:var(--font-ui); padding:20px 16px 60px;}
+  .wrap{max-width:980px; margin:0 auto;}
+  .proto-banner{background:#2a1f0a; border:1px solid #7a5a1a; color:#e0b565; font-family:var(--font-mono);
+    font-size:11.5px; padding:8px 14px; text-align:center; letter-spacing:0.4px; margin-bottom:16px; border-radius:4px;}
+  header{border-bottom:2px solid var(--hil-border); padding-bottom:12px; margin-bottom:16px;}
+  h1{font-family:var(--font-display); font-weight:900; font-size:26px; letter-spacing:0.03em; margin:0;}
+  h1 span{color:var(--hil-green);}
+  .subtitle{font-family:var(--font-mono); font-size:12px; color:var(--hil-text-muted); letter-spacing:0.5px; text-transform:uppercase;}
+
+  .mode-toggle{display:flex; gap:8px; margin:16px 0;}
+  .mode-toggle button{flex:1; padding:10px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--hil-green); color:var(--hil-green); background:var(--hil-green-dim);}
+
+  .ruler-shell{background:var(--hil-surface); border:1px solid var(--hil-border); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .ruler-stage{background:#e8dfc8; border-radius:4px; padding:10px 20px; overflow-x:auto;}
+  #rulerSvg{display:block; min-width:1000px;}
+  .tick{stroke:#2a2418; stroke-width:1.5;}
+  .tick.sixteenth{stroke-width:1;}
+  .tick-label{font-family:'Space Mono',monospace; font-size:13px; fill:#2a2418;}
+  .target-marker{stroke:#cc3333; stroke-width:2; cursor:default;}
+  .click-hit{cursor:pointer;}
+  .placed-marker{stroke:var(--hil-green); stroke-width:2.5;}
+  .placed-marker.wrong{stroke:var(--hil-danger);}
+
+  .rule-note{margin-top:14px; padding:10px 14px; background:var(--hil-surface-2); border:1px solid var(--hil-border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--hil-text-muted);}
+  .rule-note b{color:var(--hil-amber);}
+
+  .deep-toggle{width:100%; text-align:left; padding:10px 14px; border-radius:6px; background:var(--hil-green-dim);
+    border:1px solid var(--hil-green); color:var(--hil-green); font-family:var(--font-mono); font-size:12px; font-weight:700;
+    cursor:pointer; display:flex; justify-content:space-between; align-items:center; margin-top:12px;}
+  .deep-panel{display:none; margin-top:10px; padding:14px; background:#04100a; border:1px solid var(--hil-border); border-radius:6px;}
+  .deep-panel.open{display:block;}
+  .deep-panel p{font-size:13px; line-height:1.55; margin:0 0 8px;}
+
+  .practice-panel{background:var(--hil-surface-2); border:1px solid var(--hil-amber); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .pp-hint{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-score{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-prompt{font-size:16px; line-height:1.5; margin-bottom:10px;}
+  .pp-answer-row{display:flex; gap:8px; margin-bottom:10px;}
+  .pp-answer-row input{flex:1; background:var(--hil-bg); border:1px solid var(--hil-border); color:var(--hil-text);
+    font-family:var(--font-mono); font-size:14px; padding:9px 12px; border-radius:4px;}
+  .pp-btn{font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; text-transform:uppercase; padding:9px 16px;
+    border-radius:4px; cursor:pointer; border:1px solid var(--hil-green); background:var(--hil-green-dim); color:var(--hil-green); font-weight:700;}
+  .pp-feedback{margin-top:6px; font-family:var(--font-mono); font-size:12.5px; font-weight:700; line-height:1.5;}
+  .pp-feedback.correct{color:var(--hil-green);}
+  .pp-feedback.wrong{color:var(--hil-danger);}
+  .pp-actions{display:flex; gap:8px; margin-top:10px;}
+  .pp-actions button{background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted); padding:7px 14px;
+    border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+  .pp-actions button:hover{border-color:var(--hil-amber); color:var(--hil-amber);}
+  .pp-next{border-color:var(--hil-green) !important; color:var(--hil-green) !important;}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">PROTOTYPE — sketch of Ruler Simulator, first build in the proposed Weights &amp; Measures category. Reuses Calculator Explorer's Learn/Practice chassis; fraction-parsing engine unit-tested standalone before wiring in. No hil-shell/session-logger yet.</div>
+
+<div class="wrap">
+  <header>
+    <h1>RULER <span>SIMULATOR</span></h1>
+    <div class="subtitle">Read a real ruler down to the sixteenth — the skill the tape measure builds on</div>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="modeLearnBtn" class="active" onclick="setMode('learn')">Learn</button>
+    <button id="modePracticeBtn" onclick="setMode('practice')">Practice</button>
+  </div>
+
+  <div class="ruler-shell">
+    <div class="ruler-stage">
+      <svg id="rulerSvg" viewBox="0 0 1000 130" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <div id="learnView">
+    <div class="rule-note">
+      <b>The core rule:</b> your measurement can only be as precise as the smallest reliable division on the tool.
+      This ruler's smallest marks are sixteenths of an inch — so "about 7 and a half" isn't good enough once you can
+      see sixteenth marks; read to the mark you can actually see.
+    </div>
+    <div class="rule-note">
+      Tick height tells you the fraction without reading a label: the tallest marks are whole inches, then halves,
+      quarters, eighths, and the shortest are sixteenths. Once that height pattern clicks, you can read a ruler at
+      a glance instead of counting marks one at a time.
+    </div>
+    <button class="deep-toggle" id="deepToggle" onclick="toggleDeep()">
+      <span>Go deeper — the carpenter's offset trick</span><span id="deepArrow">▾</span>
+    </button>
+    <div class="deep-panel" id="deepPanel">
+      <p><b>The problem:</b> the very end of a tape measure (the metal hook) wears down over years of use, so
+      measuring from "0" can be off by a hair on an old tape.</p>
+      <p><b>The trick:</b> start your measurement at the 10-inch mark instead of 0, measure to the far edge, then
+      subtract 10 inches from the reading. The middle of the tape never wears out, so this sidesteps hook wear
+      entirely — and it's a real habit working carpenters use, not just a classroom trick.</p>
+      <p>Try it below: click on the ruler at the 10" mark, then imagine measuring an 8 3/8" board from there — you'd
+      read 18 3/8" on the tape and subtract 10" to get the real length.</p>
+    </div>
+  </div>
+
+  <div id="practiceView" style="display:none;">
+    <div class="practice-panel" id="practicePanel"></div>
+  </div>
+</div>
+
+<script>
+// ---------- MEASUREMENT ENGINE ----------
+// Everything is represented as integer sixteenths-of-an-inch to avoid
+// floating point comparison bugs. Unit-tested standalone before being
+// pasted in here — see measure-engine.js test output.
+function sixteenthsToFraction(sixteenths){
+  const whole = Math.floor(sixteenths/16);
+  let rem = sixteenths % 16;
+  if(rem === 0) return whole+'"';
+  const gcd = (a,b)=> b===0 ? a : gcd(b, a%b);
+  const g = gcd(rem, 16);
+  const num = rem/g, den = 16/g;
+  return whole > 0 ? whole+' '+num+'/'+den+'"' : num+'/'+den+'"';
+}
+function parseMeasurement(input){
+  const s = input.trim().replace(/"/g,'');
+  if(!s) return null;
+  let m = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if(m){ const [,whole,num,den] = m.map(Number); if(den===0) return null; return whole*16 + Math.round((num/den)*16); }
+  m = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if(m){ const [,num,den] = m.map(Number); if(den===0) return null; return Math.round((num/den)*16); }
+  m = s.match(/^(\d+\.\d+)$/);
+  if(m){ return Math.round(parseFloat(m[1])*16); }
+  m = s.match(/^(\d+)$/);
+  if(m){ return parseInt(m[1],10)*16; }
+  return null;
+}
+
+// ---------- RULER RENDERING ----------
+const RULER_INCHES = 12;
+const ORIGIN_X = 50;
+const PX_PER_INCH = 75;
+const TOP_Y = 20;
+const BASE_Y = 90;
+
+function sixteenthToX(sixteenths){ return ORIGIN_X + (sixteenths/16) * PX_PER_INCH; }
+function xToSixteenth(x){ return Math.round(((x - ORIGIN_X) / PX_PER_INCH) * 16); }
+
+function tickHeight(i){
+  if(i % 16 === 0) return 55; // whole inch
+  if(i % 8 === 0) return 42;  // half
+  if(i % 4 === 0) return 32;  // quarter
+  if(i % 2 === 0) return 22;  // eighth
+  return 14;                  // sixteenth
+}
+
+function renderRuler(overlay){
+  const svg = document.getElementById('rulerSvg');
+  let ticks = '';
+  for(let i=0; i<=RULER_INCHES*16; i++){
+    const x = sixteenthToX(i);
+    const h = tickHeight(i);
+    ticks += '<line class="tick'+(i%16!==0 ? ' sixteenth':'')+'" x1="'+x+'" y1="'+BASE_Y+'" x2="'+x+'" y2="'+(BASE_Y-h)+'"/>';
+    if(i % 16 === 0){
+      ticks += '<text class="tick-label" x="'+x+'" y="'+(BASE_Y+18)+'" text-anchor="middle">'+(i/16)+'</text>';
+    }
+  }
+  // invisible wide click-catcher along the ruler face, used in practice "place" mode
+  const clickCatcher = '<rect class="click-hit" x="'+ORIGIN_X+'" y="'+(BASE_Y-55)+'" width="'+(RULER_INCHES*PX_PER_INCH)+'" height="70" fill="transparent" id="clickCatcher"/>';
+  svg.innerHTML = '<line x1="'+ORIGIN_X+'" y1="'+BASE_Y+'" x2="'+(ORIGIN_X+RULER_INCHES*PX_PER_INCH)+'" y2="'+BASE_Y+'" class="tick"/>' + ticks + clickCatcher + (overlay||'');
+}
+renderRuler();
+
+// ---------- LEARN MODE: deep-dive toggle ----------
+function toggleDeep(){
+  const panel = document.getElementById('deepPanel');
+  panel.classList.toggle('open');
+  document.getElementById('deepArrow').textContent = panel.classList.contains('open') ? '▴' : '▾';
+}
+
+// ---------- MODE SWITCHING ----------
+let MODE = 'learn';
+function setMode(mode){
+  MODE = mode;
+  document.getElementById('modeLearnBtn').classList.toggle('active', mode==='learn');
+  document.getElementById('modePracticeBtn').classList.toggle('active', mode==='practice');
+  document.getElementById('learnView').style.display = mode==='learn' ? 'block' : 'none';
+  document.getElementById('practiceView').style.display = mode==='practice' ? 'block' : 'none';
+  if(mode==='practice') startPractice();
+  else renderRuler();
+}
+
+// ---------- PRACTICE MODE ----------
+// Two question types: "read" (a mark is shown, type what it reads) and
+// "place" (given a target, click the ruler). Both grade by exact sixteenths
+// match — same "one right answer, verified by an engine" paradigm as
+// Calculator Explorer's Practice mode, not proximity/partial credit.
+const PRACTICE_QUESTIONS = [
+  {type:'read', target:56,  prompt:'What does the highlighted mark read?'},
+  {type:'read', target:123, prompt:'What does the highlighted mark read?'},
+  {type:'place', target:34, prompt:'Click the ruler at 2 1/8 inches.'},
+  {type:'place', target:98, prompt:'Click the ruler at 6 1/8 inches.'},
+  {type:'read', target:11,  prompt:'What does the highlighted mark read?'},
+  {type:'place', target:150,prompt:'Click the ruler at 9 3/8 inches.'},
+];
+let practiceIndex = 0;
+let practiceOrder = [];
+let practiceScore = {correct:0, attempted:0};
+let awaitingClick = false;
+let lastPlacedSix = null;
+
+function shuffleOrder(){
+  practiceOrder = PRACTICE_QUESTIONS.map((_,i)=>i);
+  for(let i=practiceOrder.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [practiceOrder[i],practiceOrder[j]] = [practiceOrder[j],practiceOrder[i]];
+  }
+}
+function currentQ(){ return PRACTICE_QUESTIONS[practiceOrder[practiceIndex]]; }
+
+function startPractice(){
+  shuffleOrder();
+  practiceIndex = 0;
+  practiceScore = {correct:0, attempted:0};
+  renderQuestion(null);
+}
+
+function renderQuestion(feedback){
+  const q = currentQ();
+  const panel = document.getElementById('practicePanel');
+  awaitingClick = (q.type === 'place' && !feedback);
+  lastPlacedSix = feedback ? feedback.placedSix : null;
+
+  let overlay = '';
+  if(q.type === 'read'){
+    const x = sixteenthToX(q.target);
+    overlay = '<line class="target-marker" x1="'+x+'" y1="10" x2="'+x+'" y2="'+(BASE_Y+5)+'"/>';
+  } else if(feedback){
+    const x = sixteenthToX(feedback.placedSix);
+    overlay = '<line class="placed-marker'+(feedback.correct?'':' wrong')+'" x1="'+x+'" y1="10" x2="'+x+'" y2="'+(BASE_Y+5)+'"/>';
+  }
+  renderRuler(overlay);
+
+  if(awaitingClick){
+    document.getElementById('clickCatcher').onclick = handleRulerClick;
+  }
+
+  panel.innerHTML =
+    '<div class="pp-top"><span class="pp-hint">Question '+(practiceIndex+1)+' of '+PRACTICE_QUESTIONS.length+'</span>'+
+    '<span class="pp-score">Score: '+practiceScore.correct+'/'+practiceScore.attempted+'</span></div>'+
+    '<div class="pp-prompt">'+q.prompt+'</div>'+
+    (q.type==='read' && !feedback ? '<div class="pp-answer-row"><input type="text" id="readAnswer" placeholder=\'e.g. 7 11/16 or 7.6875\'><button class="pp-btn" onclick="checkReadAnswer()">Check</button></div>' : '')+
+    (q.type==='place' && !feedback ? '<div class="pp-hint">Click directly on the ruler above.</div>' : '')+
+    (feedback ? '<div class="pp-feedback '+(feedback.correct?'correct':'wrong')+'">'+
+        (feedback.correct ? 'Correct — '+sixteenthsToFraction(q.target)+'.' : 'Not quite — that reads '+sixteenthsToFraction(feedback.placedSix)+'. The target was '+sixteenthsToFraction(q.target)+'.')+
+      '</div>' : '')+
+    '<div class="pp-actions">'+
+      (!feedback ? '<button onclick="skipQuestion()">Skip</button>' : '<button class="pp-next" onclick="nextQuestion()">Next question</button>')+
+    '</div>';
+}
+
+function handleRulerClick(evt){
+  if(!awaitingClick) return;
+  const svg = document.getElementById('rulerSvg');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const placedSix = Math.max(0, Math.min(RULER_INCHES*16, xToSixteenth(svgP.x)));
+  awaitingClick = false;
+  gradeAnswer(placedSix);
+}
+
+function checkReadAnswer(){
+  const val = document.getElementById('readAnswer').value;
+  const parsed = parseMeasurement(val);
+  if(parsed === null){
+    alert('Couldn\'t read that as a measurement — try a format like "7 11/16", "11/16", or "7.6875".');
+    return;
+  }
+  gradeAnswer(parsed);
+}
+
+function gradeAnswer(placedSix){
+  const q = currentQ();
+  practiceScore.attempted++;
+  const correct = placedSix === q.target;
+  if(correct) practiceScore.correct++;
+  renderQuestion({correct, placedSix});
+}
+
+function skipQuestion(){ nextQuestion(); }
+function nextQuestion(){
+  practiceIndex = (practiceIndex+1) % PRACTICE_QUESTIONS.length;
+  if(practiceIndex === 0) shuffleOrder();
+  renderQuestion(null);
+}
+</script>
+</body>
+</html>

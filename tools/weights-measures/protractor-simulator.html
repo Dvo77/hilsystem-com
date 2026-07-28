@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protractor Simulator — HIL Guild (prototype)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+  :root{
+    --hil-green:#00cc66; --hil-bg:#0a0a0a; --hil-surface:#111111; --hil-surface-2:#1a1a1a;
+    --hil-border:#222222; --hil-text:#e0e0e0; --hil-text-muted:#666666; --hil-danger:#cc3333;
+    --hil-amber:#cc8800; --hil-green-dim:#0a3a22; --hil-solar:#ff9f5a;
+    --font-display:'Orbitron',monospace; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--hil-bg); color:var(--hil-text); font-family:var(--font-ui); padding:20px 16px 60px;}
+  .wrap{max-width:980px; margin:0 auto;}
+  .proto-banner{background:#2a1f0a; border:1px solid #7a5a1a; color:#e0b565; font-family:var(--font-mono);
+    font-size:11.5px; padding:8px 14px; text-align:center; letter-spacing:0.4px; margin-bottom:16px; border-radius:4px;}
+  header{border-bottom:2px solid var(--hil-border); padding-bottom:12px; margin-bottom:16px;}
+  h1{font-family:var(--font-display); font-weight:900; font-size:26px; letter-spacing:0.03em; margin:0;}
+  h1 span{color:var(--hil-green);}
+  .subtitle{font-family:var(--font-mono); font-size:12px; color:var(--hil-text-muted); letter-spacing:0.5px; text-transform:uppercase;}
+
+  .mode-toggle{display:flex; gap:8px; margin:16px 0;}
+  .mode-toggle button{flex:1; padding:10px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--hil-green); color:var(--hil-green); background:var(--hil-green-dim);}
+
+  .protractor-shell{background:var(--hil-surface); border:1px solid var(--hil-border); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .protractor-stage{background:#e8dfc8; border-radius:4px; padding:10px; overflow-x:auto;}
+  #protractorSvg{display:block; min-width:600px; margin:0 auto;}
+  .tick{stroke:#2a2418; stroke-width:1.2;}
+  .tick-label{font-family:'Space Mono',monospace; font-size:12px; fill:#2a2418;}
+  .baseline{stroke:#2a2418; stroke-width:2;}
+  .arc-outline{stroke:#2a2418; stroke-width:1.5; fill:none;}
+  .vertex{fill:#2a2418;}
+  .target-ray{stroke:#cc3333; stroke-width:2.5;}
+  .placed-ray{stroke:var(--hil-green); stroke-width:2.5;}
+  .placed-ray.wrong{stroke:var(--hil-danger);}
+  .click-hit{cursor:pointer;}
+  .readout{font-family:'Space Mono',monospace; font-size:13px; fill:#2a2418;}
+
+  .rule-note{margin-top:14px; padding:10px 14px; background:var(--hil-surface-2); border:1px solid var(--hil-border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--hil-text-muted);}
+  .rule-note b{color:var(--hil-amber);}
+
+  .pi-bridge{margin-top:14px; padding:14px; background:#04100a; border:1px solid var(--hil-solar); border-radius:6px;}
+  .pi-bridge h4{font-family:var(--font-display); font-size:12px; color:var(--hil-solar); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 8px;}
+  .pi-bridge p{font-size:13px; line-height:1.6; margin:0 0 8px; color:var(--hil-text);}
+  .pi-formula{font-family:var(--font-mono); font-size:13px; color:var(--hil-solar); background:var(--hil-surface-2);
+    border:1px solid var(--hil-border); border-radius:4px; padding:8px 12px; margin-bottom:8px;}
+  .pi-link{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+
+  .practice-panel{background:var(--hil-surface-2); border:1px solid var(--hil-amber); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .pp-hint{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-score{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-prompt{font-size:16px; line-height:1.5; margin-bottom:10px;}
+  .pp-answer-row{display:flex; gap:8px; margin-bottom:10px;}
+  .pp-answer-row input{flex:1; background:var(--hil-bg); border:1px solid var(--hil-border); color:var(--hil-text);
+    font-family:var(--font-mono); font-size:14px; padding:9px 12px; border-radius:4px;}
+  .pp-btn{font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; text-transform:uppercase; padding:9px 16px;
+    border-radius:4px; cursor:pointer; border:1px solid var(--hil-green); background:var(--hil-green-dim); color:var(--hil-green); font-weight:700;}
+  .pp-feedback{margin-top:6px; font-family:var(--font-mono); font-size:12.5px; font-weight:700; line-height:1.5;}
+  .pp-feedback.correct{color:var(--hil-green);}
+  .pp-feedback.wrong{color:var(--hil-danger);}
+  .pp-actions{display:flex; gap:8px; margin-top:10px;}
+  .pp-actions button{background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted); padding:7px 14px;
+    border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+  .pp-actions button:hover{border-color:var(--hil-amber); color:var(--hil-amber);}
+  .pp-next{border-color:var(--hil-green) !important; color:var(--hil-green) !important;}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">PROTOTYPE — second Weights &amp; Measures sketch, reusing the Ruler Simulator's chassis. Polar-coordinate math (angle ↔ click position) unit-tested before wiring in. No hil-shell/session-logger yet.</div>
+
+<div class="wrap">
+  <header>
+    <h1>PROTRACTOR <span>SIMULATOR</span></h1>
+    <div class="subtitle">Read and place angles — and see exactly where π comes from</div>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="modeLearnBtn" class="active" onclick="setMode('learn')">Learn</button>
+    <button id="modePracticeBtn" onclick="setMode('practice')">Practice</button>
+  </div>
+
+  <div class="protractor-shell">
+    <div class="protractor-stage">
+      <svg id="protractorSvg" viewBox="0 0 1000 280" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <div id="learnView">
+    <div class="rule-note">
+      <b>Reading it:</b> line up the baseline (the flat edge) with one side of the angle, with the vertex sitting
+      exactly on the center dot. Read where the other side crosses the curved edge — that's the angle in degrees.
+    </div>
+    <div class="pi-bridge">
+      <h4>Where π actually comes from</h4>
+      <p>This whole curved edge — one full sweep from 0° to 180° — is exactly <b>half of a circle</b>. And a circle's
+      relationship between its curve and a straight measurement is precisely what π is (the same idea covered in
+      Calculator Explorer's π key deep-dive). Angles are usually measured two ways:</p>
+      <div class="pi-formula">radians = degrees &times; (π / 180)</div>
+      <div class="pi-formula">A full circle (360°) = 2π radians &nbsp;&middot;&nbsp; this protractor's whole range (180°) = π radians</div>
+      <p>So 90° — a plain right angle — is exactly <b>π/2 radians</b>, about 1.5708. Every angle you read on this
+      protractor has a radian value hiding right behind the degree number.</p>
+      <div class="pi-link">Practice mode shows both values together every time, so the connection stays visible instead of feeling like two unrelated units.</div>
+    </div>
+  </div>
+
+  <div id="practiceView" style="display:none;">
+    <div class="practice-panel" id="practicePanel"></div>
+  </div>
+</div>
+
+<script>
+// ---------- POLAR MATH ----------
+// Unit-tested standalone before being pasted here: polarPoint and
+// pointToDegree round-trip exactly for 0/30/45/90/135/150/180.
+const CX = 500, CY = 230, R = 190;
+function polarPoint(deg, radius){
+  const theta = deg * Math.PI/180;
+  return { x: CX + radius*Math.cos(theta), y: CY - radius*Math.sin(theta) };
+}
+function pointToDegree(x, y){
+  const theta = Math.atan2(CY - y, x - CX);
+  let deg = Math.round(theta * 180/Math.PI);
+  return Math.max(0, Math.min(180, deg));
+}
+function degToRadiansLabel(deg){
+  const rad = deg * Math.PI/180;
+  const piMultiple = deg/180;
+  return rad.toFixed(4) + ' rad (' + formatPiFraction(piMultiple) + ')';
+}
+function formatPiFraction(mult){
+  if(mult === 0) return '0';
+  if(mult === 1) return 'π';
+  for(let den=1; den<=36; den++){
+    const num = mult*den;
+    if(Math.abs(num - Math.round(num)) < 1e-6){
+      const n = Math.round(num);
+      const gcd = (a,b)=> b===0?a:gcd(b,a%b);
+      const g = gcd(n, den) || 1;
+      const sn = n/g, sd = den/g;
+      return sd===1 ? sn+'π' : (sn===1 ? 'π/'+sd : sn+'π/'+sd);
+    }
+  }
+  return mult.toFixed(3)+'π';
+}
+
+// ---------- RENDERING ----------
+function renderProtractor(overlay){
+  const svg = document.getElementById('protractorSvg');
+  let ticks = '';
+  for(let d=0; d<=180; d++){
+    const len = (d%30===0) ? 26 : (d%10===0) ? 18 : (d%5===0) ? 12 : 7;
+    const outer = polarPoint(d, R);
+    const inner = polarPoint(d, R-len);
+    ticks += '<line class="tick" x1="'+inner.x+'" y1="'+inner.y+'" x2="'+outer.x+'" y2="'+outer.y+'"/>';
+    if(d%30===0){
+      const lp = polarPoint(d, R+22);
+      ticks += '<text class="tick-label" x="'+lp.x+'" y="'+lp.y+'" text-anchor="middle" dominant-baseline="middle">'+d+'</text>';
+    }
+  }
+  let arcPts = '';
+  for(let d=0; d<=180; d+=2){ const p = polarPoint(d, R); arcPts += p.x+','+p.y+' '; }
+
+  const clickCatcher = '<path class="click-hit" d="M '+(CX-R)+' '+CY+' A '+R+' '+R+' 0 0 1 '+(CX+R)+' '+CY+' L '+CX+' '+CY+' Z" fill="transparent" id="clickCatcher"/>';
+
+  svg.innerHTML =
+    '<polyline class="arc-outline" points="'+arcPts+'"/>' +
+    '<line class="baseline" x1="'+(CX-R)+'" y1="'+CY+'" x2="'+(CX+R)+'" y2="'+CY+'"/>' +
+    ticks +
+    '<circle class="vertex" cx="'+CX+'" cy="'+CY+'" r="4"/>' +
+    clickCatcher +
+    (overlay||'');
+}
+renderProtractor();
+
+// ---------- MODE SWITCHING ----------
+let MODE = 'learn';
+function setMode(mode){
+  MODE = mode;
+  document.getElementById('modeLearnBtn').classList.toggle('active', mode==='learn');
+  document.getElementById('modePracticeBtn').classList.toggle('active', mode==='practice');
+  document.getElementById('learnView').style.display = mode==='learn' ? 'block' : 'none';
+  document.getElementById('practiceView').style.display = mode==='practice' ? 'block' : 'none';
+  if(mode==='practice') startPractice();
+  else renderProtractor();
+}
+
+// ---------- PRACTICE MODE ----------
+// Same "read" / "place" pair as Ruler Simulator, graded by exact integer
+// degree match — protractors read to the nearest whole degree, so no
+// fraction engine needed here, unlike the ruler's sixteenths.
+const PRACTICE_QUESTIONS = [
+  {type:'read', target:30,  prompt:'What angle is highlighted?'},
+  {type:'read', target:120, prompt:'What angle is highlighted?'},
+  {type:'place', target:45, prompt:'Click to place a ray at 45°.'},
+  {type:'place', target:90, prompt:'Click to place a ray at 90° — a right angle.'},
+  {type:'read', target:150, prompt:'What angle is highlighted?'},
+  {type:'place', target:135,prompt:'Click to place a ray at 135°.'},
+];
+let practiceIndex = 0;
+let practiceOrder = [];
+let practiceScore = {correct:0, attempted:0};
+let awaitingClick = false;
+
+function shuffleOrder(){
+  practiceOrder = PRACTICE_QUESTIONS.map((_,i)=>i);
+  for(let i=practiceOrder.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [practiceOrder[i],practiceOrder[j]] = [practiceOrder[j],practiceOrder[i]];
+  }
+}
+function currentQ(){ return PRACTICE_QUESTIONS[practiceOrder[practiceIndex]]; }
+
+function startPractice(){
+  shuffleOrder();
+  practiceIndex = 0;
+  practiceScore = {correct:0, attempted:0};
+  renderQuestion(null);
+}
+
+function rayOverlay(cls, deg){
+  const p = polarPoint(deg, R-10);
+  const rp = polarPoint(deg, R+40);
+  return '<line class="'+cls+'" x1="'+CX+'" y1="'+CY+'" x2="'+p.x+'" y2="'+p.y+'"/>'+
+    '<text class="readout" x="'+rp.x+'" y="'+rp.y+'" text-anchor="middle">'+deg+'° / '+degToRadiansLabel(deg)+'</text>';
+}
+
+function renderQuestion(feedback){
+  const q = currentQ();
+  const panel = document.getElementById('practicePanel');
+  awaitingClick = (q.type === 'place' && !feedback);
+
+  let overlay = '';
+  if(q.type === 'read'){
+    overlay = rayOverlay('target-ray', q.target);
+  } else if(feedback){
+    overlay = rayOverlay(feedback.correct ? 'placed-ray' : 'placed-ray wrong', feedback.placedDeg);
+  }
+  renderProtractor(overlay);
+
+  if(awaitingClick){
+    document.getElementById('clickCatcher').onclick = handleClick;
+  }
+
+  panel.innerHTML =
+    '<div class="pp-top"><span class="pp-hint">Question '+(practiceIndex+1)+' of '+PRACTICE_QUESTIONS.length+'</span>'+
+    '<span class="pp-score">Score: '+practiceScore.correct+'/'+practiceScore.attempted+'</span></div>'+
+    '<div class="pp-prompt">'+q.prompt+'</div>'+
+    (q.type==='read' && !feedback ? '<div class="pp-answer-row"><input type="text" id="readAnswer" placeholder="degrees, e.g. 30"><button class="pp-btn" onclick="checkReadAnswer()">Check</button></div>' : '')+
+    (q.type==='place' && !feedback ? '<div class="pp-hint">Click inside the protractor to place the ray.</div>' : '')+
+    (feedback ? '<div class="pp-feedback '+(feedback.correct?'correct':'wrong')+'">'+
+        (feedback.correct ? 'Correct — '+q.target+'° ('+degToRadiansLabel(q.target)+').' : 'Not quite — that\'s '+feedback.placedDeg+'°. The target was '+q.target+'° ('+degToRadiansLabel(q.target)+').')+
+      '</div>' : '')+
+    '<div class="pp-actions">'+
+      (!feedback ? '<button onclick="skipQuestion()">Skip</button>' : '<button class="pp-next" onclick="nextQuestion()">Next question</button>')+
+    '</div>';
+}
+
+function handleClick(evt){
+  if(!awaitingClick) return;
+  const svg = document.getElementById('protractorSvg');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const placedDeg = pointToDegree(svgP.x, svgP.y);
+  awaitingClick = false;
+  gradeAnswer(placedDeg);
+}
+
+function checkReadAnswer(){
+  const val = document.getElementById('readAnswer').value.trim().replace(/[°\s]/g,'');
+  const parsed = parseInt(val, 10);
+  if(isNaN(parsed) || parsed < 0 || parsed > 180){
+    alert('Enter a whole number of degrees between 0 and 180.');
+    return;
+  }
+  gradeAnswer(parsed);
+}
+
+function gradeAnswer(placedDeg){
+  const q = currentQ();
+  practiceScore.attempted++;
+  const correct = placedDeg === q.target;
+  if(correct) practiceScore.correct++;
+  renderQuestion({correct, placedDeg});
+}
+
+function skipQuestion(){ nextQuestion(); }
+function nextQuestion(){
+  practiceIndex = (practiceIndex+1) % PRACTICE_QUESTIONS.length;
+  if(practiceIndex === 0) shuffleOrder();
+  renderQuestion(null);
+}
+</script>
+</body>
+</html>
