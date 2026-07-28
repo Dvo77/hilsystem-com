@@ -47,6 +47,11 @@ Guild modules plug into without needing to know it exists.
   minutes of credit regardless of how long it's left open — closes both
   the "click through everything fast" and "walk away with one key open"
   cheats.
+- **Calculate mode never logs anything (locked decision).** It's treated
+  as a pure utility, not a learning activity. Only Learn mode (key dwell
+  time) and Practice mode (graded accuracy) produce a loggable session —
+  Wrap Up on a Calculate-only session shows a toast and writes nothing,
+  rather than logging a hollow zero-credit entry.
 
 **How it connects:**
 - Reads from: `guild_media/{assetId}` (Firestore) — resolves an asset ID
@@ -78,10 +83,6 @@ Guild modules plug into without needing to know it exists.
   shipped is a session-wide 60-second floor plus a 3-minute cap per key.
   Both close the same cheats, but the two documents currently disagree —
   flagging so the spec gets reconciled, not silently drifted.
-- **Calculator Mode is a utility, not a scored activity, by design for
-  now.** Only Learn mode's dwell time and Practice mode's accuracy feed
-  the Ledger. Whether pure calculation use should log any session time at
-  all hasn't been decided.
 - **No hero image on the module's own Guild dashboard card yet.**
 - **Physical key-to-coordinate mapping is still an approximation** — not
   yet traced against a real physical calculator.
@@ -184,4 +185,7 @@ tags):**
   the active household member — meaning member resolution never actually
   ran, and every Wrap Up failed with a "select a user" error regardless of
   account setup. Fixed by indirecting through `window.handleAuth` at call
-  time instead of passing the function by direct reference.
+  time instead of passing the function by direct reference. Locked a
+  decision that had been an open question: Calculate mode never logs to
+  the Ledger — Wrap Up on a Calculate-only session now shows a toast and
+  writes nothing instead of a hollow zero-credit entry.
