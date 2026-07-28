@@ -199,7 +199,7 @@ const NAV_TOOLS = [
   { id: 'labels',        label: 'Labels & Signs', icon: '🏷', href: './hil-label-studio.html' },
   { id: 'library-hub',   label: 'Library',      icon: '📚', href: './hil-library-hub.html' },
   { id: 'smart-home',    label: 'Smart Home',   icon: '🏠', href: './hil-smart-home.html' },
-  { id: 'admin',         label: 'Admin',        icon: '⚙',   href: './hil-user-admin.html' },
+  { id: 'admin',         label: 'Admin',        icon: '⚙',   href: './hil-account.html' },
   { id: 'import-export', label: 'Import/Export', icon: '📤', href: './hil-import-export.html' },
 ];
   // ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
