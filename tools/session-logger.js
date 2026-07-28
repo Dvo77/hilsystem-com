@@ -51,6 +51,12 @@
  *     if (entry) renderLedgerPreview(entry);   // entry is the exact object written
  *   }
  *
+ *   // A module that computes its OWN engaged-time figure (e.g. Calculator
+ *   // Explorer's per-key anti-gaming cap/floor) instead of trusting the
+ *   // logger's raw wall-clock heartbeat can override the credited minutes:
+ *   //   await logger.wrapUp({ description, activeMinutesOverride: 4 });
+ *   // Omit it and the logger's own heartbeat is used, unchanged from v1.0.
+ *
  * KNOWN OPEN ITEM (per Part 8 / starter prompt — not this file's job to solve):
  *   Modules launched from the Guild hub don't yet receive which household member
  *   is active (hil-guild.html module cards link with a plain href, no ?member=).
@@ -191,8 +197,14 @@ export class SessionLogger {
   /**
    * Builds a canonical Session Log Entry (Part 1 schema) from module-supplied
    * results. Does NOT write anywhere — that's the caller's onWrapUp.
+   *
+   * `activeMinutesOverride` (new): lets a module that computes its own
+   * engaged-time figure (e.g. an anti-gaming cap/floor) supply the number
+   * that actually gets written, instead of the logger's raw heartbeat.
+   * Omitted/null by default — every existing module keeps behaving exactly
+   * as before; this is additive, not a behavior change for current callers.
    */
-  _buildEntry({ outcome = null, accuracy = null, description = '', conceptTags = null } = {}) {
+  _buildEntry({ outcome = null, accuracy = null, description = '', conceptTags = null, activeMinutesOverride = null } = {}) {
     const now = new Date();
     const scoringPath = this.manifest.scoringPath || 'none';
     return {
@@ -201,7 +213,7 @@ export class SessionLogger {
       entryType: 'module_activity',
       timestampStart: new Date(this._sessionStart).toISOString(),
       timestampEnd: now.toISOString(),
-      activeMinutes: this._activeMinutes(),
+      activeMinutes: activeMinutesOverride != null ? activeMinutesOverride : this._activeMinutes(),
       subjectsTagged: this.manifest.subjects || [],
       conceptTags: conceptTags || this.manifest.conceptTags || [],
       outcome: scoringPath === 'outcome' ? normalizeOutcome(outcome) : (scoringPath === 'none' ? (outcome ? normalizeOutcome(outcome) : 'explored') : null),
