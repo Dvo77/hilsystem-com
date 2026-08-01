@@ -919,7 +919,7 @@ async function loadStaged(db, uid) {
       row.className = 'staged-row';
       row.innerHTML =
         '<div class="staged-info">' +
-          '<div class="staged-subject">' + (data.subject || '(no subject)') + '</div>' +
+          '<div class="staged-subject">' + (data.item_name || data.subject || '(no subject)') + '</div>' +
           '<div class="staged-from">' + (data.from_address || data.source || '—') + '</div>' +
         '</div>' +
         '<div class="staged-actions">' +
