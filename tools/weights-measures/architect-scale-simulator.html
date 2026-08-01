@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architect's Scale Simulator — HIL Guild (prototype)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+  :root{
+    --hil-green:#00cc66; --hil-bg:#0a0a0a; --hil-surface:#111111; --hil-surface-2:#1a1a1a;
+    --hil-border:#222222; --hil-text:#e0e0e0; --hil-text-muted:#666666; --hil-danger:#cc3333;
+    --hil-amber:#cc8800; --hil-green-dim:#0a3a22;
+    --font-display:'Orbitron',monospace; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--hil-bg); color:var(--hil-text); font-family:var(--font-ui); padding:20px 16px 60px;}
+  .wrap{max-width:980px; margin:0 auto;}
+  .proto-banner{background:#2a1f0a; border:1px solid #7a5a1a; color:#e0b565; font-family:var(--font-mono);
+    font-size:11.5px; padding:8px 14px; text-align:center; letter-spacing:0.4px; margin-bottom:16px; border-radius:4px; line-height:1.6;}
+  header{border-bottom:2px solid var(--hil-border); padding-bottom:12px; margin-bottom:16px;}
+  h1{font-family:var(--font-display); font-weight:900; font-size:26px; letter-spacing:0.03em; margin:0;}
+  h1 span{color:var(--hil-green);}
+  .subtitle{font-family:var(--font-mono); font-size:12px; color:var(--hil-text-muted); letter-spacing:0.5px; text-transform:uppercase;}
+
+  .mode-toggle{display:flex; gap:8px; margin:16px 0;}
+  .mode-toggle button{flex:1; padding:10px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--hil-green); color:var(--hil-green); background:var(--hil-green-dim);}
+
+  /* Face selector — represents physically rotating the triangular scale in your hand */
+  .face-selector{display:flex; gap:8px; margin-bottom:14px;}
+  .face-btn{flex:1; padding:10px 8px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:11px; text-align:center; cursor:pointer; line-height:1.5;}
+  .face-btn b{display:block; font-family:var(--font-display); font-size:13px; color:var(--hil-text); letter-spacing:0.03em;}
+  .face-btn.active{border-color:var(--hil-amber); background:#2a1f0a; color:var(--hil-amber);}
+  .face-btn.active b{color:var(--hil-amber);}
+  .rotate-hint{font-family:var(--font-mono); font-size:10.5px; color:var(--hil-text-muted); text-align:center; margin:-6px 0 14px;}
+
+  .scale-shell{background:var(--hil-surface); border:1px solid var(--hil-border); border-radius:6px; padding:16px; margin-bottom:10px;}
+  .edge-label{font-family:var(--font-mono); font-size:11px; color:var(--hil-amber); letter-spacing:0.5px; margin-bottom:4px; text-transform:uppercase;}
+  .edge-stage{background:#e8dfc8; border-radius:4px; padding:8px 20px; overflow-x:auto; margin-bottom:14px;}
+  .edge-stage:last-child{margin-bottom:0;}
+  .edge-svg{display:block; min-width:900px;}
+  .tick{stroke:#2a2418; stroke-width:1.5;}
+  .tick.fine{stroke-width:1;}
+  .tick-label{font-family:'Space Mono',monospace; font-size:11.5px; fill:#2a2418;}
+  .zero-line{stroke:#992222; stroke-width:1.5; stroke-dasharray:3 2;}
+  .target-marker{stroke:#cc3333; stroke-width:2;}
+  .click-hit{cursor:pointer;}
+  .placed-marker{stroke:var(--hil-green); stroke-width:2.5;}
+  .placed-marker.wrong{stroke:var(--hil-danger);}
+
+  .rule-note{margin-top:14px; padding:10px 14px; background:var(--hil-surface-2); border:1px solid var(--hil-border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--hil-text-muted);}
+  .rule-note b{color:var(--hil-amber);}
+
+  .deep-toggle{width:100%; text-align:left; padding:10px 14px; border-radius:6px; background:var(--hil-green-dim);
+    border:1px solid var(--hil-green); color:var(--hil-green); font-family:var(--font-mono); font-size:12px; font-weight:700;
+    cursor:pointer; display:flex; justify-content:space-between; align-items:center; margin-top:12px;}
+  .deep-panel{display:none; margin-top:10px; padding:14px; background:#04100a; border:1px solid var(--hil-border); border-radius:6px;}
+  .deep-panel.open{display:block;}
+  .deep-panel p{font-size:13px; line-height:1.55; margin:0 0 8px;}
+
+  .practice-panel{background:var(--hil-surface-2); border:1px solid var(--hil-amber); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;}
+  .pp-hint{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-score{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-prompt{font-size:16px; line-height:1.5; margin-bottom:10px;}
+  .pp-answer-row{display:flex; gap:8px; margin-bottom:10px;}
+  .pp-answer-row input{flex:1; background:var(--hil-bg); border:1px solid var(--hil-border); color:var(--hil-text);
+    font-family:var(--font-mono); font-size:14px; padding:9px 12px; border-radius:4px;}
+  .pp-btn{font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; text-transform:uppercase; padding:9px 16px;
+    border-radius:4px; cursor:pointer; border:1px solid var(--hil-green); background:var(--hil-green-dim); color:var(--hil-green); font-weight:700;}
+  .pp-feedback{margin-top:6px; font-family:var(--font-mono); font-size:12.5px; font-weight:700; line-height:1.5;}
+  .pp-feedback.correct{color:var(--hil-green);}
+  .pp-feedback.wrong{color:var(--hil-danger);}
+  .pp-actions{display:flex; gap:8px; margin-top:10px;}
+  .pp-actions button{background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted); padding:7px 14px;
+    border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+  .pp-actions button:hover{border-color:var(--hil-amber); color:var(--hil-amber);}
+  .pp-next{border-color:var(--hil-green) !important; color:var(--hil-green) !important;}
+
+  .scale-pick-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px;}
+  @media (max-width:640px){.scale-pick-grid{grid-template-columns:repeat(2,1fr);}}
+  .scale-pick-btn{padding:10px 6px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-bg);
+    color:var(--hil-text); font-family:var(--font-mono); font-size:12px; text-align:center; cursor:pointer;}
+  .scale-pick-btn:hover{border-color:var(--hil-amber);}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">PROTOTYPE — Architect's Scale Simulator, second build in Weights &amp; Measures. Reuses Ruler Simulator's Learn/Practice chassis and grading pattern. One simplification from the real tool: the "Which Scale?" question type is a direct multiple-choice pick rather than a full rotate-then-read chain — flagged for review before wiring into hil-shell/session-logger.</div>
+
+<div class="wrap">
+  <header>
+    <h1>ARCHITECT'S <span>SCALE</span></h1>
+    <div class="subtitle">Six edges, eleven scales, one triangular tool — the instrument that reads a floor plan back into real feet</div>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="modeLearnBtn" class="active" onclick="setMode('learn')">Learn</button>
+    <button id="modePracticeBtn" onclick="setMode('practice')">Practice</button>
+  </div>
+
+  <div class="face-selector" id="faceSelector"></div>
+  <div class="rotate-hint">Tap a face to rotate the scale in your hand — same tool, three faces, six edges.</div>
+
+  <div class="scale-shell">
+    <div id="edgeTop"></div>
+    <div id="edgeBottom"></div>
+  </div>
+
+  <div id="learnView">
+    <div class="rule-note">
+      <b>Why this tool exists:</b> a house doesn't fit on a sheet of paper at real size. An architect's scale lets you
+      draw (or read) a building at a fixed reduction — "1/4 inch on the paper equals 1 foot in the real house" — without
+      doing that division in your head for every single measurement.
+    </div>
+    <div class="rule-note">
+      <b>The trick that makes it fast:</b> most of the edge is marked off in whole feet, evenly spaced at that scale's
+      ratio. But look just to the <b>left of the zero mark</b> — that short stretch is subdivided into inches, and it's
+      numbered <b>backward</b> (12 down to 0). That's on purpose: it lets you read "feet, then inches" in one motion —
+      whole feet to the right of zero, then swing left into the inch stretch for the leftover. No mental math, no
+      dividing a foot by hand.
+    </div>
+    <div class="rule-note">
+      <b>Two scales share every edge.</b> 1/4"=1'-0" and 1/8"=1'-0" live on the same physical edge, numbered in opposite
+      directions — because 1/8 is exactly half of 1/4, the same tick marks serve both if you just read from the other
+      end. That's why there are only six edges for eleven scales.
+    </div>
+    <div class="rule-note">
+      <b>The one edge that isn't a scale at all:</b> Face 3's second edge is just a normal ruler, divided into 16ths of
+      a real inch — the "Full" edge. It's there for when you need to measure the actual paper, not the building.
+    </div>
+
+    <button class="deep-toggle" onclick="toggleDeep()">
+      <span>⌄ Why does an architect's scale exist instead of just using a regular ruler and a calculator?</span>
+    </button>
+    <div class="deep-panel" id="deepPanel">
+      <p>You could measure a drawing in inches and multiply by the scale factor every time — but that's slow, and it's
+      one extra place to make an arithmetic mistake on a jobsite or over a drafting table. The architect's scale moves
+      that division into the tool itself, done once by the manufacturer, so every reading you take is already in real
+      feet-and-inches. It's the same idea as a lookup table: pay the computation cost once, read the answer forever.</p>
+      <p>The reversed first foot is the same efficiency trick applied to the remainder. Without it, you'd read the
+      nearest whole foot, then have to subtract to find the leftover inches. With it, the leftover is already sitting
+      right there, pre-subtracted, the instant you swing your eye left past zero.</p>
+    </div>
+  </div>
+
+  <div id="practiceView" style="display:none">
+    <div class="practice-panel">
+      <div class="pp-top">
+        <span class="pp-hint" id="ppHint">Pick a face above, then read or place a length.</span>
+        <span class="pp-score" id="ppScore">0 / 0</span>
+      </div>
+      <div id="ppBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Scale data: 5 doubling pairs + 1 full-size edge, across 3 faces ----------
+// ratioInPerFt = inches on the drawing that represent one real foot.
+const FACES = [
+  { id: 1, name: 'Face 1', top: { ratio: 3/32, label: '3/32" = 1\'-0"' }, bottom: { ratio: 3/16, label: '3/16" = 1\'-0"' } },
+  { id: 2, name: 'Face 2', top: { ratio: 1/8,  label: '1/8" = 1\'-0"'  }, bottom: { ratio: 1/4,  label: '1/4" = 1\'-0"'  } },
+  { id: 3, name: 'Face 3', top: { ratio: 3/8,  label: '3/8" = 1\'-0"'  }, bottom: { ratio: 3/4,  label: '3/4" = 1\'-0"'  } },
+];
+// Second three edges reachable by rotating past Face 3 — kept as a 4th/5th/6th logical
+// face so all eleven scales are reachable without stacking more than 2 edges per view.
+const FACES_EXT = [
+  { id: 4, name: 'Face 1B', top: { ratio: 1/2,  label: '1/2" = 1\'-0"'  }, bottom: { ratio: 1,    label: '1" = 1\'-0"'    } },
+  { id: 5, name: 'Face 2B', top: { ratio: 1.5,  label: '1-1/2" = 1\'-0"' }, bottom: { ratio: 3,  label: '3" = 1\'-0"'   } },
+  { id: 6, name: 'Face 3B', top: { ratio: 'full', label: 'Full Size (16ths)' }, bottom: null },
+];
+const ALL_FACES = FACES.concat(FACES_EXT);
+
+const BASE_PX_PER_INCH = 60;   // arbitrary but fixed — pixels on screen per real inch of drawing
+const STAGE_W = 860;           // usable drawing width inside the tan stage background
+
+let activeFaceId = 1;
+let mode = 'learn';
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeLearnBtn').classList.toggle('active', m === 'learn');
+  document.getElementById('modePracticeBtn').classList.toggle('active', m === 'practice');
+  document.getElementById('learnView').style.display = m === 'learn' ? 'block' : 'none';
+  document.getElementById('practiceView').style.display = m === 'practice' ? 'block' : 'none';
+  if (m === 'practice') nextQuestion();
+}
+
+function buildFaceSelector() {
+  const el = document.getElementById('faceSelector');
+  el.innerHTML = ALL_FACES.map(f => `
+    <div class="face-btn ${f.id === activeFaceId ? 'active' : ''}" onclick="setActiveFace(${f.id})">
+      <b>${f.name}</b>
+      ${f.top.ratio === 'full' ? 'Full' : fmtRatio(f.top.ratio)}${f.bottom ? ' / ' + fmtRatio(f.bottom.ratio) : ''}
+    </div>
+  `).join('');
+}
+
+function fmtRatio(r) {
+  if (r === 3/32) return '3/32';
+  if (r === 3/16) return '3/16';
+  if (r === 1/8) return '1/8';
+  if (r === 1/4) return '1/4';
+  if (r === 3/8) return '3/8';
+  if (r === 3/4) return '3/4';
+  if (r === 1/2) return '1/2';
+  if (r === 1) return '1"';
+  if (r === 1.5) return '1-1/2"';
+  if (r === 3) return '3"';
+  return String(r);
+}
+
+function setActiveFace(id) {
+  activeFaceId = id;
+  buildFaceSelector();
+  renderActiveFace();
+  if (mode === 'practice') refreshQuestionRender();
+}
+
+function getFace(id) { return ALL_FACES.find(f => f.id === id); }
+
+// ---------- Geometry: draw one scale edge, feet to the right of zero, reversed-inch stub to the left ----------
+function feetToShow(ratioInPerFt) {
+  const pxPerFoot = ratioInPerFt * BASE_PX_PER_INCH;
+  let feet = Math.floor((STAGE_W - 140) / pxPerFoot); // leave room for the left inch-stub + labels
+  return Math.max(4, Math.min(feet, 120));
+}
+
+function renderEdge(containerId, edgeDef, edgeName) {
+  const container = document.getElementById(containerId);
+  if (!edgeDef) { container.innerHTML = ''; return; }
+
+  if (edgeDef.ratio === 'full') {
+    renderFullEdge(container, edgeName);
+    return;
+  }
+
+  const pxPerFoot = edgeDef.ratio * BASE_PX_PER_INCH;
+  const feet = feetToShow(edgeDef.ratio);
+  const stubW = pxPerFoot;              // the reversed-inch stub is exactly one foot wide
+  const originX = stubW + 20;
+  const baseY = 70;
+
+  let ticks = '';
+  // Reversed inch stub, left of zero: 12 at the far left, 0 at the origin
+  for (let i = 0; i <= 12; i++) {
+    const x = originX - (i / 12) * stubW;
+    const isMajor = (i % 3 === 0);
+    const h = isMajor ? 22 : 14;
+    ticks += `<line class="tick${isMajor ? '' : ' fine'}" x1="${x}" y1="${baseY}" x2="${x}" y2="${baseY - h}"/>`;
+    if (isMajor) ticks += `<text class="tick-label" x="${x}" y="${baseY + 16}" text-anchor="middle">${12 - i}</text>`;
+  }
+  // Whole feet, right of zero
+  for (let f = 0; f <= feet; f++) {
+    const x = originX + f * pxPerFoot;
+    const isMajor = (feet > 30 ? f % 10 === 0 : (feet > 12 ? f % 5 === 0 : true));
+    const h = isMajor ? 22 : 14;
+    ticks += `<line class="tick${isMajor ? '' : ' fine'}" x1="${x}" y1="${baseY}" x2="${x}" y2="${baseY - h}"/>`;
+    if (isMajor) ticks += `<text class="tick-label" x="${x}" y="${baseY + 16}" text-anchor="middle">${f}'</text>`;
+  }
+  const zeroLine = `<line class="zero-line" x1="${originX}" y1="${baseY - 26}" x2="${originX}" y2="${baseY + 4}"/>`;
+  const totalW = originX + feet * pxPerFoot + 30;
+
+  container.innerHTML = `
+    <div class="edge-label">${edgeName} — ${edgeDef.label}</div>
+    <div class="edge-stage">
+      <svg class="edge-svg" viewBox="0 0 ${Math.max(totalW, STAGE_W)} 100" xmlns="http://www.w3.org/2000/svg"
+        id="svg-${edgeName.replace(/\s+/g,'')}" data-ratio="${edgeDef.ratio}" data-origin="${originX}" data-pxft="${pxPerFoot}">
+        <rect class="click-hit" x="0" y="0" width="${Math.max(totalW, STAGE_W)}" height="100" fill="transparent"
+          onclick="onEdgeClick(event, '${edgeName}')"/>
+        ${ticks}${zeroLine}
+        <g id="markers-${edgeName.replace(/\s+/g,'')}"></g>
+      </svg>
+    </div>
+  `;
+}
+
+function renderFullEdge(container, edgeName) {
+  const pxPerIn = BASE_PX_PER_INCH;
+  const inches = 12;
+  const originX = 20, baseY = 70;
+  let ticks = '';
+  for (let s = 0; s <= inches * 16; s++) {
+    const x = originX + (s / 16) * pxPerIn;
+    let h = 12;
+    if (s % 16 === 0) h = 24; else if (s % 8 === 0) h = 19; else if (s % 4 === 0) h = 16; else if (s % 2 === 0) h = 13.5;
+    ticks += `<line class="tick${s % 16 === 0 ? '' : ' fine'}" x1="${x}" y1="${baseY}" x2="${x}" y2="${baseY - h}"/>`;
+    if (s % 16 === 0) ticks += `<text class="tick-label" x="${x}" y="${baseY + 16}" text-anchor="middle">${s / 16}"</text>`;
+  }
+  const totalW = originX + inches * pxPerIn + 30;
+  container.innerHTML = `
+    <div class="edge-label">Full Size — real inches, 16ths</div>
+    <div class="edge-stage">
+      <svg class="edge-svg" viewBox="0 0 ${totalW} 100" xmlns="http://www.w3.org/2000/svg">
+        ${ticks}
+      </svg>
+    </div>
+  `;
+}
+
+function renderActiveFace() {
+  const f = getFace(activeFaceId);
+  renderEdge('edgeTop', f.top, 'Top Edge');
+  renderEdge('edgeBottom', f.bottom, 'Bottom Edge');
+}
+
+// ---------- Reading conversion ----------
+// Convert a pixel x on a rendered edge to real feet (decimal), using that edge's own origin/pxPerFoot.
+function xToFeet(svgId, x) {
+  const svg = document.getElementById(svgId);
+  const origin = parseFloat(svg.dataset.origin);
+  const pxft = parseFloat(svg.dataset.pxft);
+  return (x - origin) / pxft;
+}
+function feetToFtIn(decFeet) {
+  const totalIn = Math.round(decFeet * 12);
+  const ft = Math.floor(totalIn / 12);
+  const inch = totalIn % 12;
+  return `${ft}'-${inch}"`;
+}
+function parseFtIn(str) {
+  str = str.trim().toLowerCase();
+  // formats: 14'-6", 14-6, 14 6, 14ft 6in, 14.5 (decimal feet)
+  let m = str.match(/^(\d+)\s*'?\s*-?\s*(\d+)?\s*"?$/);
+  if (m) {
+    const ft = parseInt(m[1], 10);
+    const inch = m[2] ? parseInt(m[2], 10) : 0;
+    return ft + inch / 12;
+  }
+  m = str.match(/^(\d+)\s*ft\.?\s*(\d+)?\s*in\.?$/);
+  if (m) {
+    const ft = parseInt(m[1], 10);
+    const inch = m[2] ? parseInt(m[2], 10) : 0;
+    return ft + inch / 12;
+  }
+  const dec = parseFloat(str);
+  if (!isNaN(dec)) return dec;
+  return null;
+}
+
+// ---------- Click-to-place (learn mode: free explore, no grading) ----------
+function onEdgeClick(evt, edgeName) {
+  if (mode !== 'learn') return;
+  const svg = evt.currentTarget.closest('svg');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const feet = xToFeet(svg.id, loc.x);
+  if (feet < 0) return;
+  const marker = svg.querySelector('#markers-' + edgeName.replace(/\s+/g,''));
+  marker.innerHTML = `<line class="placed-marker" x1="${loc.x}" y1="46" x2="${loc.x}" y2="80"/>`;
+  document.querySelector('.edge-label').dataset.reading = feetToFtIn(feet);
+  HILToast(edgeName + ' reads ' + feetToFtIn(feet));
+}
+
+function HILToast(msg) {
+  // lightweight standalone toast — this prototype has no hil-shell wired in yet
+  let el = document.getElementById('protoToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'protoToast';
+    el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;border:1px solid #00cc66;color:#00cc66;padding:8px 16px;border-radius:6px;font-family:monospace;font-size:12px;z-index:999;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+}
+
+// ---------- Practice mode: three question types ----------
+let score = { correct: 0, total: 0 };
+let currentQ = null;
+
+function nextQuestion() {
+  const types = ['read', 'place', 'pickscale'];
+  const type = types[Math.floor(Math.random() * types.length)];
+
+  if (type === 'pickscale') {
+    const correctFace = ALL_FACES[Math.floor(Math.random() * (ALL_FACES.length - 1))]; // exclude Full-only face 6
+    const useTop = Math.random() < 0.5 && correctFace.bottom;
+    const edgeDef = useTop ? correctFace.top : (correctFace.bottom || correctFace.top);
+    currentQ = { type: 'pickscale', targetLabel: edgeDef.label, correctFaceId: correctFace.id };
+    renderPickScaleQ();
+    return;
+  }
+
+  // read / place both need an active edge with real feet — force onto Face 2's 1/4" edge by
+  // default if the currently active face is the Full-size-only face
+  if (activeFaceId === 6) setActiveFace(2);
+  const f = getFace(activeFaceId);
+  const useTop = Math.random() < 0.5;
+  const edgeDef = useTop ? f.top : (f.bottom || f.top);
+  const edgeName = useTop ? 'Top Edge' : (f.bottom ? 'Bottom Edge' : 'Top Edge');
+  const feet = feetToShow(edgeDef.ratio);
+  const targetFeet = Math.floor(Math.random() * feet) + Math.round(Math.random() * 11) / 12;
+
+  currentQ = { type, edgeDef, edgeName, targetFeet };
+  if (type === 'read') renderReadQ();
+  else renderPlaceQ();
+}
+
+function renderPickScaleQ() {
+  document.getElementById('ppHint').textContent = 'Pick the correct face/edge — no reading yet, just finding it';
+  document.getElementById('ppScore').textContent = score.correct + ' / ' + score.total;
+  const body = document.getElementById('ppBody');
+  body.innerHTML = `
+    <div class="pp-prompt">This drawing is scaled at <b>${escapeHtml(currentQ.targetLabel)}</b>. Which face has that edge?</div>
+    <div class="scale-pick-grid" id="scalePickGrid"></div>
+    <div id="ppFeedback"></div>
+  `;
+  const grid = document.getElementById('scalePickGrid');
+  grid.innerHTML = ALL_FACES.filter(f => f.id !== 6 || currentQ.targetLabel.includes('Full')).map(f => `
+    <div class="scale-pick-btn" onclick="checkPickScale(${f.id})">${f.name}</div>
+  `).join('');
+}
+function checkPickScale(pickedId) {
+  score.total++;
+  const correct = pickedId === currentQ.correctFaceId;
+  if (correct) score.correct++;
+  setActiveFace(pickedId);
+  showFeedback(correct, correct ? 'Correct.' : `Not quite — ${currentQ.targetLabel} is on ${getFace(currentQ.correctFaceId).name}.`);
+}
+
+function renderReadQ() {
+  document.getElementById('ppHint').textContent = 'Read the marked length off the ' + currentQ.edgeName;
+  document.getElementById('ppScore').textContent = score.correct + ' / ' + score.total;
+  renderActiveFace();
+  const svgId = document.getElementById(currentQ.edgeName === 'Top Edge' ? 'edgeTop' : 'edgeBottom').querySelector('svg').id;
+  const svg = document.getElementById(svgId);
+  const origin = parseFloat(svg.dataset.origin), pxft = parseFloat(svg.dataset.pxft);
+  const x = origin + currentQ.targetFeet * pxft;
+  svg.querySelector('g[id^="markers-"]').innerHTML = `<line class="target-marker" x1="${x}" y1="42" x2="${x}" y2="80"/>`;
+
+  const body = document.getElementById('ppBody');
+  body.innerHTML = `
+    <div class="pp-prompt">What real-world length does the red mark show?</div>
+    <div class="pp-answer-row"><input type="text" id="readAnswer" placeholder="e.g. 14'-6&quot;"><button class="pp-btn" onclick="checkReadAnswer()">Check</button></div>
+    <div id="ppFeedback"></div>
+  `;
+}
+function checkReadAnswer() {
+  const raw = document.getElementById('readAnswer').value;
+  const parsed = parseFtIn(raw);
+  if (parsed === null) { alert('Try a format like 14\'-6" or 14.5'); return; }
+  score.total++;
+  const correct = Math.abs(parsed - currentQ.targetFeet) < (1 / 24); // within half an inch
+  if (correct) score.correct++;
+  showFeedback(correct, correct ? 'Correct — ' + feetToFtIn(currentQ.targetFeet) + '.' : 'Not quite — that reads ' + feetToFtIn(currentQ.targetFeet) + '.');
+}
+
+function renderPlaceQ() {
+  document.getElementById('ppHint').textContent = 'Click the ' + currentQ.edgeName + ' at the stated length';
+  document.getElementById('ppScore').textContent = score.correct + ' / ' + score.total;
+  renderActiveFace();
+  const body = document.getElementById('ppBody');
+  body.innerHTML = `
+    <div class="pp-prompt">Click the point on the ${currentQ.edgeName} that reads <b>${feetToFtIn(currentQ.targetFeet)}</b>.</div>
+    <div id="ppFeedback"></div>
+  `;
+  const containerId = currentQ.edgeName === 'Top Edge' ? 'edgeTop' : 'edgeBottom';
+  const svg = document.getElementById(containerId).querySelector('svg');
+  svg.querySelector('rect.click-hit').setAttribute('onclick', 'onPlaceClick(event)');
+}
+function onPlaceClick(evt) {
+  if (mode !== 'practice' || !currentQ || currentQ.type !== 'place') return;
+  const svg = evt.currentTarget.closest('svg');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const feet = xToFeet(svg.id, loc.x);
+  score.total++;
+  const correct = Math.abs(feet - currentQ.targetFeet) < (1 / 24);
+  if (correct) score.correct++;
+  const marker = svg.querySelector('g[id^="markers-"]');
+  marker.innerHTML = `<line class="placed-marker${correct ? '' : ' wrong'}" x1="${loc.x}" y1="46" x2="${loc.x}" y2="80"/>`;
+  showFeedback(correct, correct ? 'Correct.' : 'Off by ' + feetToFtIn(Math.abs(feet - currentQ.targetFeet)) + ' — target was ' + feetToFtIn(currentQ.targetFeet) + '.');
+}
+
+function showFeedback(correct, msg) {
+  document.getElementById('ppScore').textContent = score.correct + ' / ' + score.total;
+  document.getElementById('ppFeedback').innerHTML = `
+    <div class="pp-feedback ${correct ? 'correct' : 'wrong'}">${msg}</div>
+    <div class="pp-actions"><button class="pp-next" onclick="nextQuestion()">Next →</button></div>
+  `;
+}
+
+function refreshQuestionRender() {
+  if (mode === 'practice' && currentQ && (currentQ.type === 'read' || currentQ.type === 'place')) nextQuestion();
+}
+
+function toggleDeep() { document.getElementById('deepPanel').classList.toggle('open'); }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------- Init ----------
+buildFaceSelector();
+renderActiveFace();
+</script>
+</body>
+</html>
