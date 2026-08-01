@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Weights & Measures — HIL Guild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="../hil-shell.js"></script>
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     :root block here. Only this hub's specific styling stays.
+     Pattern copied deliberately from the Foundations hub — same hub
+     shape, sibling category, different content. Foundations teaches
+     communication literacy (grammar, clarity, provenance); this teaches
+     tool literacy (read and use a real measuring instrument correctly).
+     Deliberately NOT nested inside Foundations — see hil-foundations.html
+     if the "why are these separate" reasoning needs re-deriving later. */
+  *{box-sizing:border-box;}
+
+  .wrap{max-width:1040px;margin:0 auto;padding:26px 20px 60px;}
+
+  .fnd-hero{border:1px solid var(--hil-border);border-radius:16px;padding:24px 26px;margin-bottom:28px;
+    background:
+      linear-gradient(135deg, rgba(10,12,11,0.85), rgba(10,12,11,0.78)),
+      radial-gradient(circle at 15% 10%, rgba(204,136,0,0.10), transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,159,90,0.08), transparent 45%),
+      var(--hil-bg, #0a0c0b);}
+  .fnd-hero .kicker{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:1px;}
+  .fnd-hero h1{font-family:var(--font-display);font-size:26px;font-weight:900;letter-spacing:0.04em;margin:6px 0 8px;color:var(--hil-text);}
+  .fnd-hero p{font-size:15px;line-height:1.6;color:var(--hil-text-muted);margin:0;max-width:640px;}
+
+  .progress-strip{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .progress-pip{font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:12px;padding:4px 10px;}
+
+  .lab-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:680px){.lab-grid{grid-template-columns:1fr;}}
+
+  .lab-card{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:12px;padding:18px 20px;
+    display:flex;flex-direction:column;gap:10px;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s;}
+  .lab-card:hover{border-color:var(--accent,var(--hil-green));transform:translateY(-2px);}
+  .lab-card.pending{opacity:0.72;}
+  .lab-card.pending:hover{border-color:var(--hil-border);transform:none;}
+  .lab-card .icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;
+    background:var(--hil-surface-2);border:1px solid var(--hil-border);}
+  .lab-card h3{font-family:var(--font-display);font-size:16px;font-weight:900;letter-spacing:0.03em;margin:0;color:var(--hil-text);}
+  .lab-card .concepts{font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);text-transform:uppercase;letter-spacing:0.4px;}
+  .lab-card p.desc{font-size:13.5px;line-height:1.55;color:var(--hil-text-muted);margin:0;flex:1;}
+  .lab-card .cta{font-family:var(--font-display);font-size:11px;letter-spacing:0.04em;color:var(--accent,var(--hil-green));
+    display:flex;align-items:center;gap:6px;margin-top:4px;}
+
+  .pending-badge{
+    align-self:flex-start; font-family:var(--font-mono); font-size:9px; letter-spacing:0.06em;
+    padding:3px 9px; border-radius:999px; text-transform:uppercase;
+    background:rgba(245,158,11,0.12); color:#f59e0b; border:1px solid rgba(245,158,11,0.35);
+  }
+
+  .lc-ruler{--accent:#cc8800;}
+  .lc-protractor{--accent:#ff9f5a;}
+  .lc-archscale{--accent:#4a9eed;}
+  .lc-weather{--accent:#38bdf8;}
+
+  /* Coming-soon placeholder cards — roadmapped, no file yet */
+  .lab-card.placeholder{border-style:dashed; opacity:0.45; cursor:default;}
+  .lab-card.placeholder:hover{border-color:var(--hil-border); transform:none;}
+
+  .infra-note{margin-top:26px;padding:14px 16px;border:1px dashed var(--hil-border);border-radius:8px;
+    font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);line-height:1.7;}
+  .infra-note a{color:var(--hil-green);text-decoration:none;}
+
+  .gms-topbar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:var(--hil-surface-2);border-bottom:1px solid var(--hil-border);flex-wrap:wrap;}
+  .gms-crumb{font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-crumb b{color:var(--hil-green);}
+  .gms-crumb a{color:var(--hil-text-muted);text-decoration:none;}
+  .gms-crumb a:hover{color:var(--hil-green);}
+  .gms-member{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--hil-text-muted);}
+  .gms-member .name{color:var(--hil-text);font-weight:700;}
+  .gms-member .pill{background:var(--hil-surface);border:1px solid var(--hil-border);border-radius:10px;padding:3px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;}
+</style>
+</head>
+<body>
+
+  <div class="gms-topbar">
+    <div class="gms-crumb"><a href="../hil-guild.html">Guild</a> &nbsp;&rsaquo;&nbsp; <b>Weights &amp; Measures</b></div>
+    <div class="gms-member">
+      <span class="name" id="memberName">—</span>
+      <span class="pill" id="memberPill">resolving member…</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="fnd-hero">
+      <div class="kicker">Guild &middot; Weights &amp; Measures</div>
+      <h1>WEIGHTS &amp; MEASURES</h1>
+      <p>Reading a real tool correctly is its own skill, separate from the math behind it — a tape measure, a protractor, a caliper all fail you the same way if you can't actually read the marks. Start here to build tool literacy: what to reach for, how precise it actually is, and how to read it without guessing.</p>
+      <div class="progress-strip">
+        <span class="progress-pip" id="wrappedPip">0 / 3 modules wrapped up</span>
+        <span class="progress-pip">measurement &middot; precision &middot; real tools</span>
+      </div>
+    </div>
+
+    <div class="lab-grid">
+
+      <a class="lab-card lc-ruler pending" href="ruler-simulator.html">
+        <span class="pending-badge">⏳ Prototype — shell/session-logger wiring pending</span>
+        <div class="icon">📏</div>
+        <h3>RULER SIMULATOR</h3>
+        <div class="concepts">fractional inches &middot; precision &middot; smallest division</div>
+        <p class="desc">Read a real ruler down to the sixteenth of an inch. Learn why tick height tells you the fraction at a glance, then practice reading and placing real measurements — graded exactly, no partial credit for "close enough."</p>
+        <div class="cta">Open Ruler Simulator &rarr;</div>
+      </a>
+
+      <a class="lab-card lc-protractor pending" href="protractor-simulator.html">
+        <span class="pending-badge">⏳ Prototype — shell/session-logger wiring pending</span>
+        <div class="icon">📐</div>
+        <h3>PROTRACTOR SIMULATOR</h3>
+        <div class="concepts">degrees &middot; radians &middot; where π actually comes from</div>
+        <p class="desc">Read and place angles on a real protractor — and see the radian value sitting right behind every degree reading. Ties directly back to Calculator Explorer's π key instead of teaching π as a second, unrelated fact.</p>
+        <div class="cta">Open Protractor Simulator &rarr;</div>
+      </a>
+
+      <a class="lab-card lc-archscale pending" href="architect-scale-simulator.html">
+        <span class="pending-badge">⏳ Prototype — shell/session-logger wiring pending</span>
+        <div class="icon">📐</div>
+        <h3>ARCHITECT'S SCALE</h3>
+        <div class="concepts">six edges &middot; eleven ratios &middot; the reversed first foot</div>
+        <p class="desc">The real triangular drafting tool — three faces, six edges, eleven scale ratios from 3/32" to 3" per foot. Teaches the two skills that trip people up: picking the correct edge for a stated drawing scale, and reading the reversed-inch stub that sits to the left of zero on every edge.</p>
+        <div class="cta">Open Architect's Scale &rarr;</div>
+      </a>
+
+      <a class="lab-card lc-weather" href="hil-weather-spotters.html">
+        <div class="icon">🌦</div>
+        <h3>WEATHER SPOTTERS</h3>
+        <div class="concepts">temperature &middot; pressure &middot; reading real instruments</div>
+        <p class="desc">Guess tomorrow's weather, then check how close you got — thermometers and pressure readings are measurement tools same as a ruler or a caliper. Locked as a genuine Weights & Measures module (not just a redirected card) — its progress now counts toward this hub same as Ruler and Protractor.</p>
+        <div class="cta">Open Weather Spotters &rarr;</div>
+      </a>
+
+      <div class="lab-card placeholder">
+        <div class="icon">➕</div>
+        <h3>TAPE MEASURE SIMULATOR</h3>
+        <div class="concepts">roadmap &middot; flagship tool &middot; not yet built</div>
+        <p class="desc">The flagship of this category — drag-to-length, offset measuring, the carpenter's 10-inch trick. Needs real drag interaction, not just click-to-place, so it's being built after Ruler Simulator proves the reading pattern out, not before.</p>
+      </div>
+
+      <div class="lab-card placeholder">
+        <div class="icon">➕</div>
+        <h3>CALIPER SIMULATOR</h3>
+        <div class="concepts">roadmap &middot; not yet built</div>
+        <p class="desc">Outside, inside, depth, and step measurement — the same tool reading four different features depending on which jaws you use. Digital, dial, and vernier variants planned.</p>
+      </div>
+
+      <div class="lab-card placeholder">
+        <div class="icon">➕</div>
+        <h3>MICROMETER SIMULATOR</h3>
+        <div class="concepts">roadmap &middot; not yet built</div>
+        <p class="desc">Sleeve and thimble reading, with a digital readout available as a checking aid — not a replacement for learning to read the mechanical scale itself.</p>
+      </div>
+
+      <div class="lab-card placeholder">
+        <div class="icon">➕</div>
+        <h3>SCALE SIMULATOR</h3>
+        <div class="concepts">roadmap &middot; push, pull &amp; platform scales &middot; not yet built</div>
+        <p class="desc">Three different scale mechanisms read three different ways — a pull scale (hanging/spring, like a fish scale), a push scale (compression, like a bathroom scale), and a platform/balance scale. Volume and the fluid-ounce-vs-ounce mistake are a likely follow-on, not part of this build.</p>
+      </div>
+
+    </div>
+
+    <div class="infra-note">
+      Ruler Simulator and Protractor Simulator are both content-complete prototypes reusing Calculator Explorer's
+      Learn/Practice chassis — mode toggle, tap-to-explain, real grading engines. Both engines (the ruler's
+      fraction parser, the protractor's degree/π-fraction formatter) were unit-tested standalone against known
+      values before being wired into the UI, the same discipline Calculator Explorer's expression parser and
+      Punctuation Explorer's answer bank used. Neither is wired to <code>hil-shell.js</code> or
+      <code>session-logger.js</code> yet — same gap Punctuation Explorer had before this session, and the same
+      porting work: mechanical at this point, not a design question. Scale Rule Simulator from the original
+      proposal isn't on this roadmap yet — it teaches a genuinely different skill (reading a scaled drawing, not
+      a physical tool) and deserves its own scoping pass rather than being assumed into this list.
+      <br><br>
+      <b>Weather Spotters categorization — LOCKED:</b> it's a genuine Weights & Measures module (a thermometer/
+      pressure reading is the same reading-a-real-instrument skill as a ruler or caliper), not just a card that
+      happens to link here. It's now included in <code>WM_MODULE_IDS</code> below, so its progress counts toward
+      this hub the same as Ruler and Protractor. Two things this does NOT resolve, left exactly as open as before:
+      (1) the <code>moduleId</code> string used below is a best guess from filename convention
+      (<code>hil-weather-spotters</code>) — <b>unconfirmed against Weather Spotters' own actual
+      <code>MODULE_MANIFEST.moduleId</code></b>, verify before trusting the progress count; (2) whether its
+      badges (<code>weather-watcher</code>, <code>junior-meteorologist</code>, still defined in
+      <code>hil-guild.html</code>'s catalog) get re-categorized as Weights & Measures badges is a separate
+      question this comment doesn't answer — say the word if you want that folded in too.
+    </div>
+
+  </div>
+
+<script type="module">
+  import { resolveActiveMember } from '../session-logger.js';
+
+  // Three modules now — Ruler, Protractor, and Weather Spotters (locked
+  // in this session; see infra-note above for the moduleId caveat). Kept
+  // as an array (not a hardcoded count) so adding Tape Measure, Caliper,
+  // etc. later is a one-line change, same pattern as Foundations'
+  // FOUNDATIONS_MODULE_IDS and Electric Forge's FORGE_MODULE_IDS.
+  const WM_MODULE_IDS = [
+    'ruler-simulator',
+    'protractor-simulator',
+    'hil-weather-spotters', // UNCONFIRMED — guessed from filename convention;
+                             // verify against Weather Spotters' own
+                             // MODULE_MANIFEST.moduleId before relying on
+                             // the progress count including it correctly.
+  ];
+
+  const memberNameEl = document.getElementById('memberName');
+  const memberPillEl = document.getElementById('memberPill');
+  const wrappedPipEl = document.getElementById('wrappedPip');
+
+  // Same known open item as every other Guild hub: this page's own
+  // <a href="ruler-simulator.html"> etc. don't pass a ?member= param either.
+  async function resolveMemberAndProgress(user) {
+    const activeMember = await resolveActiveMember(window.db, user.uid);
+    if (!activeMember) {
+      memberNameEl.textContent = 'No member set up';
+      memberPillEl.textContent = 'add a member in Guild';
+      wrappedPipEl.textContent = `0 / ${WM_MODULE_IDS.length} modules wrapped up`;
+      return;
+    }
+    memberNameEl.textContent = activeMember.name || 'Unnamed member';
+    memberPillEl.textContent = 'auto-selected';
+
+    try {
+      const { collection, getDocs, query, where, limit } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      const entriesRef = collection(window.db, 'users', user.uid, 'team_members', activeMember.id, 'session_log_entries');
+      let wrapped = 0;
+      for (const moduleId of WM_MODULE_IDS) {
+        const q = query(entriesRef, where('moduleId', '==', moduleId), limit(1));
+        const snap = await getDocs(q);
+        if (!snap.empty) wrapped += 1;
+      }
+      wrappedPipEl.textContent = `${wrapped} / ${WM_MODULE_IDS.length} modules wrapped up`;
+    } catch (err) {
+      console.error('Weights & Measures hub: progress lookup failed', err);
+      wrappedPipEl.textContent = `— / ${WM_MODULE_IDS.length} modules wrapped up`;
+    }
+  }
+
+  HILShell.init({
+    toolId: 'weights-measures',
+    toolName: 'Weights & Measures',
+    requireAuth: true,
+    onAuth: async (user) => {
+      if (!user) return;
+      await resolveMemberAndProgress(user);
+    }
+  });
+</script>
+
+</body>
+</html>
