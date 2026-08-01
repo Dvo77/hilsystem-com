@@ -5,7 +5,7 @@
 
 **Correction this rebuild:** the prior version of this file (dated July 17) was never actually committed to GitHub — it only ever existed as a chat artifact / project-knowledge upload, so every session since has been re-deriving state from scratch instead of reading it. This copy needs to be manually added to the repo root to close that gap for good.
 
-**Last updated:** July 31, 2026 (session: Fixed Points permissions fix)
+**Last updated:** August 1, 2026 (session: Natural Sciences hub + Periodic Table Lab)
 
 ---
 
@@ -68,6 +68,16 @@
 
 - **Status:** ✅ CONFIRMED LIVE (per Dan, July 19) — Family Ledger export mode, lives under Financial in the admin panel.
 
+## Natural Sciences hub + Periodic Table Lab
+
+- **Status:** ✅ CONFIRMED LIVE (per Dan, Aug 1) — new Guild hub built and deployed this session, mirroring Electric Forge's hub structure. Files live at `tools/natural-sciences/index.html` (hub) and `tools/natural-sciences/periodic-table-lab.html` (first module).
+- **Guild root card:** ✅ CONFIRMED LIVE — "Open Natural Sciences" card added to `hil-guild.html`'s module grid, ahead of the Arts/Economics coming-soon cards.
+- **`guild-module-registry.js`:** ✅ CONFIRMED LIVE — `natural-sciences` entry added (`status: 'live'`, `moduleIds: ['periodic-table-lab']`), so the hub's own progress strip and the Guild root's Time by Category tracker both pick it up.
+- **Session logging:** ✅ CONFIRMED LIVE (per Dan) — Explore mode (dwell-time credit per element) and Practice mode (8-question quiz, accuracy scoring) both wired through the shared `session-logger.js`, confirmed writing real Session Log Entries and rendering in the Ledger preview.
+- **Bug fixed this session:** a temporal-dead-zone `ReferenceError` on `logger` (declared with `let` far below the code that read it) was breaking the page on load — `logger`/`activeMember` declarations moved to the top of the script, before any other code runs. Also decoupled `HILShell.init()` from the `session-logger.js` import — shell chrome now renders unconditionally instead of depending on that import succeeding.
+- **Known gaps:** `hil-shell.js` `NAV_TOOLS` entry not yet added (hub only reachable via the Guild root grid, not the top nav bar); Earth Science and Biology are visual stub cards on the hub with no `href` and no files; no `?member=` handoff from either the Guild root or the hub, same open item as every other hub-launched Guild module.
+- **READMEs:** ✅ WRITTEN — `natural-sciences-README.md` and `periodic-table-lab-README.md` produced this session, following the standard Tool Doc Schema (Periodic Table Lab also carries the Guild Proctoring & Tutoring Extension). Not yet confirmed pushed into `tools/readmes/`.
+
 ---
 
 ## Immediate next steps, in dependency order
@@ -78,6 +88,8 @@
 4. `hil-import-export.html`: confirm live deployment status, then either build real HomeBox field-mapping or relabel it as CSV/JSON-only until that's done.
 5. Resolve `hil-admin-action` source-of-truth location (GitHub vs. Cloud-Shell-only) — this has been an open question across multiple sessions and should get closed out.
 6. Directly re-verify `/webhook/ingest`, `WORKER_SECRET`, and whether `hil-email-ingest-FIXED.js` was ever actually pasted into the Workers editor — every email since deployment may still be silently failing.
+7. Add `hil-shell.js` `NAV_TOOLS` entry for Natural Sciences so it's reachable from the top nav, not just the Guild root grid.
+8. Confirm `natural-sciences-README.md` and `periodic-table-lab-README.md` are actually pushed into `tools/readmes/`, not just handed off this session.
 
 ---
 
@@ -90,3 +102,4 @@
 - **July 18, 2026** — Avatar/League Firestore pass: `avatar_profile`, `avatar_unlocks`, `avatar_catalog`, `leagues` + claim-slot `roster` rules added. `guild_media` changed from fully-backend-only to admin-direct-write.
 - **July 19, 2026** — Insurance Report export shipped and confirmed live (Family Ledger export mode).
 - **July 31, 2026** — Discovered `fixed_points` subcollection had zero rules coverage (not caught in the July 16 pass, which only added the `item_records.room_position` exception under the Fixed Points banner and missed the collection itself). Drafted and handed off owner-direct-write rule matching the `zones` pattern, per Dan's confirmation that Fixed Points doesn't need `hil-admin-action` gating. Rebuilt this file from the stale project-knowledge copy since the July 16 version never actually made it into GitHub — flagged as the reason session-start state has been getting re-derived from scratch repeatedly.
+- **August 1, 2026** — Built and shipped the Natural Sciences Guild hub (mirroring Electric Forge's hub structure) plus its first module, Periodic Table Lab, with real Explore/Practice session logging through `session-logger.js`. Added the Guild root card and a `natural-sciences` entry to `guild-module-registry.js`. Fixed a temporal-dead-zone bug (`logger` referenced before its `let` declaration executed) and decoupled `HILShell.init()` from the session-logger import so shell chrome can't be taken down by a failed import. Wrote READMEs for both the hub and the lab, following the standard Tool Doc Schema.
