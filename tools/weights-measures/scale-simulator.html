@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scale Simulator — HIL Guild (prototype)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+  :root{
+    --hil-green:#00cc66; --hil-bg:#0a0a0a; --hil-surface:#111111; --hil-surface-2:#1a1a1a;
+    --hil-border:#222222; --hil-text:#e0e0e0; --hil-text-muted:#666666; --hil-danger:#cc3333;
+    --hil-amber:#cc8800; --hil-green-dim:#0a3a22;
+    --font-display:'Orbitron',monospace; --font-mono:'Space Mono',monospace; --font-ui:'Barlow Condensed',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--hil-bg); color:var(--hil-text); font-family:var(--font-ui); padding:20px 16px 60px;}
+  .wrap{max-width:980px; margin:0 auto;}
+  .proto-banner{background:#2a1f0a; border:1px solid #7a5a1a; color:#e0b565; font-family:var(--font-mono);
+    font-size:11.5px; padding:8px 14px; text-align:center; letter-spacing:0.4px; margin-bottom:16px; border-radius:4px; line-height:1.6;}
+  header{border-bottom:2px solid var(--hil-border); padding-bottom:12px; margin-bottom:16px;}
+  h1{font-family:var(--font-display); font-weight:900; font-size:26px; letter-spacing:0.03em; margin:0;}
+  h1 span{color:var(--hil-green);}
+  .subtitle{font-family:var(--font-mono); font-size:12px; color:var(--hil-text-muted); letter-spacing:0.5px; text-transform:uppercase;}
+
+  .mode-toggle{display:flex; gap:8px; margin:16px 0;}
+  .mode-toggle button{flex:1; padding:10px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;}
+  .mode-toggle button.active{border-color:var(--hil-green); color:var(--hil-green); background:var(--hil-green-dim);}
+
+  .scale-selector{display:flex; gap:8px; margin-bottom:16px;}
+  .scale-btn{flex:1; padding:10px 8px; border-radius:5px; border:1px solid var(--hil-border); background:var(--hil-surface-2);
+    color:var(--hil-text-muted); font-family:var(--font-mono); font-size:11px; text-align:center; cursor:pointer; line-height:1.5;}
+  .scale-btn b{display:block; font-family:var(--font-display); font-size:13px; color:var(--hil-text); letter-spacing:0.03em;}
+  .scale-btn.active{border-color:var(--hil-amber); background:#2a1f0a; color:var(--hil-amber);}
+  .scale-btn.active b{color:var(--hil-amber);}
+
+  .scale-shell{background:var(--hil-surface); border:1px solid var(--hil-border); border-radius:6px; padding:16px; margin-bottom:10px;}
+  .scale-stage{background:#e8dfc8; border-radius:4px; padding:14px 20px; display:flex; justify-content:center;}
+  .scale-svg{display:block;}
+  .tick{stroke:#2a2418; stroke-width:1.5;}
+  .tick.fine{stroke-width:1;}
+  .tick-label{font-family:'Space Mono',monospace; font-size:11.5px; fill:#2a2418;}
+  .tick.kg{stroke:#2a3f6a;}
+  .tick-label.kg{fill:#2a3f6a;}
+  .needle{stroke:#cc3333; stroke-width:2.5; stroke-linecap:round;}
+  .beam-track{fill:#cfc4a3; stroke:#2a2418; stroke-width:1;}
+  .beam-block{fill:#3a3428; stroke:#111; stroke-width:1;}
+  .digital-face{background:#0a1a12; border:3px solid #333; border-radius:6px; padding:24px 32px; text-align:center;}
+  .digital-num{font-family:var(--font-mono); font-size:38px; color:#5fe89a; letter-spacing:1px;}
+  .digital-unit{font-family:var(--font-mono); font-size:13px; color:#3a7a55; letter-spacing:2px; margin-top:4px;}
+
+  .readout{font-family:var(--font-mono); font-size:14px; color:var(--hil-amber); text-align:center;
+    padding:8px; background:var(--hil-surface-2); border:1px solid var(--hil-border); border-radius:4px; margin-top:10px;}
+  .readout .std{color:var(--hil-text);}
+  .readout .metric{color:#6aa8ff;}
+
+  .rule-note{margin-top:14px; padding:10px 14px; background:var(--hil-surface-2); border:1px solid var(--hil-border);
+    border-radius:4px; font-size:13px; line-height:1.55; color:var(--hil-text-muted);}
+  .rule-note b{color:var(--hil-amber);}
+
+  .practice-panel{background:var(--hil-surface-2); border:1px solid var(--hil-amber); border-radius:6px; padding:16px; margin-bottom:16px;}
+  .pp-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;}
+  .pp-hint{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-score{font-family:var(--font-mono); font-size:11px; color:var(--hil-text-muted);}
+  .pp-prompt{font-size:16px; line-height:1.5; margin-bottom:10px;}
+  .pp-answer-row{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+  .pp-answer-row input{flex:1; min-width:110px; background:var(--hil-bg); border:1px solid var(--hil-border); color:var(--hil-text);
+    font-family:var(--font-mono); font-size:14px; padding:9px 12px; border-radius:4px;}
+  .pp-btn{font-family:var(--font-mono); font-size:11px; letter-spacing:0.5px; text-transform:uppercase; padding:9px 16px;
+    border-radius:4px; cursor:pointer; border:1px solid var(--hil-green); background:var(--hil-green-dim); color:var(--hil-green); font-weight:700;}
+  .pp-feedback{margin-top:6px; font-family:var(--font-mono); font-size:12.5px; font-weight:700; line-height:1.5;}
+  .pp-feedback.correct{color:var(--hil-green);}
+  .pp-feedback.wrong{color:var(--hil-danger);}
+  .pp-actions{display:flex; gap:8px; margin-top:10px;}
+  .pp-actions button{background:none; border:1px solid var(--hil-border); color:var(--hil-text-muted); padding:7px 14px;
+    border-radius:4px; cursor:pointer; font-family:var(--font-mono); font-size:11px;}
+  .pp-actions button:hover{border-color:var(--hil-amber); color:var(--hil-amber);}
+  .pp-next{border-color:var(--hil-green) !important; color:var(--hil-green) !important;}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">PROTOTYPE — Scale Simulator, second Phase 2 module. Three mechanisms in one build: Digital, Dial (spring), and Balance Beam. Balance Beam is single-unit-system per question (real beam scales aren't dual-marked) with the other unit shown in the readout — not simultaneous dual-marked graphics like the Ruler/Dial. No drag-to-balance interaction yet — beam positions are shown static and read, not adjusted by hand. No hil-shell/session-logger yet.</div>
+
+<div class="wrap">
+  <header>
+    <h1>SCALE <span>SIMULATOR</span></h1>
+    <div class="subtitle">Three ways to weigh something — digital, dial, and balance beam — kg next to lb/oz throughout</div>
+  </header>
+
+  <div class="mode-toggle">
+    <button id="modeLearnBtn" class="active" onclick="setMode('learn')">Learn</button>
+    <button id="modePracticeBtn" onclick="setMode('practice')">Practice</button>
+  </div>
+
+  <div class="scale-selector" id="scaleSelector"></div>
+
+  <div class="scale-shell">
+    <div class="scale-stage" id="scaleStage"></div>
+    <div class="readout" id="readout">Generate a weight to see both units.</div>
+  </div>
+
+  <div id="learnView">
+    <button class="pp-btn" style="width:100%;margin-bottom:14px" onclick="generateNew()">⟳ Weigh Something New</button>
+    <div id="learnNotes"></div>
+  </div>
+
+  <div id="practiceView" style="display:none;">
+    <div class="practice-panel" id="practicePanel"></div>
+  </div>
+</div>
+
+<script>
+const KG_TO_LB = 2.20462;
+function kgToLbOz(kg){
+  const totalOz = kg * 35.274;
+  let lb = Math.floor(totalOz / 16);
+  let oz = Math.round(totalOz - lb * 16);
+  if (oz === 16) { lb++; oz = 0; }
+  return { lb, oz };
+}
+function lbOzLabel(kg){ const { lb, oz } = kgToLbOz(kg); return lb + ' lb ' + oz + ' oz'; }
+function kgLabel(kg){ return kg.toFixed(kg < 10 ? 2 : 1) + ' kg'; }
+function parseLbOz(str){
+  str = str.trim().toLowerCase();
+  let m = str.match(/^(\d+)\s*lb\.?\s*(\d+)?\s*oz\.?$/);
+  if (m) return { lb: parseInt(m[1],10), oz: m[2] ? parseInt(m[2],10) : 0 };
+  m = str.match(/^(\d+)\s*'?\s*-?\s*(\d+)?$/);
+  if (m) return { lb: parseInt(m[1],10), oz: m[2] ? parseInt(m[2],10) : 0 };
+  return null;
+}
+function lbOzToKg(lb, oz){ return (lb * 16 + oz) / 35.274; }
+
+let mode = 'learn';
+let activeScale = 'digital';
+let currentValueKg = 0;
+
+const LEARN_NOTES = {
+  digital: [
+    ['How it works', 'A load cell inside converts weight into an electrical signal, and the display just prints the number — no needle position or beam balance to interpret. The only real skill left is recognizing what a given kg number feels like in lb/oz, and vice versa.'],
+    ['Why Practice tests conversion here', 'Every other scale type in this module tests reading a physical mechanism. Digital has nothing to read — it just shows the answer. So Practice for Digital tests the conversion itself: given one unit, estimate or calculate the other.']
+  ],
+  dial: [
+    ['How it works', 'A spring inside stretches proportionally to the weight hanging from the hook, and that stretch turns a needle across a dial face — same principle as a fish scale or a hanging luggage scale.'],
+    ['Two rings, one needle', 'The outer ring reads in pounds, the inner ring in kilograms. Both rings are calibrated to the exact same needle position — they have to agree, since it\'s one physical needle representing one real weight. That\'s what makes this a genuinely honest dual-unit tool, not just two separate scales bolted together.']
+  ],
+  balance: [
+    ['How it works', 'No spring, no electronics — a balance beam scale works by sliding known weights along a beam until it balances against the unknown weight on the platform. The big block on the large beam gets you in the right neighborhood (50 lb jumps), then the small beam\'s fine slide dials in the exact remainder.'],
+    ['Why this one isn\'t dual-marked', 'Real balance beam scales are built for one unit system — you\'ll find all-lb ones and all-kg ones, but not both on the same beam, because the notch spacing would have to serve two different unit systems at once and that defeats the point of fixed mechanical increments. So each question here uses one unit system for the beam itself, and shows the other unit\'s equivalent in the readout below — same exposure goal, honest about how the real tool works.']
+  ]
+};
+
+function buildScaleSelector(){
+  const el = document.getElementById('scaleSelector');
+  const defs = [
+    { id:'digital', name:'Digital', sub:'load cell' },
+    { id:'dial',    name:'Dial',    sub:'spring gauge' },
+    { id:'balance', name:'Balance', sub:'beam & poise' },
+  ];
+  el.innerHTML = defs.map(d => `
+    <div class="scale-btn ${d.id===activeScale?'active':''}" onclick="setActiveScale('${d.id}')">
+      <b>${d.name}</b>${d.sub}
+    </div>
+  `).join('');
+}
+function setActiveScale(id){
+  activeScale = id;
+  buildScaleSelector();
+  renderLearnNotes();
+  generateNew();
+}
+function renderLearnNotes(){
+  document.getElementById('learnNotes').innerHTML = LEARN_NOTES[activeScale].map(([h,b]) => `
+    <div class="rule-note"><b>${h}:</b> ${b}</div>
+  `).join('');
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById('modeLearnBtn').classList.toggle('active', m==='learn');
+  document.getElementById('modePracticeBtn').classList.toggle('active', m==='practice');
+  document.getElementById('learnView').style.display = m==='learn' ? 'block' : 'none';
+  document.getElementById('practiceView').style.display = m==='practice' ? 'block' : 'none';
+  generateNew();
+}
+
+function updateReadout(kg){
+  document.getElementById('readout').innerHTML =
+    '<span class="metric">'+kgLabel(kg)+'</span> &nbsp;≈&nbsp; <span class="std">'+lbOzLabel(kg)+'</span>';
+}
+
+// ---------- DIGITAL ----------
+function renderDigital(kg, reveal){
+  const stage = document.getElementById('scaleStage');
+  stage.innerHTML = `
+    <div class="digital-face">
+      <div class="digital-num">${reveal ? kg.toFixed(2) : '— . — —'}</div>
+      <div class="digital-unit">${reveal ? 'KILOGRAMS' : 'WEIGH SOMETHING'}</div>
+    </div>
+  `;
+}
+
+// ---------- DIAL ----------
+const DIAL_MAX_KG = 25;
+const DIAL_MAX_LB = DIAL_MAX_KG * KG_TO_LB;
+const DIAL_CX = 200, DIAL_CY = 210, DIAL_R_OUT = 170, DIAL_R_IN = 130;
+const DIAL_START = 210, DIAL_SWEEP = 240; // degrees: 0 at lower-left, sweeps clockwise through top to lower-right
+
+function dialAngle(frac){ return DIAL_START - frac * DIAL_SWEEP; }
+function dialPoint(frac, r){
+  const rad = dialAngle(frac) * Math.PI / 180;
+  return { x: DIAL_CX + r * Math.cos(rad), y: DIAL_CY - r * Math.sin(rad) };
+}
+
+function renderDial(kg, showNeedle){
+  const stage = document.getElementById('scaleStage');
+  let ticks = '';
+  // Outer ring — pounds, major every 5, labeled every 10
+  for (let lb = 0; lb <= Math.floor(DIAL_MAX_LB); lb++) {
+    const frac = lb / DIAL_MAX_LB;
+    const major = lb % 5 === 0;
+    const p1 = dialPoint(frac, DIAL_R_OUT);
+    const p2 = dialPoint(frac, DIAL_R_OUT - (major ? 16 : 8));
+    ticks += `<line class="tick${major?'':' fine'}" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"/>`;
+    if (lb % 10 === 0) {
+      const lp = dialPoint(frac, DIAL_R_OUT + 16);
+      ticks += `<text class="tick-label" x="${lp.x}" y="${lp.y+4}" text-anchor="middle">${lb}</text>`;
+    }
+  }
+  // Inner ring — kilograms, major every 1, labeled every 5
+  for (let k = 0; k <= DIAL_MAX_KG; k++) {
+    const frac = k / DIAL_MAX_KG;
+    const major = k % 1 === 0;
+    const p1 = dialPoint(frac, DIAL_R_IN);
+    const p2 = dialPoint(frac, DIAL_R_IN - 10);
+    ticks += `<line class="tick kg" x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"/>`;
+    if (k % 5 === 0) {
+      const lp = dialPoint(frac, DIAL_R_IN - 24);
+      ticks += `<text class="tick-label kg" x="${lp.x}" y="${lp.y+4}" text-anchor="middle">${k}</text>`;
+    }
+  }
+  let needle = '';
+  if (showNeedle) {
+    const frac = Math.min(1, kg / DIAL_MAX_KG);
+    const tip = dialPoint(frac, DIAL_R_OUT - 26);
+    needle = `<line class="needle" x1="${DIAL_CX}" y1="${DIAL_CY}" x2="${tip.x}" y2="${tip.y}"/><circle cx="${DIAL_CX}" cy="${DIAL_CY}" r="6" fill="#cc3333"/>`;
+  }
+  stage.innerHTML = `
+    <svg class="scale-svg" width="400" height="330" viewBox="0 0 400 330" xmlns="http://www.w3.org/2000/svg">
+      ${ticks}${needle}
+      <text class="tick-label" x="200" y="290" text-anchor="middle" style="font-size:10px">OUTER = LB &nbsp;·&nbsp; INNER = KG</text>
+    </svg>
+  `;
+}
+
+// ---------- BALANCE ----------
+// Large beam: chunky notches. Small beam: fine slide. Sum = total. Unit
+// system picked per-question — see LEARN_NOTES.balance for why.
+function renderBalance(kg, unit, reveal){
+  const stage = document.getElementById('scaleStage');
+  let largeVal, smallVal, largeStep, largeMax, smallMax, largeLabelFn, smallLabelFn, unitLabel;
+  if (unit === 'lb') {
+    const totalLb = kg * KG_TO_LB;
+    largeStep = 50; largeMax = 250; smallMax = 50;
+    largeVal = Math.min(largeMax, Math.floor(totalLb / largeStep) * largeStep);
+    smallVal = Math.round(totalLb - largeVal);
+    if (smallVal >= smallMax) { largeVal += largeStep; smallVal -= smallMax; }
+    unitLabel = 'lb';
+  } else {
+    largeStep = 10; largeMax = 100; smallMax = 10;
+    largeVal = Math.min(largeMax, Math.floor(kg / largeStep) * largeStep);
+    smallVal = Math.round((kg - largeVal) * 2) / 2;
+    if (smallVal >= smallMax) { largeVal += largeStep; smallVal -= smallMax; }
+    unitLabel = 'kg';
+  }
+
+  const beamW = 320, trackH = 14, xOff = 40;
+  function beam(label, max, val, id){
+    const frac = Math.max(0, Math.min(1, val / max));
+    const blockX = xOff + frac * beamW;
+    let ticks = '';
+    const step = max <= 50 && unit==='lb' ? 5 : (max === 10 ? 1 : max/10);
+    for (let v = 0; v <= max; v += step) {
+      const x = xOff + (v/max)*beamW;
+      ticks += `<line class="tick" x1="${x}" y1="0" x2="${x}" y2="8"/>`;
+      ticks += `<text class="tick-label" x="${x}" y="22" text-anchor="middle" style="font-size:9.5px">${v}</text>`;
+    }
+    return `
+      <div style="margin-bottom:22px">
+        <div style="font-family:var(--font-mono);font-size:10.5px;color:#2a2418;margin-bottom:2px">${label} (0–${max} ${unitLabel})</div>
+        <svg width="${beamW+xOff*2}" height="34" viewBox="0 0 ${beamW+xOff*2} 34">
+          <rect class="beam-track" x="${xOff}" y="0" width="${beamW}" height="${trackH}"/>
+          ${ticks}
+          ${reveal ? `<rect class="beam-block" x="${blockX-6}" y="-4" width="12" height="${trackH+8}"/>` : ''}
+        </svg>
+      </div>
+    `;
+  }
+
+  stage.innerHTML = `
+    <div style="background:#e8dfc8;border-radius:4px;padding:16px 10px;width:100%;max-width:420px">
+      ${beam('Large beam', largeMax, largeVal, 'large')}
+      ${beam('Small beam', smallMax, smallVal, 'small')}
+    </div>
+  `;
+  return { largeVal, smallVal, unitLabel };
+}
+
+// ---------- RENDER DISPATCH ----------
+let balanceState = null;
+function renderActive(reveal){
+  if (activeScale === 'digital') renderDigital(currentValueKg, reveal);
+  else if (activeScale === 'dial') renderDial(currentValueKg, reveal);
+  else {
+    const unit = currentBalanceUnit || 'lb';
+    balanceState = renderBalance(currentValueKg, unit, reveal);
+  }
+}
+
+let currentBalanceUnit = 'lb';
+function generateNew(){
+  currentValueKg = +( (Math.random() * 24 + 0.5).toFixed(2) );
+  currentBalanceUnit = Math.random() < 0.5 ? 'lb' : 'kg';
+  if (mode === 'learn') {
+    renderActive(true);
+    updateReadout(currentValueKg);
+  } else {
+    startPracticeQuestion();
+  }
+}
+
+// ---------- INIT ----------
+buildScaleSelector();
+renderLearnNotes();
+generateNew();
+
+// ---------- PRACTICE ----------
+let score = { correct: 0, total: 0 };
+
+function startPracticeQuestion(){
+  document.getElementById('readout').textContent = 'Answer to reveal both units.';
+  const panel = document.getElementById('practicePanel');
+
+  if (activeScale === 'digital') {
+    const askKgToImperial = Math.random() < 0.5;
+    renderDigital(currentValueKg, true); // digital always shows its own number — the question is the conversion
+    panel.innerHTML = `
+      <div class="pp-top"><span class="pp-hint">Convert the reading</span><span class="pp-score" id="ppScore">${score.correct} / ${score.total}</span></div>
+      <div class="pp-prompt">${askKgToImperial
+        ? 'The display reads <b>' + currentValueKg.toFixed(2) + ' kg</b>. What\'s that in lb/oz?'
+        : 'The display reads <b>' + lbOzLabel(currentValueKg) + '</b>. What\'s that in kg?'}</div>
+      <div class="pp-answer-row">
+        <input type="text" id="digAnswer" placeholder="${askKgToImperial ? 'e.g. 12 lb 5 oz' : 'e.g. 5.6'}">
+        <button class="pp-btn" onclick="checkDigital(${askKgToImperial})">Check</button>
+      </div>
+      <div id="ppFeedback"></div>
+    `;
+    return;
+  }
+
+  if (activeScale === 'dial') {
+    renderDial(currentValueKg, true);
+    panel.innerHTML = `
+      <div class="pp-top"><span class="pp-hint">Read the needle</span><span class="pp-score" id="ppScore">${score.correct} / ${score.total}</span></div>
+      <div class="pp-prompt">What does the needle read, in pounds and ounces?</div>
+      <div class="pp-answer-row">
+        <input type="text" id="dialAnswer" placeholder="e.g. 12 lb 5 oz">
+        <button class="pp-btn" onclick="checkDial()">Check</button>
+      </div>
+      <div id="ppFeedback"></div>
+    `;
+    return;
+  }
+
+  // balance
+  renderActive(true);
+  panel.innerHTML = `
+    <div class="pp-top"><span class="pp-hint">Sum the two beams</span><span class="pp-score" id="ppScore">${score.correct} / ${score.total}</span></div>
+    <div class="pp-prompt">Add the large beam and small beam readings together — what's the total, in ${currentBalanceUnit}?</div>
+    <div class="pp-answer-row">
+      <input type="text" id="balAnswer" placeholder="e.g. 137">
+      <button class="pp-btn" onclick="checkBalance()">Check</button>
+    </div>
+    <div id="ppFeedback"></div>
+  `;
+}
+
+function checkDigital(askedKgToImperial){
+  score.total++;
+  let correct;
+  if (askedKgToImperial) {
+    const parsed = parseLbOz(document.getElementById('digAnswer').value);
+    const target = kgToLbOz(currentValueKg);
+    correct = parsed && parsed.lb === target.lb && Math.abs(parsed.oz - target.oz) <= 1;
+    finishQuestion(correct, 'That\'s ' + lbOzLabel(currentValueKg) + '.');
+  } else {
+    const val = parseFloat(document.getElementById('digAnswer').value);
+    correct = !isNaN(val) && Math.abs(val - currentValueKg) < 0.15;
+    finishQuestion(correct, 'That\'s ' + kgLabel(currentValueKg) + '.');
+  }
+  if (correct) score.correct++;
+}
+
+function checkDial(){
+  score.total++;
+  const parsed = parseLbOz(document.getElementById('dialAnswer').value);
+  const target = kgToLbOz(currentValueKg);
+  const correct = parsed && parsed.lb === target.lb && Math.abs(parsed.oz - target.oz) <= 1;
+  if (correct) score.correct++;
+  finishQuestion(correct, 'The needle reads ' + lbOzLabel(currentValueKg) + '.');
+}
+
+function checkBalance(){
+  score.total++;
+  const val = parseFloat(document.getElementById('balAnswer').value);
+  const target = balanceState.largeVal + balanceState.smallVal;
+  const tolerance = currentBalanceUnit === 'lb' ? 1 : 0.6;
+  const correct = !isNaN(val) && Math.abs(val - target) <= tolerance;
+  if (correct) score.correct++;
+  finishQuestion(correct, 'Large beam ' + balanceState.largeVal + ' + small beam ' + balanceState.smallVal + ' = ' + target.toFixed(1) + ' ' + currentBalanceUnit + '.');
+}
+
+function finishQuestion(correct, explain){
+  updateReadout(currentValueKg);
+  document.getElementById('ppScore').textContent = score.correct + ' / ' + score.total;
+  document.getElementById('ppFeedback').innerHTML = `
+    <div class="pp-feedback ${correct?'correct':'wrong'}">${correct ? 'Correct.' : 'Not quite.'} ${explain}</div>
+    <div class="pp-actions"><button class="pp-next" onclick="generateNew()">Next →</button></div>
+  `;
+}
+</script>
+</body>
+</html>
