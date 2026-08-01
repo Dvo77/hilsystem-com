@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Periodic Table Lab | HIL Guild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Space+Mono&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     :root block here, matching the Electric Forge hub pattern. */
+  * { box-sizing: border-box; }
+  #lab-root { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--hil-green);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.25rem;
+  }
+  .subtitle { color: var(--hil-text-muted); font-size: 1rem; margin: 0 0 1.25rem; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; }
+  .filters button {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    background: var(--hil-surface);
+    color: var(--hil-text-muted);
+    border: 1px solid var(--hil-border);
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .filters button.active { color: var(--hil-bg); font-weight: 700; }
+  .filters button[data-cat="all"].active { background: var(--hil-green); border-color: var(--hil-green); }
+
+  #cat-explain {
+    display: none;
+    background: rgba(0,204,102,0.06);
+    border: 1px solid var(--hil-green);
+    border-radius: 5px;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    color: var(--hil-text);
+  }
+  #cat-explain b { color: var(--hil-green); }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap: 2px;
+    margin-bottom: 1.5rem;
+  }
+  .el {
+    cursor: pointer;
+    border: 1px solid var(--hil-border);
+    border-radius: 3px;
+    padding: 3px 2px 4px;
+    text-align: center;
+    line-height: 1.1;
+    background: var(--hil-surface);
+    transition: opacity 0.15s, border-color 0.15s;
+    font-family: var(--font-mono);
+  }
+  .el:hover { border-color: var(--hil-green); }
+  .el.selected { border-color: var(--hil-green); box-shadow: 0 0 0 1px var(--hil-green); }
+  .el .num { font-size: 0.5rem; color: var(--hil-text-muted); }
+  .el .sym { font-size: 0.85rem; font-weight: 700; color: var(--hil-text); }
+
+  #detail {
+    background: var(--hil-surface-2);
+    border: 1px solid var(--hil-border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  #detail .badge {
+    width: 64px; height: 64px; flex-shrink: 0;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 1.5rem; font-weight: 700;
+    color: var(--hil-bg);
+  }
+  #detail h2 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    margin: 0 0 2px;
+    color: var(--hil-text);
+  }
+  #detail .cat { color: var(--hil-green); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
+  #detail .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; font-size: 0.9rem; color: var(--hil-text-muted); margin-bottom: 8px; }
+  #detail .facts b { color: var(--hil-text); font-weight: 600; }
+  #detail .uses { font-size: 0.9rem; color: var(--hil-text-muted); border-top: 1px solid var(--hil-border); padding-top: 8px; margin-top: 4px; }
+  #detail .uses b { color: var(--hil-amber); font-weight: 600; }
+  .biotag {
+    display: inline-block;
+    background: rgba(0,204,102,0.12);
+    color: var(--hil-green);
+    border: 1px solid var(--hil-green);
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    font-family: var(--font-mono);
+  }
+
+  .mode-toggle { display: flex; gap: 6px; margin-bottom: 1rem; }
+  .mode-toggle button {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    background: var(--hil-surface);
+    color: var(--hil-text-muted);
+    border: 1px solid var(--hil-border);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--hil-green); border-color: var(--hil-green); color: var(--hil-bg); }
+
+  #quiz {
+    background: var(--hil-surface-2);
+    border: 1px solid var(--hil-border);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+  #quiz .qhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; }
+  #quiz .qcount { font-family: var(--font-mono); font-size: 0.8rem; color: var(--hil-text-muted); }
+  #quiz .score { font-family: var(--font-mono); font-size: 0.8rem; color: var(--hil-green); }
+  #quiz .question { font-size: 1.1rem; margin-bottom: 0.9rem; }
+  #quiz .options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #quiz .opt {
+    font-family: var(--font-ui);
+    font-size: 1rem;
+    background: var(--hil-surface);
+    color: var(--hil-text);
+    border: 1px solid var(--hil-border);
+    padding: 10px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: left;
+  }
+  #quiz .opt:hover { border-color: var(--hil-green); }
+  #quiz .opt.correct { border-color: var(--hil-green); background: rgba(0,204,102,0.15); }
+  #quiz .opt.wrong { border-color: var(--hil-danger); background: rgba(204,51,51,0.15); }
+  #quiz .next-btn {
+    margin-top: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    background: transparent;
+    color: var(--hil-green);
+    border: 1px solid var(--hil-green);
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: none;
+  }
+  #quiz .done { text-align: center; padding: 1rem 0; }
+  #quiz .done .big { font-family: var(--font-display); font-size: 1.8rem; color: var(--hil-green); }
+
+  #wrapbar {
+    margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-top: 1px solid var(--hil-border);
+    padding-top: 1rem;
+  }
+  #wrapup-btn {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    background: var(--hil-green);
+    color: var(--hil-bg);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  #wrapup-btn:disabled { background: var(--hil-border); color: var(--hil-text-muted); cursor: default; }
+  #ledger-preview { font-family: var(--font-mono); font-size: 0.8rem; color: var(--hil-text-muted); }
+  #ledger-preview b { color: var(--hil-green); }
+
+  .gms-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: var(--hil-surface-2); border-bottom: 1px solid var(--hil-border); flex-wrap: wrap; }
+  .gms-crumb { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); }
+  .gms-crumb b { color: var(--hil-green); }
+  .gms-crumb a { color: var(--hil-text-muted); text-decoration: none; }
+  .gms-crumb a:hover { color: var(--hil-green); }
+</style>
+</head>
+<body>
+<script src="../hil-shell.js"></script>
+
+<div class="gms-topbar">
+  <div class="gms-crumb"><a href="../../hil-guild.html">Guild</a> &nbsp;&rsaquo;&nbsp; <a href="./index.html">Natural Sciences</a> &nbsp;&rsaquo;&nbsp; <b>Periodic Table Lab</b></div>
+</div>
+
+<div id="lab-root">
+  <h1>Periodic Table Lab</h1>
+  <p class="subtitle">Explore every element — electron shells, category, and where it shows up in the real world.</p>
+
+  <div class="mode-toggle">
+    <button id="mode-explore" class="active">Explore</button>
+    <button id="mode-practice">Practice</button>
+  </div>
+
+  <div id="explore-view">
+    <div id="cat-explain"></div>
+    <div class="filters" id="filters">
+      <button data-cat="all" class="active">All</button>
+      <button data-cat="alkali metal">Alkali</button>
+      <button data-cat="alkaline earth metal">Alkaline earth</button>
+      <button data-cat="transition metal">Transition</button>
+      <button data-cat="post-transition metal">Post-transition</button>
+      <button data-cat="metalloid">Metalloid</button>
+      <button data-cat="nonmetal">Nonmetal</button>
+      <button data-cat="halogen">Halogen</button>
+      <button data-cat="noble gas">Noble gas</button>
+      <button data-cat="lanthanide">Lanthanide</button>
+      <button data-cat="actinide">Actinide</button>
+      <button data-cat="bio" id="bio-toggle" style="margin-left:auto;border-color:var(--hil-green);color:var(--hil-green)">Plant &amp; soil elements</button>
+    </div>
+    <div id="grid"></div>
+    <div id="detail"></div>
+  </div>
+
+  <div id="quiz" style="display:none"></div>
+
+  <div id="wrapbar">
+    <button id="wrapup-btn">Wrap up</button>
+    <div id="ledger-preview"></div>
+  </div>
+</div>
+
+<script>
+// ── element data: [symbol, atomic number, mass, category, group(col), period(row), config, uses] ──
+const D = [
+["H",1,"1.008","nonmetal",1,1,"1s1","Water, ammonia synthesis, fuel cells"],
+["He",2,"4.003","noble gas",18,1,"1s2","Balloons, MRI cooling, deep-sea diving gas mix"],
+["Li",3,"6.94","alkali metal",1,2,"[He] 2s1","Rechargeable batteries, mood-stabilizing medication"],
+["Be",4,"9.012","alkaline earth metal",2,2,"[He] 2s2","Aerospace alloys, X-ray windows"],
+["B",5,"10.81","metalloid",13,2,"[He] 2s2 2p1","Glass (borosilicate), fiberglass, trace plant nutrient"],
+["C",6,"12.01","nonmetal",14,2,"[He] 2s2 2p2","Backbone of all organic life, steel, graphite"],
+["N",7,"14.01","nonmetal",15,2,"[He] 2s2 2p3","Fertilizer, amino acids/DNA, atmosphere (78%)"],
+["O",8,"16.00","nonmetal",16,2,"[He] 2s2 2p4","Respiration, water, combustion"],
+["F",9,"19.00","halogen",17,2,"[He] 2s2 2p5","Toothpaste, Teflon, refrigerants"],
+["Ne",10,"20.18","noble gas",18,2,"[He] 2s2 2p6","Neon signage, cryogenic refrigerant"],
+["Na",11,"22.99","alkali metal",1,3,"[Ne] 3s1","Table salt, nerve signaling, soap"],
+["Mg",12,"24.31","alkaline earth metal",2,3,"[Ne] 3s2","Chlorophyll's central atom, alloys, supplements"],
+["Al",13,"26.98","post-transition metal",13,3,"[Ne] 3s2 3p1","Cans, foil, aircraft frames"],
+["Si",14,"28.09","metalloid",14,3,"[Ne] 3s2 3p2","Computer chips, glass, solar panels"],
+["P",15,"30.97","nonmetal",15,3,"[Ne] 3s2 3p3","DNA backbone, fertilizer, matches"],
+["S",16,"32.07","nonmetal",16,3,"[Ne] 3s2 3p4","Vulcanized rubber, gunpowder, amino acids"],
+["Cl",17,"35.45","halogen",17,3,"[Ne] 3s2 3p5","Water disinfection, PVC, table salt"],
+["Ar",18,"39.95","noble gas",18,3,"[Ne] 3s2 3p6","Welding shield gas, incandescent bulb fill"],
+["K",19,"39.10","alkali metal",1,4,"[Ar] 4s1","Fertilizer, nerve/muscle function, bananas"],
+["Ca",20,"40.08","alkaline earth metal",2,4,"[Ar] 4s2","Bones/teeth, cement, cell signaling"],
+["Sc",21,"44.96","transition metal",3,4,"[Ar] 3d1 4s2","Aerospace alloys, stadium lighting"],
+["Ti",22,"47.87","transition metal",4,4,"[Ar] 3d2 4s2","Aircraft frames, joint implants, white paint pigment"],
+["V",23,"50.94","transition metal",5,4,"[Ar] 3d3 4s2","Steel hardening, catalysts"],
+["Cr",24,"52.00","transition metal",6,4,"[Ar] 3d5 4s1","Stainless steel, chrome plating"],
+["Mn",25,"54.94","transition metal",7,4,"[Ar] 3d5 4s2","Steel alloying, plant photosynthesis enzyme"],
+["Fe",26,"55.85","transition metal",8,4,"[Ar] 3d6 4s2","Steel, hemoglobin, soil chemistry"],
+["Co",27,"58.93","transition metal",9,4,"[Ar] 3d7 4s2","Batteries, vitamin B12, magnets"],
+["Ni",28,"58.69","transition metal",10,4,"[Ar] 3d8 4s2","Stainless steel, coins, batteries"],
+["Cu",29,"63.55","transition metal",11,4,"[Ar] 3d10 4s1","Electrical wiring, plumbing, plant micronutrient"],
+["Zn",30,"65.38","transition metal",12,4,"[Ar] 3d10 4s2","Galvanizing, enzymes, immune function"],
+["Ga",31,"69.72","post-transition metal",13,4,"[Ar] 3d10 4s2 4p1","LEDs, semiconductors"],
+["Ge",32,"72.63","metalloid",14,4,"[Ar] 3d10 4s2 4p2","Fiber-optic cable, infrared optics"],
+["As",33,"74.92","metalloid",15,4,"[Ar] 3d10 4s2 4p3","Semiconductors (toxic, tightly regulated)"],
+["Se",34,"78.97","nonmetal",16,4,"[Ar] 3d10 4s2 4p4","Antioxidant enzyme cofactor, glass decolorizer"],
+["Br",35,"79.90","halogen",17,4,"[Ar] 3d10 4s2 4p5","Flame retardants, sanitizers"],
+["Kr",36,"83.80","noble gas",18,4,"[Ar] 3d10 4s2 4p6","High-performance window insulation, lighting"],
+["Rb",37,"85.47","alkali metal",1,5,"[Kr] 5s1","Atomic clocks, research"],
+["Sr",38,"87.62","alkaline earth metal",2,5,"[Kr] 5s2","Fireworks (red), bone-density tracers"],
+["Y",39,"88.91","transition metal",3,5,"[Kr] 4d1 5s2","LED phosphors, camera lenses"],
+["Zr",40,"91.22","transition metal",4,5,"[Kr] 4d2 5s2","Nuclear reactor cladding, ceramics"],
+["Nb",41,"92.91","transition metal",5,5,"[Kr] 4d4 5s1","Superconducting magnets, steel alloys"],
+["Mo",42,"95.95","transition metal",6,5,"[Kr] 4d5 5s1","Steel alloying, nitrogen-fixation enzyme cofactor"],
+["Tc",43,"(98)","transition metal",7,5,"[Kr] 4d5 5s2","Medical imaging tracer (no stable isotopes)"],
+["Ru",44,"101.1","transition metal",8,5,"[Kr] 4d7 5s1","Electronics, catalysts"],
+["Rh",45,"102.9","transition metal",9,5,"[Kr] 4d8 5s1","Catalytic converters"],
+["Pd",46,"106.4","transition metal",10,5,"[Kr] 4d10","Catalytic converters, hydrogen storage"],
+["Ag",47,"107.9","transition metal",11,5,"[Kr] 4d10 5s1","Jewelry, electrical contacts, antimicrobial coatings"],
+["Cd",48,"112.4","transition metal",12,5,"[Kr] 4d10 5s2","Rechargeable batteries (toxic, regulated)"],
+["In",49,"114.8","post-transition metal",13,5,"[Kr] 4d10 5s2 5p1","Touchscreens, solder"],
+["Sn",50,"118.7","post-transition metal",14,5,"[Kr] 4d10 5s2 5p2","Solder, tin cans, bronze"],
+["Sb",51,"121.8","metalloid",15,5,"[Kr] 4d10 5s2 5p3","Flame retardants, batteries"],
+["Te",52,"127.6","metalloid",16,5,"[Kr] 4d10 5s2 5p4","Solar panels, alloys"],
+["I",53,"126.9","halogen",17,5,"[Kr] 4d10 5s2 5p5","Thyroid hormone, antiseptics, iodized salt"],
+["Xe",54,"131.3","noble gas",18,5,"[Kr] 4d10 5s2 5p6","Camera flashes, ion propulsion, anesthesia"],
+["Cs",55,"132.9","alkali metal",1,6,"[Xe] 6s1","Atomic clocks (defines the second)"],
+["Ba",56,"137.3","alkaline earth metal",2,6,"[Xe] 6s2","Medical imaging contrast, fireworks (green)"],
+["La",57,"138.9","lanthanide",3,6,"[Xe] 5d1 6s2","Camera lenses, hybrid car batteries"],
+["Hf",72,"178.5","transition metal",4,6,"[Xe] 4f14 5d2 6s2","Nuclear reactor control rods, chip transistors"],
+["Ta",73,"180.9","transition metal",5,6,"[Xe] 4f14 5d3 6s2","Capacitors, surgical implants"],
+["W",74,"183.8","transition metal",6,6,"[Xe] 4f14 5d4 6s2","Light bulb filaments, drill bits, highest melting point"],
+["Re",75,"186.2","transition metal",7,6,"[Xe] 4f14 5d5 6s2","Jet engine alloys"],
+["Os",76,"190.2","transition metal",8,6,"[Xe] 4f14 5d6 6s2","Fountain pen tips, densest natural element"],
+["Ir",77,"192.2","transition metal",9,6,"[Xe] 4f14 5d7 6s2","Spark plugs, K-T boundary marker"],
+["Pt",78,"195.1","transition metal",10,6,"[Xe] 4f14 5d9","Catalytic converters, jewelry, chemotherapy drugs"],
+["Au",79,"197.0","transition metal",11,6,"[Xe] 4f14 5d10 6s1","Jewelry, electronics, currency reserve"],
+["Hg",80,"200.6","transition metal",12,6,"[Xe] 4f14 5d10 6s2","Thermometers (legacy), only liquid metal at room temp"],
+["Tl",81,"204.4","post-transition metal",13,6,"[Xe] 4f14 5d10 6s2 6p1","Historically rat poison (now heavily restricted)"],
+["Pb",82,"207.2","post-transition metal",14,6,"[Xe] 4f14 5d10 6s2 6p2","Batteries, radiation shielding (banned from paint/gas)"],
+["Bi",83,"209.0","post-transition metal",15,6,"[Xe] 4f14 5d10 6s2 6p3","Pepto-Bismol, low-toxicity solder"],
+["Po",84,"(209)","metalloid",16,6,"[Xe] 4f14 5d10 6s2 6p4","Anti-static devices (highly radioactive)"],
+["At",85,"(210)","halogen",17,6,"[Xe] 4f14 5d10 6s2 6p5","Research only, rarest naturally occurring element"],
+["Rn",86,"(222)","noble gas",18,6,"[Xe] 4f14 5d10 6s2 6p6","Naturally seeps from soil (home radon testing)"],
+["Fr",87,"(223)","alkali metal",1,7,"[Rn] 7s1","Research only, extremely rare and unstable"],
+["Ra",88,"(226)","alkaline earth metal",2,7,"[Rn] 7s2","Historically glow-in-the-dark paint (now banned)"],
+["Ac",89,"(227)","actinide",3,7,"[Rn] 6d1 7s2","Research only, neutron source"],
+["Rf",104,"(267)","transition metal",4,7,"[Rn] 5f14 6d2 7s2","Synthetic, research only"],
+["Db",105,"(268)","transition metal",5,7,"[Rn] 5f14 6d3 7s2","Synthetic, research only"],
+["Sg",106,"(271)","transition metal",6,7,"[Rn] 5f14 6d4 7s2","Synthetic, research only"],
+["Bh",107,"(272)","transition metal",7,7,"[Rn] 5f14 6d5 7s2","Synthetic, research only"],
+["Hs",108,"(270)","transition metal",8,7,"[Rn] 5f14 6d6 7s2","Synthetic, research only"],
+["Mt",109,"(276)","transition metal",9,7,"[Rn] 5f14 6d7 7s2","Synthetic, research only"],
+["Ds",110,"(281)","transition metal",10,7,"[Rn] 5f14 6d9","Synthetic, research only"],
+["Rg",111,"(280)","transition metal",11,7,"[Rn] 5f14 6d10","Synthetic, research only"],
+["Cn",112,"(285)","transition metal",12,7,"[Rn] 5f14 6d10 7s2","Synthetic, research only"],
+["Nh",113,"(284)","post-transition metal",13,7,"[Rn] 5f14 6d10 7s2 7p1","Synthetic, research only"],
+["Fl",114,"(289)","post-transition metal",14,7,"[Rn] 5f14 6d10 7s2 7p2","Synthetic, research only"],
+["Mc",115,"(288)","post-transition metal",15,7,"[Rn] 5f14 6d10 7s2 7p3","Synthetic, research only"],
+["Lv",116,"(293)","post-transition metal",16,7,"[Rn] 5f14 6d10 7s2 7p4","Synthetic, research only"],
+["Ts",117,"(294)","halogen",17,7,"[Rn] 5f14 6d10 7s2 7p5","Synthetic, research only"],
+["Og",118,"(294)","noble gas",18,7,"[Rn] 5f14 6d10 7s2 7p6","Synthetic, research only"],
+["Ce",58,"140.1","lanthanide",4,9,"[Xe] 4f1 5d1 6s2","Lighter flints, catalytic converters"],
+["Pr",59,"140.9","lanthanide",5,9,"[Xe] 4f3 6s2","Magnets, aircraft engine alloys"],
+["Nd",60,"144.2","lanthanide",6,9,"[Xe] 4f4 6s2","Strongest permanent magnets (motors, headphones)"],
+["Pm",61,"(145)","lanthanide",7,9,"[Xe] 4f5 6s2","Nuclear batteries, luminous paint"],
+["Sm",62,"150.4","lanthanide",8,9,"[Xe] 4f6 6s2","Magnets, cancer treatment"],
+["Eu",63,"152.0","lanthanide",9,9,"[Xe] 4f7 6s2","Red/blue phosphors in screens, euro banknote security"],
+["Gd",64,"157.3","lanthanide",10,9,"[Xe] 4f7 5d1 6s2","MRI contrast agent"],
+["Tb",65,"158.9","lanthanide",11,9,"[Xe] 4f9 6s2","Green phosphors, magnetostrictive sensors"],
+["Dy",66,"162.5","lanthanide",12,9,"[Xe] 4f10 6s2","High-strength magnets in EVs and wind turbines"],
+["Ho",67,"164.9","lanthanide",13,9,"[Xe] 4f11 6s2","Medical/industrial lasers"],
+["Er",68,"167.3","lanthanide",14,9,"[Xe] 4f12 6s2","Fiber-optic signal amplifiers, pink glass"],
+["Tm",69,"168.9","lanthanide",15,9,"[Xe] 4f13 6s2","Portable X-ray devices"],
+["Yb",70,"173.0","lanthanide",16,9,"[Xe] 4f14 6s2","Atomic clocks, stress gauges"],
+["Lu",71,"175.0","lanthanide",17,9,"[Xe] 4f14 5d1 6s2","PET scan detectors"],
+["Th",90,"232.0","actinide",4,10,"[Rn] 6d2 7s2","Camping lantern mantles (legacy), nuclear fuel research"],
+["Pa",91,"231.0","actinide",5,10,"[Rn] 5f2 6d1 7s2","Research only"],
+["U",92,"238.0","actinide",6,10,"[Rn] 5f3 6d1 7s2","Nuclear fuel, historic glass tinting"],
+["Np",93,"(237)","actinide",7,10,"[Rn] 5f4 6d1 7s2","Neutron detection instruments"],
+["Pu",94,"(244)","actinide",8,10,"[Rn] 5f6 7s2","Nuclear fuel, deep-space probe power"],
+["Am",95,"(243)","actinide",9,10,"[Rn] 5f7 7s2","Household smoke detectors"],
+["Cm",96,"(247)","actinide",10,10,"[Rn] 5f7 6d1 7s2","Research, spacecraft instrument power"],
+["Bk",97,"(247)","actinide",11,10,"[Rn] 5f9 7s2","Research only"],
+["Cf",98,"(251)","actinide",12,10,"[Rn] 5f10 7s2","Neutron source for reactor startup, oil exploration"],
+["Es",99,"(252)","actinide",13,10,"[Rn] 5f11 7s2","Research only"],
+["Fm",100,"(257)","actinide",14,10,"[Rn] 5f12 7s2","Research only"],
+["Md",101,"(258)","actinide",15,10,"[Rn] 5f13 7s2","Research only"],
+["No",102,"(259)","actinide",16,10,"[Rn] 5f14 7s2","Research only"],
+["Lr",103,"(262)","actinide",17,10,"[Rn] 5f14 7s2 7p1","Research only"]
+];
+const NAMES = {H:"Hydrogen",He:"Helium",Li:"Lithium",Be:"Beryllium",B:"Boron",C:"Carbon",N:"Nitrogen",O:"Oxygen",F:"Fluorine",Ne:"Neon",Na:"Sodium",Mg:"Magnesium",Al:"Aluminium",Si:"Silicon",P:"Phosphorus",S:"Sulfur",Cl:"Chlorine",Ar:"Argon",K:"Potassium",Ca:"Calcium",Sc:"Scandium",Ti:"Titanium",V:"Vanadium",Cr:"Chromium",Mn:"Manganese",Fe:"Iron",Co:"Cobalt",Ni:"Nickel",Cu:"Copper",Zn:"Zinc",Ga:"Gallium",Ge:"Germanium",As:"Arsenic",Se:"Selenium",Br:"Bromine",Kr:"Krypton",Rb:"Rubidium",Sr:"Strontium",Y:"Yttrium",Zr:"Zirconium",Nb:"Niobium",Mo:"Molybdenum",Tc:"Technetium",Ru:"Ruthenium",Rh:"Rhodium",Pd:"Palladium",Ag:"Silver",Cd:"Cadmium",In:"Indium",Sn:"Tin",Sb:"Antimony",Te:"Tellurium",I:"Iodine",Xe:"Xenon",Cs:"Caesium",Ba:"Barium",La:"Lanthanum",Hf:"Hafnium",Ta:"Tantalum",W:"Tungsten",Re:"Rhenium",Os:"Osmium",Ir:"Iridium",Pt:"Platinum",Au:"Gold",Hg:"Mercury",Tl:"Thallium",Pb:"Lead",Bi:"Bismuth",Po:"Polonium",At:"Astatine",Rn:"Radon",Fr:"Francium",Ra:"Radium",Ac:"Actinium",Rf:"Rutherfordium",Db:"Dubnium",Sg:"Seaborgium",Bh:"Bohrium",Hs:"Hassium",Mt:"Meitnerium",Ds:"Darmstadtium",Rg:"Roentgenium",Cn:"Copernicium",Nh:"Nihonium",Fl:"Flerovium",Mc:"Moscovium",Lv:"Livermorium",Ts:"Tennessine",Og:"Oganesson",Ce:"Cerium",Pr:"Praseodymium",Nd:"Neodymium",Pm:"Promethium",Sm:"Samarium",Eu:"Europium",Gd:"Gadolinium",Tb:"Terbium",Dy:"Dysprosium",Ho:"Holmium",Er:"Erbium",Tm:"Thulium",Yb:"Ytterbium",Lu:"Lutetium",Th:"Thorium",Pa:"Protactinium",U:"Uranium",Np:"Neptunium",Pu:"Plutonium",Am:"Americium",Cm:"Curium",Bk:"Berkelium",Cf:"Californium",Es:"Einsteinium",Fm:"Fermium",Md:"Mendelevium",No:"Nobelium",Lr:"Lawrencium"};
+// plant/soil relevant elements — macro + micronutrients botanically active in soil/plant biology (Carrie's Hollow Moon Botanicals angle)
+const BIO = new Set(["N","P","K","Ca","Mg","S","Fe","Mn","Zn","Cu","B","Mo","Cl","Ni","C","O","H"]);
+const CATCOLOR = {
+  "alkali metal": "#cc3333", "alkaline earth metal": "#cc8800", "transition metal": "#2a7fd6",
+  "post-transition metal": "#00cc99", "metalloid": "#5fbf5f", "nonmetal": "#9b6fd6",
+  "halogen": "#d8734f", "noble gas": "#d65f9b", "lanthanide": "#7a7a72", "actinide": "#7a7a72"
+};
+
+const CATEXPLAIN = {
+  "alkali metal": "The far-left column. One loose electron in the outer shell makes these extremely reactive — they react violently with water and are never found pure in nature. Soft enough to cut with a knife.",
+  "alkaline earth metal": "Second column. Two outer electrons, still reactive but calmer than the alkali metals. Includes calcium and magnesium — the metals your bones and chlorophyll actually run on.",
+  "transition metal": "The big block in the middle. Electrons fill an inner shell (the 'd' shell) instead of the outer one, which is why they're generally hard, shiny, high-melting, and good conductors — this is where iron, copper, gold, and silver live.",
+  "post-transition metal": "Sit just right of the transition metals. Softer, weaker, and lower-melting than transition metals, but still clearly metallic — aluminum and tin are the everyday examples.",
+  "metalloid": "Sit right on the staircase line between metals and nonmetals — they share properties of both. Silicon is the classic one: conducts electricity, but only under the right conditions, which is exactly why it's used in computer chips.",
+  "nonmetal": "Poor conductors, brittle or gaseous, and essential to life — carbon, nitrogen, oxygen, phosphorus, sulfur. Most of your own body, by weight, is built from this category.",
+  "halogen": "Second-from-last column. Highly reactive nonmetals that grab an electron easily — fluorine, chlorine, iodine. Used in disinfectants and salts precisely because they react so readily.",
+  "noble gas": "The far-right column. Full outer electron shell means they essentially don't react with anything — hence 'noble,' as in aloof. Neon signs, helium balloons, and the argon around a welded joint.",
+  "lanthanide": "The first row pulled out below the main table (57–71). Chemically very similar to each other, which makes them hard to separate — but their unique magnetic and optical properties are what power strong magnets, phone screens, and lasers.",
+  "actinide": "The second pulled-out row (89–103). All radioactive, and everything past uranium (92) is human-made in a lab or reactor — this is the territory of nuclear fuel and research isotopes."
+};
+
+const grid = document.getElementById('grid');
+let bioOnly = false;
+// dwell-time anti-gaming, same floor/cap pattern as Calculator Explorer's per-key credit:
+// each unique element only credits once, flat 20s, so re-clicking the same element for
+// unlimited time doesn't inflate the session.
+const EXPLORE_CREDIT_SEC = 20;
+const exploredSet = new Set();
+
+D.forEach(([sym,num,mass,cat,col,row,config,uses])=>{
+  const d = document.createElement('div');
+  d.className = 'el';
+  d.dataset.cat = cat;
+  d.dataset.sym = sym;
+  d.style.gridColumn = col;
+  d.style.gridRow = row;
+  d.style.borderTopColor = CATCOLOR[cat];
+  d.style.borderTopWidth = '2px';
+  d.innerHTML = `<div class="num">${num}</div><div class="sym">${sym}${BIO.has(sym) ? '<span class="biotag" style="display:none">bio</span>' : ''}</div>`;
+  d.onclick = () => selectEl(sym, d);
+  grid.appendChild(d);
+});
+
+function selectEl(sym, node) {
+  document.querySelectorAll('.el.selected').forEach(e => e.classList.remove('selected'));
+  if (node) node.classList.add('selected');
+  exploredSet.add(sym);
+  updateWrapupState();
+  const row = D.find(r => r[0] === sym);
+  const [s,num,mass,cat,col,per,config,uses] = row;
+  const color = CATCOLOR[cat];
+  document.getElementById('detail').innerHTML = `
+    <div class="badge" style="background:${color}">${s}</div>
+    <div>
+      <h2>${NAMES[s]} ${BIO.has(s) ? '<span class="biotag">plant &amp; soil</span>' : ''}</h2>
+      <p class="cat">${cat}</p>
+      <div class="facts">
+        <div>Atomic number <b>${num}</b></div>
+        <div>Atomic mass <b>${mass}</b></div>
+        <div style="grid-column:1/-1">Electron config <b>${config}</b></div>
+      </div>
+      <p class="uses"><b>Where it shows up —</b> ${uses}</p>
+    </div>`;
+}
+selectEl("H", grid.querySelector('.el'));
+
+document.getElementById('filters').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.id === 'bio-toggle') {
+    bioOnly = !bioOnly;
+    btn.style.background = bioOnly ? 'var(--hil-green)' : 'transparent';
+    btn.style.color = bioOnly ? 'var(--hil-bg)' : 'var(--hil-green)';
+    applyFilter(document.querySelector('.filters button.active')?.dataset.cat || 'all');
+    return;
+  }
+  document.querySelectorAll('.filters button:not(#bio-toggle)').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter(btn.dataset.cat);
+
+  const explainBox = document.getElementById('cat-explain');
+  if (btn.dataset.cat === 'all' || !CATEXPLAIN[btn.dataset.cat]) {
+    explainBox.style.display = 'none';
+  } else {
+    explainBox.innerHTML = `<b>${btn.textContent}</b> — ${CATEXPLAIN[btn.dataset.cat]}`;
+    explainBox.style.display = 'block';
+  }
+});
+
+function applyFilter(cat) {
+  document.querySelectorAll('.el').forEach(el => {
+    const catMatch = cat === 'all' || el.dataset.cat === cat;
+    const bioMatch = !bioOnly || BIO.has(el.dataset.sym);
+    el.style.opacity = (catMatch && bioMatch) ? '1' : '0.12';
+  });
+}
+
+// ── MODE TOGGLE ──────────────────────────────────────────────────────────
+const exploreView = document.getElementById('explore-view');
+const quizView = document.getElementById('quiz');
+document.getElementById('mode-explore').onclick = () => setMode('explore');
+document.getElementById('mode-practice').onclick = () => setMode('practice');
+function setMode(mode) {
+  document.getElementById('mode-explore').classList.toggle('active', mode === 'explore');
+  document.getElementById('mode-practice').classList.toggle('active', mode === 'practice');
+  exploreView.style.display = mode === 'explore' ? 'block' : 'none';
+  quizView.style.display = mode === 'practice' ? 'block' : 'none';
+  if (mode === 'practice' && !quizStarted) startQuiz();
+}
+
+// ── PRACTICE MODE — QUIZ ENGINE ──────────────────────────────────────────
+// dwell floor/cap per question, same anti-gaming shape as Explore mode:
+// answering fast still credits the floor, lingering never earns past the cap.
+const QUIZ_LENGTH = 8;
+const Q_FLOOR_SEC = 10;
+const Q_CAP_SEC = 30;
+let quizStarted = false;
+let quizQuestions = [];
+let quizIndex = 0;
+let quizCorrect = 0;
+let quizAttempted = 0;
+let quizCreditSec = 0;
+let qStartTime = 0;
+
+function shuffle(arr) { return arr.slice().sort(() => Math.random() - 0.5); }
+function buildQuestions() {
+  const pool = shuffle(D);
+  const qs = [];
+  for (let i = 0; i < QUIZ_LENGTH && i < pool.length; i++) {
+    const [sym, num, mass, cat] = pool[i];
+    const type = i % 3;
+    if (type === 0) {
+      const wrongCats = shuffle([...new Set(D.map(r => r[3]))].filter(c => c !== cat)).slice(0, 3);
+      qs.push({ q: `What category does ${NAMES[sym]} (${sym}) belong to?`, options: shuffle([cat, ...wrongCats]), answer: cat });
+    } else if (type === 1) {
+      const wrongSyms = shuffle(D.map(r => r[0]).filter(s => s !== sym)).slice(0, 3);
+      qs.push({ q: `Which symbol represents ${NAMES[sym]}?`, options: shuffle([sym, ...wrongSyms]), answer: sym });
+    } else {
+      const wrongNums = shuffle(D.map(r => r[1]).filter(n => n !== num)).slice(0, 3);
+      qs.push({ q: `What is the atomic number of ${NAMES[sym]} (${sym})?`, options: shuffle([num, ...wrongNums]).map(String), answer: String(num) });
+    }
+  }
+  return qs;
+}
+
+function startQuiz() {
+  quizStarted = true;
+  quizQuestions = buildQuestions();
+  quizIndex = 0; quizCorrect = 0; quizAttempted = 0; quizCreditSec = 0;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (quizIndex >= quizQuestions.length) {
+    quizView.innerHTML = `<div class="done"><div class="big">${quizCorrect}/${quizAttempted}</div><div style="color:var(--hil-text-muted)">Practice round complete</div></div>`;
+    updateWrapupState();
+    return;
+  }
+  const item = quizQuestions[quizIndex];
+  qStartTime = Date.now();
+  quizView.innerHTML = `
+    <div class="qhead"><span class="qcount">Question ${quizIndex + 1} / ${quizQuestions.length}</span><span class="score">${quizCorrect}/${quizAttempted} correct</span></div>
+    <div class="question">${item.q}</div>
+    <div class="options">${item.options.map(o => `<button class="opt" data-val="${o}">${o}</button>`).join('')}</div>
+    <button class="next-btn" id="next-q">Next →</button>`;
+  quizView.querySelectorAll('.opt').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.disabled) return;
+      quizView.querySelectorAll('.opt').forEach(b => b.disabled = true);
+      const elapsed = (Date.now() - qStartTime) / 1000;
+      quizCreditSec += Math.min(Math.max(elapsed, Q_FLOOR_SEC), Q_CAP_SEC);
+      quizAttempted++;
+      const correct = btn.dataset.val === String(item.answer);
+      if (correct) { quizCorrect++; btn.classList.add('correct'); }
+      else {
+        btn.classList.add('wrong');
+        quizView.querySelectorAll('.opt').forEach(b => { if (b.dataset.val === String(item.answer)) b.classList.add('correct'); });
+      }
+      document.querySelector('.score').textContent = `${quizCorrect}/${quizAttempted} correct`;
+      document.getElementById('next-q').style.display = 'inline-block';
+      updateWrapupState();
+    };
+  });
+  document.getElementById('next-q').onclick = () => { quizIndex++; renderQuestion(); };
+}
+
+// ── SESSION LOGGER WIRING ────────────────────────────────────────────────
+const MODULE_MANIFEST = {
+  moduleId: 'periodic-table-lab',
+  subjects: ['chemistry', 'science'],
+  conceptTags: ['periodic-table', 'element-categories', 'electron-configuration'],
+  ageRange: null,
+  timeModel: 'active_session',
+  scoringPath: 'accuracy',
+};
+
+let logger = null;
+let activeMember = null;
+
+function updateWrapupState() {
+  const btn = document.getElementById('wrapup-btn');
+  if (!btn) return;
+  btn.disabled = !logger || logger.isWrappedUp || (exploredSet.size === 0 && quizAttempted === 0);
+}
+
+async function initLogger() {
+  const { SessionLogger, resolveActiveMember, writeSessionLogEntry } = await import('../session-logger.js');
+  logger = new SessionLogger(MODULE_MANIFEST);
+  logger.onWrapUp = async (entry) => {
+    if (!window.currentUser || !activeMember) {
+      HILShell.toast('Sign in to save this session', 'error');
+      return;
+    }
+    await writeSessionLogEntry(window.db, window.currentUser.uid, activeMember.id, entry);
+  };
+  window.handleAuth = async (user) => {
+    if (!user) return;
+    activeMember = await resolveActiveMember(window.db, user.uid);
+    logger.start();
+    updateWrapupState();
+  };
+  HILShell.init({
+    toolId: 'periodic-table-lab',
+    toolName: 'Periodic Table Lab',
+    requireAuth: true,
+    onAuth: (user) => window.handleAuth(user),
+  });
+}
+initLogger();
+
+document.getElementById('wrapup-btn').onclick = async () => {
+  const btn = document.getElementById('wrapup-btn');
+  btn.disabled = true;
+  const exploreCreditSec = exploredSet.size * EXPLORE_CREDIT_SEC;
+  const totalCreditSec = exploreCreditSec + quizCreditSec;
+  const creditedMinutes = +(totalCreditSec / 60).toFixed(1);
+  const parts = [];
+  if (exploredSet.size > 0) parts.push(`explored ${exploredSet.size} element${exploredSet.size === 1 ? '' : 's'}`);
+  if (quizAttempted > 0) parts.push(`scored ${quizCorrect}/${quizAttempted} on practice questions`);
+  const description = `Periodic Table Lab — ${parts.join(', ')}.`;
+  const entry = await logger.wrapUp({
+    description,
+    accuracy: quizAttempted > 0 ? +(quizCorrect / quizAttempted).toFixed(2) : null,
+    outcome: quizAttempted > 0 ? (quizCorrect === quizAttempted ? 'success' : 'mistake') : 'explored',
+    activeMinutesOverride: creditedMinutes,
+  });
+  if (entry) {
+    document.getElementById('ledger-preview').innerHTML = `Logged — <b>${creditedMinutes} min</b> credited. ${description}`;
+  } else {
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
