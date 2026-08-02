@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tag Taxonomy Lab | HIL Guild</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Space+Mono&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<script src="../hil-shell.js"></script>
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     :root block here, matching Periodic Table Lab / Electric Forge pattern. */
+  * { box-sizing: border-box; }
+  #lab-root { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem; }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--hil-green);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.25rem;
+  }
+  .subtitle { color: var(--hil-text-muted); font-size: 1rem; margin: 0 0 1.25rem; }
+
+  .mode-tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+  .mode-tabs button {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    background: var(--hil-surface);
+    color: var(--hil-text-muted);
+    border: 1px solid var(--hil-border);
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .mode-tabs button.active { background: var(--hil-green); color: var(--hil-bg); border-color: var(--hil-green); font-weight: 700; }
+
+  /* ── EXPLORE MODE ── */
+  .concept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .concept-card {
+    cursor: pointer;
+    border: 1px solid var(--hil-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    background: var(--hil-surface);
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .concept-card:hover { border-color: var(--hil-green); transform: translateY(-1px); }
+  .concept-card.selected { border-color: var(--hil-green); box-shadow: 0 0 0 1px var(--hil-green); }
+  .concept-card.viewed::after { content: '✓'; float: right; color: var(--hil-green); font-family: var(--font-mono); font-size: 0.75rem; }
+  .concept-card .badge {
+    display: inline-block; width: 28px; height: 28px; border-radius: 6px;
+    text-align: center; line-height: 28px; font-size: 0.9rem; margin-bottom: 8px;
+  }
+  .concept-card .badge.type-global { background: rgba(0,204,102,0.15); border: 1px solid var(--hil-green); }
+  .concept-card .badge.type-custom { background: rgba(204,136,0,0.15); border: 1px solid #cc8800; }
+  .concept-card .badge.type-expiring { background: rgba(80,140,255,0.15); border: 1px solid #5c8cff; }
+  .concept-card .badge.type-meta { background: var(--hil-surface-2); border: 1px solid var(--hil-border); }
+  .concept-card h3 { font-family: var(--font-display); font-size: 0.9rem; margin: 0 0 4px; color: var(--hil-text); }
+  .concept-card p.hint { font-size: 0.8rem; color: var(--hil-text-muted); margin: 0; line-height: 1.4; }
+
+  #detail {
+    display: none;
+    background: var(--hil-surface-2);
+    border: 1px solid var(--hil-border);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  #detail h2 { font-family: var(--font-display); font-size: 1.1rem; color: var(--hil-green); margin: 0 0 0.6rem; }
+  #detail p { font-size: 0.95rem; line-height: 1.6; color: var(--hil-text); margin: 0 0 0.75rem; }
+  #detail p:last-child { margin-bottom: 0; }
+  #detail .why-connected {
+    border-left: 2px solid var(--hil-green);
+    padding-left: 12px;
+    font-size: 0.88rem;
+    color: var(--hil-text-muted);
+  }
+
+  /* ── PRACTICE MODE ── */
+  #quiz-box { background: var(--hil-surface-2); border: 1px solid var(--hil-border); border-radius: 6px; padding: 1.25rem; margin-bottom: 1.25rem; }
+  #quiz-progress { font-family: var(--font-mono); font-size: 0.75rem; color: var(--hil-text-muted); margin-bottom: 0.75rem; }
+  #quiz-scenario { font-size: 0.98rem; line-height: 1.6; color: var(--hil-text); margin-bottom: 1rem; }
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-opt {
+    text-align: left;
+    cursor: pointer;
+    border: 1px solid var(--hil-border);
+    border-radius: 5px;
+    padding: 10px 14px;
+    background: var(--hil-surface);
+    color: var(--hil-text);
+    font-family: var(--font-ui, inherit);
+    font-size: 0.92rem;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--hil-green); }
+  .quiz-opt.correct { border-color: var(--hil-green); background: rgba(0,204,102,0.1); }
+  .quiz-opt.incorrect { border-color: var(--hil-danger, #cc3333); background: rgba(204,51,51,0.08); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  #quiz-feedback { margin-top: 12px; font-size: 0.88rem; color: var(--hil-text-muted); line-height: 1.5; }
+  #next-q { margin-top: 12px; }
+  #quiz-done { display: none; text-align: center; padding: 1.5rem; }
+  #quiz-done .score { font-family: var(--font-display); font-size: 1.8rem; color: var(--hil-green); }
+
+  button.hil-btn {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    padding: 8px 18px;
+    border: 1px solid var(--hil-border);
+    background: var(--hil-surface-2);
+    color: var(--hil-text);
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  button.hil-btn:hover:not(:disabled) { border-color: var(--hil-green); }
+
+  #wrapup-row { display: flex; align-items: center; gap: 14px; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--hil-border); }
+  #wrapup-btn {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 5px;
+    background: var(--hil-green);
+    color: var(--hil-bg);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #wrapup-btn:disabled { background: var(--hil-border); color: var(--hil-text-muted); cursor: default; }
+  #ledger-preview { font-family: var(--font-mono); font-size: 0.8rem; color: var(--hil-text-muted); }
+  #ledger-preview b { color: var(--hil-green); }
+</style>
+</head>
+<body>
+
+<div id="lab-root">
+  <h1>TAG TAXONOMY LAB</h1>
+  <p class="subtitle">What a tag actually is, why there are three kinds, and why the same tag means the same thing everywhere it's used.</p>
+
+  <div class="mode-tabs">
+    <button id="mode-explore" class="active">Explore</button>
+    <button id="mode-practice">Practice</button>
+  </div>
+
+  <!-- ── EXPLORE VIEW ── -->
+  <div id="explore-view">
+    <div class="concept-grid" id="concept-grid"></div>
+    <div id="detail"></div>
+  </div>
+
+  <!-- ── PRACTICE VIEW ── -->
+  <div id="quiz-view" style="display:none">
+    <div id="quiz-box">
+      <div id="quiz-progress"></div>
+      <div id="quiz-scenario"></div>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div id="quiz-feedback"></div>
+      <button class="hil-btn" id="next-q" style="display:none">Next question &rarr;</button>
+    </div>
+    <div id="quiz-done">
+      <div class="score" id="quiz-score-text"></div>
+      <p style="color:var(--hil-text-muted);margin-top:6px">Practice complete.</p>
+      <button class="hil-btn" id="quiz-retry">Retry</button>
+    </div>
+  </div>
+
+  <div id="wrapup-row">
+    <button id="wrapup-btn" disabled>Wrap up</button>
+    <div id="ledger-preview"></div>
+  </div>
+</div>
+
+<script type="module">
+// ── CONTENT DATA ──────────────────────────────────────────────────────────
+const CONCEPTS = [
+  {
+    id: 'what-is-a-tag',
+    badgeClass: 'type-meta',
+    badge: '?',
+    title: 'What Is a Tag?',
+    hint: 'A label for something a fixed field can\'t capture.',
+    body: `<p>A category (Tool, Fixture, Appliance...) is a fixed field — every item has exactly one. A tag is different: an item can carry several, and tags describe things categories weren't built to hold — "gas-powered," "vintage," "needs-repair," "hand tool."</p>
+           <p>Tags are flexible, but flexible doesn't mean lawless. If everyone can type anything, the same idea ends up spelled five different ways — <code>mower</code>, <code>lawnmower</code>, <code>grass-cutter</code> — and search, autocomplete, and cross-referencing all quietly break.</p>
+           <p class="why-connected">A Tag Store exists to keep the flexibility of tags without letting them sprawl into chaos.</p>`,
+  },
+  {
+    id: 'global',
+    badgeClass: 'type-global',
+    badge: 'G',
+    title: 'Global Tags',
+    hint: 'Standardized, system-wide, safe default.',
+    body: `<p>A Global tag is one the system vouches for — stable, shared meaning, safe to reuse anywhere it's offered. Think "electrical," "hand-tool," "consumable-item" — words that mean the same thing to every household using the platform.</p>
+           <p>A tag doesn't start Global. It starts Custom, gets used a bunch, and a person (not an algorithm) decides it's common and stable enough to promote. Global status is earned, not assumed.</p>`,
+  },
+  {
+    id: 'custom',
+    badgeClass: 'type-custom',
+    badge: 'C',
+    title: 'Custom Tags',
+    hint: 'Situational — one household\'s vocabulary.',
+    body: `<p>Most tags start here. Someone types something specific to their own workflow — "grandpa's-toolbox," "workshop-b-only," "waiting-on-part" — and it's created on the spot, scoped to just that person.</p>
+           <p>Custom tags are exactly why the system needs a merge tool: two people (or one person on two different days) will independently invent "mower" and "lawnmower" for the same idea. Nothing stops that at creation time — a good merge tool afterward is what actually keeps things clean.</p>`,
+  },
+  {
+    id: 'expiring',
+    badgeClass: 'type-expiring',
+    badge: 'E',
+    title: 'Expiring Tags',
+    hint: 'True only for a while, then something happens.',
+    body: `<p>Some tags describe a state with a shelf life — "warranty-active," "loaned-out," "under-recall." These carry an expiration trigger (a date, or an event) and an action: auto-remove the tag when it lapses, or just send a notification.</p>
+           <p>The difference between the two actions matters. Auto-remove fits a tag that's simply no longer true ("warranty-active" past the expiry date). Notify fits a tag where a human still needs to decide something ("loaned-out" — the system shouldn't silently assume it came back).</p>`,
+  },
+  {
+    id: 'scope',
+    badgeClass: 'type-meta',
+    badge: '⇄',
+    title: 'Why Scope Connects Everything',
+    hint: 'One meaning, offered in many places.',
+    body: `<p>A single tag can be offered in Vault, Guild, Exchange — anywhere the platform decides it's relevant. That's what a tag's <code>scope</code> controls. But scope only ever changes <b>where a tag shows up</b> — never <b>what it means</b>.</p>
+           <p>If "vintage" meant one thing in Vault and something slightly different in a Guild history lesson, every place that reads the tag would need to know which meaning applied — and that defeats the entire point of having a shared registry instead of separate vocabularies per tool.</p>
+           <p class="why-connected">This is the exact same idea the Guild's own Concept Index runs on — a shared slug like <code>ohms-law</code> means the same thing whether Multimeter Lab or Wire Lab references it, which is how PATCH can find connections across completely different modules. Tag Store and Concept Index are the same pattern, applied to two different domains.</p>`,
+  },
+];
+
+const EXPLORE_CREDIT_SEC = 20; // flat credit per unique concept viewed, same shape as Periodic Table Lab
+
+// ── QUIZ DATA (Path A — genuine predict-then-reveal, accuracy scoring) ────
+const QUIZ = [
+  {
+    scenario: `You type "mower" in Vault. "lawnmower" already exists as a Global tag with 40 items using it. What should happen?`,
+    options: [
+      { text: `Pick the existing "lawnmower" tag instead of creating a new one`, correct: true },
+      { text: `Create "mower" as its own Custom tag — more options is better`, correct: false },
+      { text: `Refuse to let you tag the item at all`, correct: false },
+    ],
+    explain: `Autocomplete exists exactly for this moment — reusing "lawnmower" keeps one meaning instead of splitting usage across near-duplicates.`,
+  },
+  {
+    scenario: `Someone tags a tool "warranty-active" with an expiration date one year out. What type of tag is this?`,
+    options: [
+      { text: `Global`, correct: false },
+      { text: `Custom`, correct: false },
+      { text: `Expiring`, correct: true },
+    ],
+    explain: `It's true only until a specific date — the definition of an Expiring tag, regardless of whether it started as Custom or Global.`,
+  },
+  {
+    scenario: `A tag is used by hundreds of items across many households and never changes meaning. What's the honest classification?`,
+    options: [
+      { text: `It should be promoted to Global`, correct: true },
+      { text: `It stays Custom forever — Custom tags never change status`, correct: false },
+      { text: `It should be split into several tags, one per household`, correct: false },
+    ],
+    explain: `Global status is earned through stable, widespread use — this is exactly the case it exists for.`,
+  },
+  {
+    scenario: `Two people already created "mower" and "lawnmower" separately before anyone noticed. What actually fixes this?`,
+    options: [
+      { text: `Deleting both and asking everyone to retype`, correct: false },
+      { text: `A merge operation that rewrites every affected item to the winning tag and retires the loser`, correct: true },
+      { text: `Nothing — once created, a tag can never be changed`, correct: false },
+    ],
+    explain: `Prevention can't stop the first typo. A real merge tool is what keeps sprawl from accumulating forever.`,
+  },
+  {
+    scenario: `A "loaned-out" tag expires. Should the system auto-remove it, or notify someone?`,
+    options: [
+      { text: `Auto-remove — expiring tags always just disappear`, correct: false },
+      { text: `Notify — a human still needs to confirm the item actually came back`, correct: true },
+    ],
+    explain: `Auto-remove fits a tag that's simply no longer true on its own (like an expired warranty). "Loaned-out" needs a person to confirm reality before the tag goes away.`,
+  },
+  {
+    scenario: `A Guild lesson wants to reuse the "electrical" tag that's already used in Vault. What's the correct move?`,
+    options: [
+      { text: `Create a separate "electrical" tag just for Guild, so meanings don't collide`, correct: false },
+      { text: `Widen the existing tag's scope to include Guild — same tag, same meaning, one more place it's offered`, correct: true },
+    ],
+    explain: `Scope controls where a tag is offered, not what it means — this is the whole reason one registry works across modules instead of each one forking its own.`,
+  },
+  {
+    scenario: `What's the actual risk of letting every typed tag become its own new entry with no lookup at all?`,
+    options: [
+      { text: `Nothing — more tags just means more detail`, correct: false },
+      { text: `The same idea splits across near-duplicate spellings, and search/autocomplete/cross-referencing quietly stop working`, correct: true },
+    ],
+    explain: `This is tag sprawl — the exact problem a registry with autocomplete and merge exists to prevent.`,
+  },
+  {
+    scenario: `Where should a tag's full definition live, if it needs more explanation than a short display name gives?`,
+    options: [
+      { text: `Retyped inline on every item that uses the tag`, correct: false },
+      { text: `Linked once from the tag's own registry entry to a shared reference (like a wiki page)`, correct: true },
+    ],
+    explain: `One definition, referenced everywhere the tag appears — not duplicated and risking drift between copies.`,
+  },
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────
+const exploredSet = new Set();
+let quizIndex = 0, quizCorrect = 0, quizAttempted = 0, quizStarted = false;
+let logger = null, activeMember = null;
+
+// ── EXPLORE MODE ────────────────────────────────────────────────────────
+const grid = document.getElementById('concept-grid');
+const detail = document.getElementById('detail');
+
+function renderGrid() {
+  grid.innerHTML = CONCEPTS.map(c => `
+    <div class="concept-card ${exploredSet.has(c.id) ? 'viewed' : ''}" data-id="${c.id}">
+      <span class="badge ${c.badgeClass}">${c.badge}</span>
+      <h3>${c.title}</h3>
+      <p class="hint">${c.hint}</p>
+    </div>
+  `).join('');
+  grid.querySelectorAll('.concept-card').forEach(card => {
+    card.addEventListener('click', () => selectConcept(card.dataset.id));
+  });
+}
+
+function selectConcept(id) {
+  const c = CONCEPTS.find(x => x.id === id);
+  if (!c) return;
+  exploredSet.add(id);
+  document.querySelectorAll('.concept-card').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  detail.style.display = 'block';
+  detail.innerHTML = `<h2>${c.title}</h2>${c.body}`;
+  renderGrid(); // re-render to pick up the 'viewed' checkmark
+  document.querySelectorAll('.concept-card').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  updateWrapupState();
+}
+renderGrid();
+
+// ── PRACTICE MODE ──────────────────────────────────────────────────────
+const quizView = document.getElementById('quiz-view');
+const exploreView = document.getElementById('explore-view');
+
+function startQuiz() {
+  quizStarted = true;
+  quizIndex = 0; quizCorrect = 0; quizAttempted = 0;
+  document.getElementById('quiz-done').style.display = 'none';
+  document.getElementById('quiz-box').style.display = 'block';
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (quizIndex >= QUIZ.length) {
+    document.getElementById('quiz-box').style.display = 'none';
+    document.getElementById('quiz-done').style.display = 'block';
+    document.getElementById('quiz-score-text').textContent = `${quizCorrect} / ${QUIZ.length}`;
+    updateWrapupState();
+    return;
+  }
+  const q = QUIZ[quizIndex];
+  document.getElementById('quiz-progress').textContent = `Question ${quizIndex + 1} of ${QUIZ.length}`;
+  document.getElementById('quiz-scenario').textContent = q.scenario;
+  document.getElementById('quiz-feedback').textContent = '';
+  document.getElementById('next-q').style.display = 'none';
+  const optsEl = document.getElementById('quiz-options');
+  optsEl.innerHTML = q.options.map((opt, i) => `<button class="quiz-opt" data-i="${i}">${opt.text}</button>`).join('');
+  optsEl.querySelectorAll('.quiz-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i);
+      const chosen = q.options[i];
+      quizAttempted++;
+      if (chosen.correct) quizCorrect++;
+      optsEl.querySelectorAll('.quiz-opt').forEach((b2, i2) => {
+        b2.disabled = true;
+        if (q.options[i2].correct) b2.classList.add('correct');
+        else if (i2 === i) b2.classList.add('incorrect');
+      });
+      document.getElementById('quiz-feedback').textContent = q.explain;
+      document.getElementById('next-q').style.display = 'inline-block';
+      updateWrapupState();
+    });
+  });
+}
+document.getElementById('next-q').onclick = () => { quizIndex++; renderQuestion(); };
+document.getElementById('quiz-retry').onclick = () => startQuiz();
+
+// ── MODE SWITCHING ──────────────────────────────────────────────────────
+document.getElementById('mode-explore').onclick = () => setMode('explore');
+document.getElementById('mode-practice').onclick = () => setMode('practice');
+function setMode(mode) {
+  document.getElementById('mode-explore').classList.toggle('active', mode === 'explore');
+  document.getElementById('mode-practice').classList.toggle('active', mode === 'practice');
+  exploreView.style.display = mode === 'explore' ? 'block' : 'none';
+  quizView.style.display = mode === 'practice' ? 'block' : 'none';
+  if (mode === 'practice' && !quizStarted) startQuiz();
+}
+
+// ── SESSION LOGGER WIRING (matches Periodic Table Lab exactly) ──────────
+const MODULE_MANIFEST = {
+  moduleId: 'tag-taxonomy-lab',
+  subjects: ['science', 'reading'],
+  conceptTags: ['taxonomy', 'controlled-vocabulary', 'categorization', 'metadata', 'normalization'],
+  ageRange: null,
+  timeModel: 'active_session',
+  scoringPath: 'accuracy',
+};
+
+function updateWrapupState() {
+  const btn = document.getElementById('wrapup-btn');
+  if (!btn) return;
+  btn.disabled = !logger || logger.isWrappedUp || (exploredSet.size === 0 && quizAttempted === 0);
+}
+
+// Shell init happens immediately and unconditionally — draws header/nav
+// chrome and the auth gate. Not gated behind the session-logger import,
+// same reasoning as Periodic Table Lab: a broken import must not be able
+// to take the page's chrome down with it.
+window.handleAuth = async (user) => {
+  if (!user) return;
+  try {
+    const { resolveActiveMember } = await import('../session-logger.js');
+    activeMember = await resolveActiveMember(window.db, user.uid);
+  } catch (err) {
+    console.error('Tag Taxonomy Lab: could not resolve active member', err);
+  }
+  if (logger) logger.start();
+  updateWrapupState();
+};
+
+HILShell.init({
+  toolId: 'tag-taxonomy-lab',
+  toolName: 'Tag Taxonomy Lab',
+  requireAuth: true,
+  onAuth: (user) => window.handleAuth(user),
+});
+
+// Logger setup is best-effort and separate from shell init — Explore/Practice
+// still work if session-logger.js fails to load; Wrap Up just stays disabled.
+async function initLogger() {
+  try {
+    const { SessionLogger, writeSessionLogEntry } = await import('../session-logger.js');
+    logger = new SessionLogger(MODULE_MANIFEST);
+    logger.onWrapUp = async (entry) => {
+      if (!window.currentUser || !activeMember) {
+        HILShell.toast('Sign in to save this session', 'error');
+        return;
+      }
+      await writeSessionLogEntry(window.db, window.currentUser.uid, activeMember.id, entry);
+    };
+    if (window.currentUser) logger.start();
+    updateWrapupState();
+  } catch (err) {
+    console.error('Tag Taxonomy Lab: session-logger.js failed to load — Wrap Up disabled', err);
+    HILShell.toast?.('Progress logging unavailable this session', 'error');
+  }
+}
+initLogger();
+
+document.getElementById('wrapup-btn').onclick = async () => {
+  const btn = document.getElementById('wrapup-btn');
+  btn.disabled = true;
+  const exploreCreditSec = exploredSet.size * EXPLORE_CREDIT_SEC;
+  const exploreCreditMinutes = +(exploreCreditSec / 60).toFixed(1);
+  // Explore time is the credited figure; if someone only did Practice with
+  // zero Explore clicks, floor at 1 minute rather than crediting 0.
+  const finalMinutes = exploreCreditMinutes > 0 ? exploreCreditMinutes : (quizAttempted > 0 ? 1 : 0);
+  const parts = [];
+  if (exploredSet.size > 0) parts.push(`explored ${exploredSet.size} of ${CONCEPTS.length} concepts`);
+  if (quizAttempted > 0) parts.push(`scored ${quizCorrect}/${quizAttempted} on practice questions`);
+  const description = `Tag Taxonomy Lab — ${parts.join(', ')}.`;
+  const entry = await logger.wrapUp({
+    description,
+    accuracy: quizAttempted > 0 ? +(quizCorrect / quizAttempted).toFixed(2) : null,
+    outcome: quizAttempted > 0 ? (quizCorrect === quizAttempted ? 'success' : 'mistake') : 'explored',
+    activeMinutesOverride: finalMinutes,
+  });
+  if (entry) {
+    document.getElementById('ledger-preview').innerHTML = `Logged — <b>${finalMinutes} min</b> credited. ${description}`;
+  } else {
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
