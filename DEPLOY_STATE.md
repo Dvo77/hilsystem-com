@@ -1,105 +1,93 @@
-# DEPLOY_STATE.md
-**Purpose:** what's actually live right now, where its source lives, and what's been written but NOT yet deployed. This is operational status, not architecture — architecture doctrine lives in the other SSOT docs.
+DEPLOY_STATE.md
 
-**Workflow:** At the start of any session touching Cloudflare Workers, Firestore rules, Cloud Run, or deploy status generally — read this file first (fetched via raw.githubusercontent.com/Dvo77/hilsystem-com/main/DEPLOY_STATE.md). At the end of a session with deploy changes — update ONLY the section(s) that changed, leave everything else untouched, and append one line to the Changelog at the bottom. Do not regenerate the whole file.
+Purpose: what's actually live right now, where its source lives, and what's been written but NOT yet deployed. This is operational status, not architecture — architecture doctrine lives in the other SSOT docs.
 
-**Correction this rebuild:** the prior version of this file (dated July 17) was never actually committed to GitHub — it only ever existed as a chat artifact / project-knowledge upload, so every session since has been re-deriving state from scratch instead of reading it. This copy needs to be manually added to the repo root to close that gap for good.
+Workflow: At the start of any session touching Cloudflare Workers, Firestore rules, Cloud Run, or deploy status generally — read this file first (fetched via raw.githubusercontent.com/Dvo77/hilsystem-com/main/DEPLOY_STATE.md). At the end of a session with deploy changes — update ONLY the section(s) that changed, leave everything else untouched, and append one line to the Changelog at the bottom. Do not regenerate the whole file.
 
-**Last updated:** August 1, 2026 (session: Natural Sciences hub + Periodic Table Lab)
+Correction this rebuild: the prior version of this file (dated July 17) was never actually committed to GitHub — it only ever existed as a chat artifact / project-knowledge upload, so every session since has been re-deriving state from scratch instead of reading it. This copy needs to be manually added to the repo root to close that gap for good.
 
----
+Exception made this update (per Dan, Aug 1 evening session): full file regenerated for one-paste convenience rather than a section-by-section diff. Only the sections listed in this session's Changelog entry actually changed — everything else below is preserved verbatim from the prior live version. Back to append-only/section-only discipline after this.
 
-## Status legend
-- ✅ CONFIRMED LIVE (VERIFIED DIRECTLY) — checked against the actual service/site this session
-- ✅ CONFIRMED LIVE (per Dan) — Dan confirmed directly in-session, not independently re-tested
-- ✅ CONFIRMED LIVE (CARRIED OVER) — reported live by a prior session, not re-checked this session
-- 🟡 WRITTEN, NOT DEPLOYED — code exists, not yet pushed to the live service
-- 🔴 OPEN QUESTION — genuinely unknown, needs resolution
-- ⚠️ KNOWN BROKEN — confirmed live but confirmed wrong
+Last updated: August 1, 2026 (session: hil-admin-action field-shape bug fix + Vault category/archive UI + import financial fields)
 
----
+Status legend
+✅ CONFIRMED LIVE (VERIFIED DIRECTLY) — checked against the actual service/site this session
+✅ CONFIRMED LIVE (per Dan) — Dan confirmed directly in-session, not independently re-tested
+✅ CONFIRMED LIVE (CARRIED OVER) — reported live by a prior session, not re-checked this session
+🟡 WRITTEN, NOT DEPLOYED — code exists, not yet pushed to the live service
+🔴 OPEN QUESTION — genuinely unknown, needs resolution
+⚠️ KNOWN BROKEN — confirmed live but confirmed wrong
+firestore.rules
+Status: ✅ CONFIRMED LIVE (per Dan, July 16 pass) — with one addition pending publish as of this session.
+fixed_points subcollection (users/{uid}/properties/{propertyId}/fixed_points/{pointId}): 🟡 WRITTEN, NOT YET PUBLISHED — was missing entirely from the live rules (only zones and openings existed under properties/{propertyId}). Rule drafted this session as owner-direct-read/write, matching the zones pattern (Dan's call: Fixed Points is non-inventory infrastructure metadata, doesn't need hil-admin-action gating). Full corrected rules file handed to Dan for paste-and-publish this session — mark ✅ once he confirms Publish clicked.
+item_records base rule + room_position field exception: ✅ CONFIRMED LIVE (CARRIED OVER from July 16) — allow write: if false baseline, narrow exception for room_position/updated_at only.
+properties/zones, properties/openings: ✅ CONFIRMED LIVE (CARRIED OVER).
+Avatar/League FS pass (avatar_profile, avatar_unlocks, avatar_catalog, leagues + roster claim-slot logic): ✅ CONFIRMED LIVE (CARRIED OVER, per in-file comments dated July 18) — not independently re-verified this session, but present in the live rules file Dan pasted in.
+guild_media admin-direct-write: ✅ CONFIRMED LIVE (CARRIED OVER, per in-file comment dated July 18).
+Gamification/Audit locks (users.stats.trust_score, team_members trust fields, audit_events, account-level badges): ✅ CONFIRMED LIVE (CARRIED OVER from July 16).
+Rules Playground verification: 🔴 OPEN QUESTION — none of the field-lock rules or the new fixed_points rule have been run through Rules Playground. Worth doing once fixed_points publishes.
+hil-admin-action (Google Cloud Run)
+Live URL: ✅ CONFIRMED LIVE (CARRIED OVER) — https://hil-admin-action-937314472168.us-central1.run.app
+Live revision: ✅ CONFIRMED LIVE (per Dan, Aug 1 evening) — redeployed successfully this session via gcloud run deploy hil-admin-action --source . --region us-central1 --clear-base-image. Exact new revision string not captured in-session — run gcloud run services describe hil-admin-action --region us-central1 to confirm and update this line.
+Source location: ✅ RE-CONFIRMED DIRECTLY (Aug 1) — still Cloud-Shell-only, ~/admin-action-service/admin-action-service/server.js (and email-parsers.js alongside it). Still NOT in GitHub — this remains an open migration item, not resolved this session.
+commitStagedItem() field-shape bug — FIXED this session: the function previously did ...(staged.item_data || {}), which only ever populated correctly for the email_ingest shape (fields nested under item_data). CSV/manual-import staged docs (via hil-import-export.html) write flat fields instead (item_name, notes, category, condition, value, address, etc.) with no item_data wrapper — so every CSV-imported item committed to item_records with nothing but boilerplate (id/owner_uid/status/timestamps), no name, no price, nothing. Added a normalizeStagedFields() helper that handles both shapes and mapped it into commitStagedItem(). Verified: 437-line file, node -c syntax-clean, normalizeStagedFields present, single app.listen (no duplicate-content risk), deploy succeeded.
+Near-miss this session, worth flagging for next time: mid-session, the corrected server.js content was accidentally pasted into email-parsers.js instead of server.js, which briefly duplicated the whole Express app (including a second app.listen(8080)) inside a require(), crashing the container on boot. Recovered by restoring email-parsers.js from a separate same-day session's tested version (see below) and re-pasting the real fix into server.js. A second near-miss: an editor save left server.js at 0 bytes before the real paste landed — caught via wc -l before attempting deploy. Lesson: always wc -l + node -c + grep for the expected function name before running gcloud run deploy, not after a failure.
+email-parsers.js: ✅ RESTORED (per Dan, Aug 1) — replaced with the modular vendor-registry version built in a separate same-day session ("Email project troubleshooting loop"), which includes Yahoo-forwarding fixes (RFC 2047 subject decoding before Fw: stripping, body-scan fallback for forwarded From: headers) and widened Harbor Freight SKU/price search windows (900→1600 chars). Not independently re-verified against a real captured email in this session — treat as carried over from that session's own testing until directly re-checked.
+Self-service endpoints (/update-item, /archive-item, /commit-staged, /health): ✅ CONFIRMED LIVE (per Dan, Aug 1 — deploy succeeded and /commit-staged was exercised live via the Staged Items admin panel).
+/webhook/ingest (email-ingestion receiver): 🔴 OPEN QUESTION — reported written, never independently confirmed live via direct check this session.
+WORKER_SECRET env var: 🔴 OPEN QUESTION — never confirmed set/matched against hil-email-ingest's Cloudflare binding.
+/trigger-audit, /submit-audit: 🔴 OPEN QUESTION — last known state (July 16) was written but not pasted into the live Cloud Shell server.js. Never followed up on.
+hil-email-ingest (Cloudflare Worker)
+Status: 🔴 OPEN QUESTION / UNVERIFIED — last known state: confirmed broken, posting to a dead api.hilsystem.com hostname with no DNS record. A fix (hil-email-ingest-FIXED.js) was written pointing directly at the Cloud Run URL, but deployment of that fix was never confirmed. Treat every email ingested since as silently failed until this is checked.
+HA Bridge / Home Assistant integration
+Status: 🔴 OPEN QUESTION — schema support exists (ha_entity field on fixed_points and on item_records.maintenance), and the HL→HA naming convention is documented (e.g. switch.g_s_3e_receptacle), but no live bridge to an actual Home Assistant instance has ever been confirmed working end-to-end. Next session on this needs to start by confirming what (if anything) already exists as a bridge tool/Worker versus what needs to be built from scratch.
+hil-import-export.html (HL Bridge / HomeBox etc.)
+Status: 🟡 WRITTEN, NOT CONFIRMED DEPLOYED (carried over, July 20) — needs a live check against hilsystem.com/tools/.
+HomeBox converter: ⚠️ KNOWN INCOMPLETE — listed as "LIVE" in the tool's own converter-status UI, but there is no HomeBox-specific field-mapping logic. It currently routes through the generic CSV/JSON path. Needs relabeling or real mapping before the "LIVE" tag is honest.
+CSV parser — comma-in-quoted-field bug: ⚠️ KNOWN BROKEN, STILL UNPATCHED — the parser does a naive comma-split and does not honor quoted fields, so any CSV with a comma inside a name/description/etc. value gets shredded across extra columns, corrupting every field after it in that row. Worked around this session by using semicolons instead of commas inside quoted text fields — real fix (proper quoted-CSV parsing) is still outstanding.
+purchase_price/purchase_date/purchase_source fields — ADDED this session: 🟡 WRITTEN, NOT YET CONFIRMED DEPLOYED. Previously HIL_FIELDS only had a generic value field with no financial-specific columns, so CSV columns like purchase_price/purchase_date had nothing to auto-map to and were silently dropped before reaching staged_items — this is why price/date were showing blank in Vault even after the hil-admin-action field-shape fix above (that fix could only carry over data that actually made it into the staged doc in the first place). Added as real HIL_FIELDS entries with automap aliases (price/cost → purchase_price, date/ordered_date/order_date → purchase_date, source/vendor/store → purchase_source). File handed to Dan for paste-and-commit; mark ✅ once confirmed pushed to main.
+Import destination: ✅ BY DESIGN — writes only to staged_items, never direct to item_records, consistent with Authority Layer doctrine.
+hil-user-admin.html (My Account / Staged Items review)
+Status: ✅ CONFIRMED LIVE (per Dan, Aug 1) — Staged Items list was showing "(no subject)" for every CSV/manual-import row, because the row title only ever checked data.subject (email-ingest-only field). Fixed to (data.item_name || data.subject || '(no subject)') at the line rendering .staged-subject. Dan confirmed the committed edit matched and pushed to main.
+Vault frontend (hl-vault-cloud.html + vault-item-client.js)
+Core save/edit/archive/photo-upload: ✅ CONFIRMED LIVE (CARRIED OVER, July 12 direct end-to-end test) — not re-verified since.
+Expanded category list — WRITTEN this session: 🟡 WRITTEN, NOT YET CONFIRMED DEPLOYED. Original category list (Tool/Collectible/Heirloom/Ephemera/Media/Artwork/Document/Specimen/Other) was designed for the museum/provenance side of the platform and had no home for everyday household purchases — everything was collapsing into "Other." Added: Fixture, Furniture, Appliance, Hardware, Equipment, Electronics, Consumable, Vehicle Part — to the Edit Item dropdown, the top-of-page filter chips, and categoryIcon(). All prior categories preserved, nothing removed.
+Archived-items view — WRITTEN this session: 🟡 WRITTEN, NOT YET CONFIRMED DEPLOYED. Previously, archived items (status: 'archived', set via /archive-item) rendered mixed into the main item list alongside active items with only a badge to distinguish them. Added a "🗄 VIEW ARCHIVED" toggle button that flips the list to show only archived items (relabels to "← BACK TO ACTIVE"); the default/active view now excludes archived items automatically.
+Vessel bridge — DESIGNED, NOT BUILT: Dan wants items tagged as containers (e.g. shelving bought for storage) to be able to spin up a real linked vessels doc (type/prefix, fill level, home address) at add-time, rather than just a descriptive category tag. Two options discussed: (1) quick tag-only category with manual follow-up in Vessel Builder, or (2) a real dual-write bridge — checkbox on Add Item reveals vessel-type prompt, saves both item_records and vessels docs together. Not started — needs a design decision from Dan on which approach before building.
+Seasonal Flare (hil-shell.js module)
+Status: ✅ CONFIRMED LIVE (per Dan, July 16) — fires automatically via HILShell.init() on every tool.
+Known gaps: no platform-wide kill-switch UI (backend flag exists, no button), no year stored with birthday, no shared/linked household accounts.
+Insurance Report export
+Status: ✅ CONFIRMED LIVE (per Dan, July 19) — Family Ledger export mode, lives under Financial in the admin panel.
+Natural Sciences hub + Periodic Table Lab
+Status: ✅ CONFIRMED LIVE (per Dan, Aug 1) — new Guild hub built and deployed this session, mirroring Electric Forge's hub structure. Files live at tools/natural-sciences/index.html (hub) and tools/natural-sciences/periodic-table-lab.html (first module).
+Guild root card: ✅ CONFIRMED LIVE — "Open Natural Sciences" card added to hil-guild.html's module grid, ahead of the Arts/Economics coming-soon cards.
+guild-module-registry.js: ✅ CONFIRMED LIVE — natural-sciences entry added (status: 'live', moduleIds: ['periodic-table-lab']), so the hub's own progress strip and the Guild root's Time by Category tracker both pick it up.
+Session logging: ✅ CONFIRMED LIVE (per Dan) — Explore mode (dwell-time credit per element) and Practice mode (8-question quiz, accuracy scoring) both wired through the shared session-logger.js, confirmed writing real Session Log Entries and rendering in the Ledger preview.
+Bug fixed this session: a temporal-dead-zone ReferenceError on logger (declared with let far below the code that read it) was breaking the page on load — logger/activeMember declarations moved to the top of the script, before any other code runs. Also decoupled HILShell.init() from the session-logger.js import — shell chrome now renders unconditionally instead of depending on that import succeeding.
+Known gaps: hil-shell.js NAV_TOOLS entry not yet added (hub only reachable via the Guild root grid, not the top nav bar); Earth Science and Biology are visual stub cards on the hub with no href and no files; no ?member= handoff from either the Guild root or the hub, same open item as every other hub-launched Guild module.
+READMEs: ✅ WRITTEN — natural-sciences-README.md and periodic-table-lab-README.md produced this session, following the standard Tool Doc Schema (Periodic Table Lab also carries the Guild Proctoring & Tutoring Extension). Not yet confirmed pushed into tools/readmes/.
+Immediate next steps, in dependency order
+Confirm the new hil-admin-action revision string via gcloud run services describe hil-admin-action --region us-central1 and update the line above.
+Deploy hil-import-export.html (financial fields) and hl-vault-cloud.html (categories + archived view) — both written, both still sitting in downloaded files as of this update.
+Publish the fixed_points rules addition (carried over) — confirm and mark ✅ above.
+Push this file itself to the repo root (Dvo77/hilsystem-com/DEPLOY_STATE.md) — it has never actually lived in GitHub despite the protocol being agreed on July 16.
+HA Bridge: scope what currently exists (if anything) before attempting an end-to-end test.
+Real fix for the CSV quoted-comma parser bug in hil-import-export.html (semicolon workaround is fine short-term, not a real fix).
+Resolve hil-admin-action source-of-truth location (GitHub vs. Cloud-Shell-only) — open across multiple sessions now, should get closed out for real.
+Directly re-verify /webhook/ingest, WORKER_SECRET, and whether hil-email-ingest-FIXED.js was ever actually pasted into the Workers editor — every email since deployment may still be silently failing.
+Vessel bridge: get Dan's decision on quick-tag vs. real dual-write, then build.
+Add hil-shell.js NAV_TOOLS entry for Natural Sciences so it's reachable from the top nav, not just the Guild root grid.
+Confirm natural-sciences-README.md and periodic-table-lab-README.md are actually pushed into tools/readmes/, not just handed off this session.
+Changelog
 
-## firestore.rules
+(append one line per session — never edit or remove past entries, even if later superseded; the section above should reflect current truth, this log reflects history)
 
-- **Status:** ✅ CONFIRMED LIVE (per Dan, July 16 pass) — with one addition pending publish as of this session.
-- **`fixed_points` subcollection (`users/{uid}/properties/{propertyId}/fixed_points/{pointId}`):** 🟡 WRITTEN, NOT YET PUBLISHED — was missing entirely from the live rules (only `zones` and `openings` existed under `properties/{propertyId}`). Rule drafted this session as owner-direct-read/write, matching the `zones` pattern (Dan's call: Fixed Points is non-inventory infrastructure metadata, doesn't need `hil-admin-action` gating). Full corrected rules file handed to Dan for paste-and-publish this session — mark ✅ once he confirms Publish clicked.
-- **`item_records` base rule + `room_position` field exception:** ✅ CONFIRMED LIVE (CARRIED OVER from July 16) — `allow write: if false` baseline, narrow exception for `room_position`/`updated_at` only.
-- **`properties/zones`, `properties/openings`:** ✅ CONFIRMED LIVE (CARRIED OVER).
-- **Avatar/League FS pass (`avatar_profile`, `avatar_unlocks`, `avatar_catalog`, `leagues` + `roster` claim-slot logic):** ✅ CONFIRMED LIVE (CARRIED OVER, per in-file comments dated July 18) — not independently re-verified this session, but present in the live rules file Dan pasted in.
-- **`guild_media` admin-direct-write:** ✅ CONFIRMED LIVE (CARRIED OVER, per in-file comment dated July 18).
-- **Gamification/Audit locks (`users.stats.trust_score`, `team_members` trust fields, `audit_events`, account-level `badges`):** ✅ CONFIRMED LIVE (CARRIED OVER from July 16).
-- **Rules Playground verification:** 🔴 OPEN QUESTION — none of the field-lock rules or the new `fixed_points` rule have been run through Rules Playground. Worth doing once `fixed_points` publishes.
-
-## hil-admin-action (Google Cloud Run)
-
-- **Live URL:** ✅ CONFIRMED LIVE (CARRIED OVER) — `https://hil-admin-action-937314472168.us-central1.run.app`
-- **Live revision:** ✅ CONFIRMED LIVE (CARRIED OVER, July 12) — `hil-admin-action-00004-qqx`. Not re-verified since.
-- **Source location:** 🔴 OPEN QUESTION — last confirmed living only in Google Cloud Shell (`~/admin-action-service/admin-action-service/server.js`), NOT in GitHub. Never resolved whether this ever got moved into version control. Treat as unresolved until checked.
-- **Self-service endpoints (`/update-item`, `/archive-item`, `/commit-staged`, `/health`):** ✅ CONFIRMED LIVE (CARRIED OVER, July 12 direct curl test) — not re-verified since.
-- **`/webhook/ingest` (email-ingestion receiver):** 🔴 OPEN QUESTION — reported written, never independently confirmed live via direct check.
-- **`WORKER_SECRET` env var:** 🔴 OPEN QUESTION — never confirmed set/matched against `hil-email-ingest`'s Cloudflare binding.
-- **`/trigger-audit`, `/submit-audit`:** 🔴 OPEN QUESTION — last known state (July 16) was written but not pasted into the live Cloud Shell `server.js`. Never followed up on.
-
-## hil-email-ingest (Cloudflare Worker)
-
-- **Status:** 🔴 OPEN QUESTION / UNVERIFIED — last known state: confirmed broken, posting to a dead `api.hilsystem.com` hostname with no DNS record. A fix (`hil-email-ingest-FIXED.js`) was written pointing directly at the Cloud Run URL, but deployment of that fix was never confirmed. Treat every email ingested since as silently failed until this is checked.
-
-## HA Bridge / Home Assistant integration
-
-- **Status:** 🔴 OPEN QUESTION — schema support exists (`ha_entity` field on `fixed_points` and on `item_records.maintenance`), and the HL→HA naming convention is documented (e.g. `switch.g_s_3e_receptacle`), but no live bridge to an actual Home Assistant instance has ever been confirmed working end-to-end. Next session on this needs to start by confirming what (if anything) already exists as a bridge tool/Worker versus what needs to be built from scratch.
-
-## hil-import-export.html (HL Bridge / HomeBox etc.)
-
-- **Status:** 🟡 WRITTEN, NOT CONFIRMED DEPLOYED (carried over, July 20) — needs a live check against `hilsystem.com/tools/`.
-- **HomeBox converter:** ⚠️ KNOWN INCOMPLETE — listed as "LIVE" in the tool's own converter-status UI, but there is no HomeBox-specific field-mapping logic. It currently routes through the generic CSV/JSON path. Needs relabeling or real mapping before the "LIVE" tag is honest.
-- **CSV parser:** ⚠️ KNOWN LIMITATION — simple split-on-comma, doesn't handle quoted fields with embedded commas/newlines.
-- **Import destination:** ✅ BY DESIGN — writes only to `staged_items`, never direct to `item_records`, consistent with Authority Layer doctrine.
-
-## Vault frontend (hl-vault-cloud.html + vault-item-client.js)
-
-- **Status:** ✅ CONFIRMED LIVE (CARRIED OVER, July 12 direct end-to-end test) — save/edit/archive/photo-upload all confirmed working at that time. Not re-verified since.
-
-## Seasonal Flare (hil-shell.js module)
-
-- **Status:** ✅ CONFIRMED LIVE (per Dan, July 16) — fires automatically via `HILShell.init()` on every tool.
-- **Known gaps:** no platform-wide kill-switch UI (backend flag exists, no button), no year stored with birthday, no shared/linked household accounts.
-
-## Insurance Report export
-
-- **Status:** ✅ CONFIRMED LIVE (per Dan, July 19) — Family Ledger export mode, lives under Financial in the admin panel.
-
-## Natural Sciences hub + Periodic Table Lab
-
-- **Status:** ✅ CONFIRMED LIVE (per Dan, Aug 1) — new Guild hub built and deployed this session, mirroring Electric Forge's hub structure. Files live at `tools/natural-sciences/index.html` (hub) and `tools/natural-sciences/periodic-table-lab.html` (first module).
-- **Guild root card:** ✅ CONFIRMED LIVE — "Open Natural Sciences" card added to `hil-guild.html`'s module grid, ahead of the Arts/Economics coming-soon cards.
-- **`guild-module-registry.js`:** ✅ CONFIRMED LIVE — `natural-sciences` entry added (`status: 'live'`, `moduleIds: ['periodic-table-lab']`), so the hub's own progress strip and the Guild root's Time by Category tracker both pick it up.
-- **Session logging:** ✅ CONFIRMED LIVE (per Dan) — Explore mode (dwell-time credit per element) and Practice mode (8-question quiz, accuracy scoring) both wired through the shared `session-logger.js`, confirmed writing real Session Log Entries and rendering in the Ledger preview.
-- **Bug fixed this session:** a temporal-dead-zone `ReferenceError` on `logger` (declared with `let` far below the code that read it) was breaking the page on load — `logger`/`activeMember` declarations moved to the top of the script, before any other code runs. Also decoupled `HILShell.init()` from the `session-logger.js` import — shell chrome now renders unconditionally instead of depending on that import succeeding.
-- **Known gaps:** `hil-shell.js` `NAV_TOOLS` entry not yet added (hub only reachable via the Guild root grid, not the top nav bar); Earth Science and Biology are visual stub cards on the hub with no `href` and no files; no `?member=` handoff from either the Guild root or the hub, same open item as every other hub-launched Guild module.
-- **READMEs:** ✅ WRITTEN — `natural-sciences-README.md` and `periodic-table-lab-README.md` produced this session, following the standard Tool Doc Schema (Periodic Table Lab also carries the Guild Proctoring & Tutoring Extension). Not yet confirmed pushed into `tools/readmes/`.
-
----
-
-## Immediate next steps, in dependency order
-
-1. Publish the `fixed_points` rules addition (this session) — confirm and mark ✅ above.
-2. Push this file itself to the repo root (`Dvo77/hilsystem-com/DEPLOY_STATE.md`) — it has never actually lived in GitHub despite the protocol being agreed on July 16.
-3. HA Bridge: scope what currently exists (if anything) before attempting an end-to-end test.
-4. `hil-import-export.html`: confirm live deployment status, then either build real HomeBox field-mapping or relabel it as CSV/JSON-only until that's done.
-5. Resolve `hil-admin-action` source-of-truth location (GitHub vs. Cloud-Shell-only) — this has been an open question across multiple sessions and should get closed out.
-6. Directly re-verify `/webhook/ingest`, `WORKER_SECRET`, and whether `hil-email-ingest-FIXED.js` was ever actually pasted into the Workers editor — every email since deployment may still be silently failing.
-7. Add `hil-shell.js` `NAV_TOOLS` entry for Natural Sciences so it's reachable from the top nav, not just the Guild root grid.
-8. Confirm `natural-sciences-README.md` and `periodic-table-lab-README.md` are actually pushed into `tools/readmes/`, not just handed off this session.
-
----
-
-## Changelog
-*(append one line per session — never edit or remove past entries, even if later superseded; the section above should reflect current truth, this log reflects history)*
-
-- **July 11, 2026** — Built owner-confirm commit path (`/commit-staged`, `/archive-item`, `/update-item`) and email webhook receiver (`/webhook/ingest`) for hil-admin-action; wrote `email-parsers.js` and `vault-item-client.js`. Diagnosed hil-email-ingest as broken (dead DNS target). Nothing confirmed deployed at time of writing.
-- **July 12, 2026** — Direct verification session. Confirmed live revision `hil-admin-action-00004-qqx`. Confirmed self-service endpoints live and auth-gated. Confirmed Vault edit/save/photo-upload working end-to-end on the live site. `/webhook/ingest` and `WORKER_SECRET` sync remained unverified.
-- **July 16, 2026** — Compiled and published a combined firestore.rules pass: Guild (`session_log_entries`), Vessel Registry (`vessel_types`, `vessels/slots`), Fixed Points (`item_records.room_position` exception only — the `fixed_points` subcollection itself was NOT covered in this pass, a gap that went unnoticed until July 31), and Gamification/Audit (`audit_events`, account-level `badges`, trust-field locks). `/trigger-audit` and `/submit-audit` written but not pasted into live `server.js`.
-- **July 18, 2026** — Avatar/League Firestore pass: `avatar_profile`, `avatar_unlocks`, `avatar_catalog`, `leagues` + claim-slot `roster` rules added. `guild_media` changed from fully-backend-only to admin-direct-write.
-- **July 19, 2026** — Insurance Report export shipped and confirmed live (Family Ledger export mode).
-- **July 31, 2026** — Discovered `fixed_points` subcollection had zero rules coverage (not caught in the July 16 pass, which only added the `item_records.room_position` exception under the Fixed Points banner and missed the collection itself). Drafted and handed off owner-direct-write rule matching the `zones` pattern, per Dan's confirmation that Fixed Points doesn't need `hil-admin-action` gating. Rebuilt this file from the stale project-knowledge copy since the July 16 version never actually made it into GitHub — flagged as the reason session-start state has been getting re-derived from scratch repeatedly.
-- **August 1, 2026** — Built and shipped the Natural Sciences Guild hub (mirroring Electric Forge's hub structure) plus its first module, Periodic Table Lab, with real Explore/Practice session logging through `session-logger.js`. Added the Guild root card and a `natural-sciences` entry to `guild-module-registry.js`. Fixed a temporal-dead-zone bug (`logger` referenced before its `let` declaration executed) and decoupled `HILShell.init()` from the session-logger import so shell chrome can't be taken down by a failed import. Wrote READMEs for both the hub and the lab, following the standard Tool Doc Schema.
+July 11, 2026 — Built owner-confirm commit path (/commit-staged, /archive-item, /update-item) and email webhook receiver (/webhook/ingest) for hil-admin-action; wrote email-parsers.js and vault-item-client.js. Diagnosed hil-email-ingest as broken (dead DNS target). Nothing confirmed deployed at time of writing.
+July 12, 2026 — Direct verification session. Confirmed live revision hil-admin-action-00004-qqx. Confirmed self-service endpoints live and auth-gated. Confirmed Vault edit/save/photo-upload working end-to-end on the live site. /webhook/ingest and WORKER_SECRET sync remained unverified.
+July 16, 2026 — Compiled and published a combined firestore.rules pass: Guild (session_log_entries), Vessel Registry (vessel_types, vessels/slots), Fixed Points (item_records.room_position exception only — the fixed_points subcollection itself was NOT covered in this pass, a gap that went unnoticed until July 31), and Gamification/Audit (audit_events, account-level badges, trust-field locks). /trigger-audit and /submit-audit written but not pasted into live server.js.
+July 18, 2026 — Avatar/League Firestore pass: avatar_profile, avatar_unlocks, avatar_catalog, leagues + claim-slot roster rules added. guild_media changed from fully-backend-only to admin-direct-write.
+July 19, 2026 — Insurance Report export shipped and confirmed live (Family Ledger export mode).
+July 31, 2026 — Discovered fixed_points subcollection had zero rules coverage (not caught in the July 16 pass, which only added the item_records.room_position exception under the Fixed Points banner and missed the collection itself). Drafted and handed off owner-direct-write rule matching the zones pattern, per Dan's confirmation that Fixed Points doesn't need hil-admin-action gating. Rebuilt this file from the stale project-knowledge copy since the July 16 version never actually made it into GitHub — flagged as the reason session-start state has been getting re-derived from scratch repeatedly.
+August 1, 2026 (afternoon) — Built and shipped the Natural Sciences Guild hub (mirroring Electric Forge's hub structure) plus its first module, Periodic Table Lab, with real Explore/Practice session logging through session-logger.js. Added the Guild root card and a natural-sciences entry to guild-module-registry.js. Fixed a temporal-dead-zone bug (logger referenced before its let declaration executed) and decoupled HILShell.init() from the session-logger import so shell chrome can't be taken down by a failed import. Wrote READMEs for both the hub and the lab, following the standard Tool Doc Schema.
+August 1, 2026 (evening) — Diagnosed and fixed a real data-loss bug in hil-admin-action's commitStagedItem(): CSV/manual-imported staged items were committing to item_records with no name, price, or any field data (only boilerplate), because the commit logic only ever read the email-ingest field shape. Added normalizeStagedFields() to handle both shapes; redeployed successfully after recovering from two mid-session file mishaps (content pasted into the wrong file, then a save that left server.js at 0 bytes). Restored email-parsers.js from a separate same-day session's tested version. Traced the remaining price/date gap to hil-import-export.html never capturing financial columns in the first place (HIL_FIELDS had no purchase_price/purchase_date/purchase_source) — added those fields with automap aliases. Fixed hil-user-admin.html's Staged Items list showing "(no subject)" for every non-email-ingest row (was only checking data.subject, now falls back to data.item_name). Expanded Vault's category list (added Fixture/Furniture/Appliance/Hardware/Equipment/Electronics/Consumable/Vehicle Part) and added an Archived-items toggle view so archived items no longer clutter the main list. Vessel-bridge feature (auto-creating a linked vessels doc
