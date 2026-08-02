@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tag Manager — HIL System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+<style>
+  /* Design tokens come from hil-shell.js's injectStyles() — no duplicate
+     :root block, matching every other tool in tools/. */
+  * { box-sizing: border-box; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    color: var(--hil-green);
+    letter-spacing: 0.04em;
+    margin: 0 0 4px;
+  }
+  .subtitle { color: var(--hil-text-muted); font-size: 0.9rem; margin: 0 0 20px; }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .hil-input {
+    background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 11px; outline: none; flex: 1; min-width: 160px;
+  }
+  .hil-input:focus { border-color: var(--hil-green); }
+  .hil-btn {
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 1.5px;
+    padding: 8px 16px; border: 1px solid var(--hil-border); background: var(--hil-surface-2);
+    color: var(--hil-text); cursor: pointer;
+  }
+  .hil-btn:hover { border-color: var(--hil-text-muted); }
+  .hil-btn.primary { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .hil-btn.primary:hover { background: var(--hil-green-dim); }
+  .hil-btn.small { padding: 4px 10px; font-size: 10px; }
+  .hil-btn:disabled { opacity: 0.4; cursor: default; }
+
+  .hil-badge { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 2px; }
+  .hil-badge.green  { background: rgba(0,204,102,0.15); color: var(--hil-green); border: 1px solid var(--hil-green); }
+  .hil-badge.amber  { background: rgba(204,136,0,0.15); color: var(--hil-warning, #cc8800); border: 1px solid var(--hil-warning, #cc8800); }
+  .hil-badge.blue   { background: rgba(80,140,255,0.15); color: #5c8cff; border: 1px solid #5c8cff; }
+  .hil-badge.gray   { background: var(--hil-surface-2); color: var(--hil-text-muted); border: 1px solid var(--hil-border); }
+
+  #new-tag-row { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  #new-tag-row select { background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text); font-family: var(--font-mono); font-size: 12px; padding: 8px; }
+
+  .tree { display: flex; flex-direction: column; gap: 4px; }
+  .tag-node { border: 1px solid var(--hil-border); background: var(--hil-surface); }
+  .tag-row {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+  }
+  .tag-row .name { font-size: 13px; color: var(--hil-text); flex: 1; }
+  .tag-row .usage { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); }
+  .tag-row .toggle { cursor: pointer; color: var(--hil-text-muted); width: 14px; text-align: center; user-select: none; }
+  .tag-row .actions { display: flex; gap: 4px; }
+  .children { margin-left: 22px; border-left: 1px solid var(--hil-border); padding-left: 10px; margin-top: 4px; margin-bottom: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .tag-node.orphan { border-color: var(--hil-warning, #cc8800); }
+  .orphan-note { font-family: var(--font-mono); font-size: 9px; color: var(--hil-warning, #cc8800); padding: 0 12px 8px; }
+
+  .edit-panel {
+    padding: 10px 12px 12px; border-top: 1px solid var(--hil-border);
+    display: flex; flex-direction: column; gap: 8px; background: var(--hil-surface-2);
+  }
+  .edit-panel .field-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .edit-panel label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--hil-text-muted); }
+  .edit-panel select, .edit-panel textarea { background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text); font-family: var(--font-mono); font-size: 12px; padding: 6px 8px; }
+  .edit-panel textarea { width: 100%; min-height: 44px; resize: vertical; }
+
+  .hil-empty { text-align: center; padding: 48px 24px; color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>TAG MANAGER</h1>
+  <p class="subtitle">Category tree for the Tag Store — group tags under a parent (e.g. lawnmower, edger, loppers → Lawn Care), then re-parent the whole group later without touching the individual tags.</p>
+
+  <div class="toolbar">
+    <input class="hil-input" id="search-input" type="search" placeholder="Filter tags…">
+  </div>
+
+  <div id="new-tag-row">
+    <input class="hil-input" id="new-tag-name" placeholder="New category or tag name…" style="max-width:260px">
+    <select id="new-tag-parent"><option value="">— top-level (no parent) —</option></select>
+    <button class="hil-btn primary" id="new-tag-btn">+ ADD</button>
+  </div>
+
+  <div class="tree" id="tree"></div>
+</div>
+
+<script type="module">
+let allTags = [];
+let expanded = new Set();     // tag ids currently expanded
+let editingId = null;         // tag id currently showing its edit panel
+let searchQuery = '';
+let _collection, _doc, _updateDoc, _setDoc, _onSnapshot, _serverTimestamp;
+let vaultMergeTag = null;
+
+HILShell.init({
+  toolId: 'tag-manager',
+  toolName: 'Tag Manager',
+  requireAuth: true,
+  onAuth: handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) { document.getElementById('tree').innerHTML = '<div class="hil-empty">Sign in to manage tags.</div>'; return; }
+
+  const FB_VER = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const [fsdk, vaultClient] = await Promise.all([
+    import(`${FB_BASE}/firebase-firestore.js`),
+    import('./vault-item-client.js'),
+  ]);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _updateDoc       = fsdk.updateDoc;
+  _setDoc          = fsdk.setDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+  vaultMergeTag    = vaultClient.vaultMergeTag;
+
+  _onSnapshot(_collection(window.db, 'users', user.uid, 'tag_registry'), snap => {
+    allTags = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.status !== 'merged');
+    renderParentPicker();
+    renderTree();
+  });
+}
+
+// ── TREE HELPERS ─────────────────────────────────────────────────────────
+function getTagMeta(id) {
+  return allTags.find(t => t.id === id) || null;
+}
+function badgeClass(type) {
+  return { global: 'green', custom: 'amber', expiring: 'blue' }[type] || 'amber';
+}
+function children(id) {
+  return allTags.filter(t => t.parent_tag_id === id);
+}
+function isRoot(t) {
+  return !t.parent_tag_id || !getTagMeta(t.parent_tag_id);
+}
+function isOrphan(t) {
+  return !!t.parent_tag_id && !getTagMeta(t.parent_tag_id);
+}
+// Every descendant id of `id`, recursively — used to block cycles.
+function descendantIds(id) {
+  const out = new Set();
+  const stack = [id];
+  while (stack.length) {
+    const cur = stack.pop();
+    for (const c of children(cur)) {
+      if (!out.has(c.id)) { out.add(c.id); stack.push(c.id); }
+    }
+  }
+  return out;
+}
+function slugify(str) {
+  return str.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+function matchesSearch(t) {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  return t.display_name.toLowerCase().includes(q) || t.id.includes(q);
+}
+// A subtree matches search if the tag itself matches OR any descendant does —
+// keeps a parent visible when you're searching for one of its children.
+function subtreeMatches(t) {
+  if (matchesSearch(t)) return true;
+  return children(t.id).some(c => subtreeMatches(c));
+}
+
+// ── PARENT PICKER (new-tag row + per-tag edit panels) ─────────────────────
+function renderParentPicker() {
+  const sel = document.getElementById('new-tag-parent');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— top-level (no parent) —</option>' +
+    allTags.filter(t => t.status !== 'merged').map(t => `<option value="${esc(t.id)}">${esc(t.display_name)}</option>`).join('');
+  if (allTags.find(t => t.id === current)) sel.value = current;
+}
+// Eligible parents for `tagId`: everyone except itself and its own descendants
+// (setting a descendant as parent would create a cycle).
+function eligibleParentOptions(tagId) {
+  const blocked = new Set([tagId, ...descendantIds(tagId)]);
+  return allTags.filter(t => !blocked.has(t.id));
+}
+
+// ── RENDER TREE ─────────────────────────────────────────────────────────
+function renderTree() {
+  const treeEl = document.getElementById('tree');
+  const roots = allTags.filter(t => isRoot(t) && !isOrphan(t)).sort((a,b) => a.display_name.localeCompare(b.display_name));
+  const orphans = allTags.filter(isOrphan);
+
+  const visibleRoots = roots.filter(subtreeMatches);
+  const visibleOrphans = orphans.filter(subtreeMatches);
+
+  if (!visibleRoots.length && !visibleOrphans.length) {
+    treeEl.innerHTML = allTags.length
+      ? '<div class="hil-empty">No tags match.</div>'
+      : '<div class="hil-empty">No tags yet — create one above, or tags created from Vault will appear here.</div>';
+    return;
+  }
+
+  treeEl.innerHTML =
+    visibleRoots.map(t => renderNode(t)).join('') +
+    visibleOrphans.map(t => renderNode(t, true)).join('');
+
+  wireNodeEvents();
+}
+
+function renderNode(t, orphan = false) {
+  const kids = children(t.id).filter(subtreeMatches).sort((a,b) => a.display_name.localeCompare(b.display_name));
+  const hasKids = kids.length > 0;
+  const isExpanded = expanded.has(t.id) || (searchQuery && hasKids);
+  const isEditing = editingId === t.id;
+
+  return `
+    <div class="tag-node ${orphan ? 'orphan' : ''}" data-id="${esc(t.id)}">
+      <div class="tag-row">
+        <span class="toggle" data-toggle="${esc(t.id)}">${hasKids ? (isExpanded ? '▾' : '▸') : '·'}</span>
+        <span class="hil-badge ${badgeClass(t.type)}">${(t.type||'custom').toUpperCase()}</span>
+        <span class="name">${esc(t.display_name)}</span>
+        <span class="usage">${t.usage_count || 0}× · ${kids.length} sub</span>
+        <div class="actions">
+          <button class="hil-btn small" data-edit="${esc(t.id)}">${isEditing ? 'CLOSE' : 'EDIT'}</button>
+        </div>
+      </div>
+      ${orphan ? `<div class="orphan-note">⚠ parent "${esc(t.parent_tag_id)}" no longer exists — reassign or leave top-level</div>` : ''}
+      ${isEditing ? renderEditPanel(t) : ''}
+      ${hasKids && isExpanded ? `<div class="children">${kids.map(c => renderNode(c)).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderEditPanel(t) {
+  const options = eligibleParentOptions(t.id);
+  const mergeTargets = allTags.filter(x => x.id !== t.id);
+  return `
+    <div class="edit-panel">
+      <div class="field-row">
+        <label>PARENT</label>
+        <select data-set-parent="${esc(t.id)}">
+          <option value="">— top-level (no parent) —</option>
+          ${options.map(o => `<option value="${esc(o.id)}" ${o.id === t.parent_tag_id ? 'selected' : ''}>${esc(o.display_name)}</option>`).join('')}
+        </select>
+        <label>TYPE</label>
+        <select data-set-type="${esc(t.id)}">
+          <option value="global" ${t.type === 'global' ? 'selected' : ''}>Global</option>
+          <option value="custom" ${t.type === 'custom' || !t.type ? 'selected' : ''}>Custom</option>
+          <option value="expiring" ${t.type === 'expiring' ? 'selected' : ''}>Expiring</option>
+        </select>
+      </div>
+      <div class="field-row" style="width:100%">
+        <label style="width:100%">DESCRIPTION</label>
+        <textarea data-desc="${esc(t.id)}" placeholder="What this tag/category means…">${esc(t.description || '')}</textarea>
+      </div>
+      <div class="field-row">
+        <button class="hil-btn small" data-save="${esc(t.id)}">SAVE</button>
+        ${mergeTargets.length ? `
+          <label style="margin-left:12px">MERGE INTO</label>
+          <select data-merge-target="${esc(t.id)}">
+            <option value="">— pick a tag to merge this into —</option>
+            ${mergeTargets.map(o => `<option value="${esc(o.id)}">${esc(o.display_name)}</option>`).join('')}
+          </select>
+          <button class="hil-btn small" data-merge-go="${esc(t.id)}">MERGE</button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function wireNodeEvents() {
+  document.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.toggle;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      renderTree();
+    });
+  });
+  document.querySelectorAll('[data-edit]').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.edit;
+      editingId = editingId === id ? null : id;
+      expanded.add(id);
+      renderTree();
+    });
+  });
+  document.querySelectorAll('[data-save]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const id = el.dataset.save;
+      const parentSel = document.querySelector(`[data-set-parent="${cssEsc(id)}"]`);
+      const typeSel = document.querySelector(`[data-set-type="${cssEsc(id)}"]`);
+      const descEl = document.querySelector(`[data-desc="${cssEsc(id)}"]`);
+      const newParent = parentSel.value || null;
+      const user = window.currentUser;
+      try {
+        await _updateDoc(_doc(window.db, 'users', user.uid, 'tag_registry', id), {
+          parent_tag_id: newParent,
+          type: typeSel.value,
+          description: descEl.value.trim(),
+          updated_at: _serverTimestamp(),
+        });
+        HILShell.toast('Tag updated ✓');
+        editingId = null;
+      } catch (err) {
+        HILShell.toast('Update failed: ' + err.message, 'error');
+      }
+    });
+  });
+  document.querySelectorAll('[data-merge-go]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const loserId = el.dataset.mergeGo;
+      const sel = document.querySelector(`[data-merge-target="${cssEsc(loserId)}"]`);
+      const winnerId = sel.value;
+      if (!winnerId) { HILShell.toast('Pick a tag to merge into first', 'error'); return; }
+      const loser = getTagMeta(loserId), winner = getTagMeta(winnerId);
+      if (!confirm(`Merge "${loser.display_name}" into "${winner.display_name}"? Every item using "${loser.display_name}" will be switched to "${winner.display_name}". This can't be undone.`)) return;
+      el.disabled = true;
+      try {
+        const result = await vaultMergeTag(loserId, winnerId);
+        HILShell.toast(`Merged — ${result.items_updated} item(s) updated ✓`);
+        editingId = null;
+      } catch (err) {
+        HILShell.toast('Merge failed: ' + err.message, 'error');
+        el.disabled = false;
+      }
+    });
+  });
+}
+
+// ── NEW TAG ─────────────────────────────────────────────────────────────
+document.getElementById('new-tag-btn').addEventListener('click', async () => {
+  const nameEl = document.getElementById('new-tag-name');
+  const parentEl = document.getElementById('new-tag-parent');
+  const raw = nameEl.value.trim();
+  if (!raw) return;
+  const id = slugify(raw);
+  if (!id) return;
+  const user = window.currentUser;
+  if (!user) { HILShell.toast('Not signed in', 'error'); return; }
+  if (getTagMeta(id)) { HILShell.toast('That tag already exists', 'error'); return; }
+  try {
+    await _setDoc(_doc(window.db, 'users', user.uid, 'tag_registry', id), {
+      id,
+      display_name: raw,
+      description: '',
+      type: 'custom',
+      scope: ['vault'],
+      usage_count: 0,
+      parent_tag_id: parentEl.value || null,
+      external_refs: [],
+      expiration: null,
+      created_at: _serverTimestamp(),
+      updated_at: _serverTimestamp(),
+    });
+    nameEl.value = '';
+    parentEl.value = '';
+    HILShell.toast('Tag created ✓');
+  } catch (err) {
+    HILShell.toast('Create failed: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('search-input').addEventListener('input', e => {
+  searchQuery = e.target.value.trim();
+  renderTree();
+});
+
+// ── MICRO-HELPERS ───────────────────────────────────────────────────────
+const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cssEsc = s => String(s).replace(/["\\]/g, '\\$&');
+</script>
+</body>
+</html>
