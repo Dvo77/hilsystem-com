@@ -63,8 +63,23 @@ export async function vaultCommitStaged(stagedItemId) {
   });
 }
 
+// Related Items are a bidirectional pairwise link (distinct from Kit
+// Memberships). Because linking/unlinking touches TWO item_records docs
+// atomically, it can't go through /update-item (which only ever writes the
+// caller's own item) — it needs its own hil-admin-action endpoint that
+// verifies the caller owns both items, then batch-writes related_items on
+// both docs together. action must be 'link' or 'unlink'.
+export async function vaultLinkRelatedItem(itemId, relatedItemId, action) {
+  return callAdminAction("/link-related-item", {
+    item_id: itemId,
+    related_item_id: relatedItemId,
+    action,
+  });
+}
+
 window.HILVaultClient = {
   vaultUpdateItem,
   vaultArchiveItem,
   vaultCommitStaged,
+  vaultLinkRelatedItem,
 };
