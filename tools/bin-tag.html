@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bin Tag — HIL Field Cataloger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0b;
+    --panel:#111412;
+    --panel-alt:#161a17;
+    --green:#00cc66;
+    --green-dim:#0a8f48;
+    --amber:#cc8800;
+    --amber-dim:#8f6000;
+    --text:#e8ede9;
+    --text-dim:#7a8680;
+    --border:#22271f;
+    --danger:#d9634d;
+    --font-display:'Orbitron', sans-serif;
+    --font-mono:'Space Mono', ui-monospace, monospace;
+    --font-body:'Barlow Condensed', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:16px; -webkit-font-smoothing:antialiased; }
+  header{ padding:1.1rem 1.4rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem; }
+  .brand{ display:flex; align-items:center; gap:.6rem; }
+  .brand h1{ margin:0; font-family:var(--font-display); font-size:1.15rem; font-weight:800; letter-spacing:.04em; color:var(--text); }
+  .brand .tag{ font-family:var(--font-mono); font-size:.68rem; color:var(--green); letter-spacing:.1em; text-transform:uppercase; margin-top:.1rem; }
+  header .count{ font-family:var(--font-mono); font-size:.72rem; color:var(--text-dim); letter-spacing:.06em; }
+  .hexmark{ width:26px; height:26px; flex-shrink:0; }
+
+  main{ max-width:1100px; margin:0 auto; padding:1.4rem; display:grid; gap:1.4rem; }
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:1.2rem; }
+  .panel h2{ margin:0 0 1rem; font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--text-dim); font-weight:700; }
+
+  .loc-mode-toggle{ display:flex; gap:.4rem; margin-bottom:.7rem; }
+  .mode-btn{ flex:1; background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim); font-family:var(--font-mono); font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; padding:.5rem .6rem; border-radius:4px; cursor:pointer; }
+  .mode-btn.active{ color:var(--green); border-color:var(--green-dim); background:rgba(0,204,102,.08); }
+
+  .loc-builder{ background:var(--panel-alt); border:1px dashed var(--border); border-radius:5px; padding:.75rem; display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; margin-bottom:1rem; }
+  .loc-freeform{ background:var(--panel-alt); border:1px dashed var(--border); border-radius:5px; padding:.75rem; margin-bottom:1rem; }
+  .loc-hint{ font-family:var(--font-mono); font-size:.65rem; color:var(--text-dim); margin-top:.4rem; letter-spacing:.02em; }
+
+  label{ display:block; font-family:var(--font-mono); font-size:.64rem; color:var(--text-dim); margin-bottom:.25rem; text-transform:uppercase; letter-spacing:.05em; }
+  input, select, textarea{ width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:.5rem .6rem; font-size:.92rem; font-family:var(--font-body); }
+  .loc-builder input{ font-family:var(--font-mono); text-align:center; text-transform:uppercase; font-size:.85rem; }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--green); }
+
+  .form-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:.75rem; }
+  .form-grid .full{ grid-column:1 / -1; }
+  .provenance-field label{ color:var(--amber); display:flex; align-items:center; gap:.5rem; }
+  .provenance-field textarea{ border-color:var(--amber-dim); }
+  .provenance-field textarea:focus{ border-color:var(--amber); }
+  .prov-flag{ font-family:var(--font-mono); font-size:.6rem; color:var(--amber); border:1px solid var(--amber-dim); padding:.05rem .35rem; border-radius:3px; text-transform:uppercase; letter-spacing:.05em; }
+
+  .tag-lib-add{ display:grid; grid-template-columns:1fr 2fr auto; gap:.5rem; margin-bottom:.9rem; align-items:end; }
+  .tag-lib-add textarea{ min-height:38px; }
+  .tag-lib-list{ display:flex; flex-direction:column; gap:.5rem; }
+  .tag-lib-card{ background:var(--panel-alt); border:1px solid var(--amber-dim); border-radius:5px; padding:.6rem .75rem; display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; }
+  .tag-lib-card .tl-label{ font-family:var(--font-mono); font-size:.8rem; color:var(--amber); font-weight:700; white-space:nowrap; }
+  .tag-lib-card .tl-text{ color:var(--text-dim); font-size:.85rem; margin-top:.15rem; }
+  .tag-lib-card .tl-actions{ display:flex; gap:.4rem; flex-shrink:0; }
+  .tag-lib-empty{ color:var(--text-dim); font-size:.85rem; padding:.5rem 0; }
+
+  .tag-picker{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.5rem; }
+  .tag-chip{ font-family:var(--font-mono); font-size:.74rem; background:var(--bg); border:1px solid var(--amber-dim); color:var(--text-dim); padding:.3rem .65rem; border-radius:14px; cursor:pointer; letter-spacing:.02em; }
+  .tag-chip.selected{ background:rgba(204,136,0,.15); border-color:var(--amber); color:var(--amber); font-weight:700; }
+  .tag-chip-empty{ font-size:.8rem; color:var(--text-dim); font-style:italic; }
+
+  .filter-tag-chip{ font-family:var(--font-mono); font-size:.7rem; background:var(--panel-alt); border:1px solid var(--amber-dim); color:var(--amber); padding:.25rem .55rem; border-radius:12px; cursor:pointer; }
+  .filter-tag-chip:hover{ background:rgba(204,136,0,.15); }
+  .filter-disp-chip{ font-family:var(--font-mono); font-size:.7rem; background:var(--panel-alt); border:1px solid var(--green-dim); color:var(--green); padding:.25rem .55rem; border-radius:12px; cursor:pointer; }
+  .filter-disp-chip:hover{ background:rgba(0,204,102,.15); }
+
+  .disp-select{ font-family:var(--font-mono); font-size:.72rem; padding:.3rem .35rem; border-radius:4px; }
+  .disp-select.disp-unsorted{ color:var(--text-dim); border-color:var(--border); }
+  .disp-select.disp-individual{ color:var(--green); border-color:var(--green-dim); }
+  .disp-select.disp-lot{ color:var(--amber); border-color:var(--amber-dim); }
+  .disp-select.disp-donate{ color:var(--text-dim); border-color:var(--border); }
+  .disp-select.disp-rummage{ color:var(--text-dim); border-color:var(--border); }
+
+  .triage-review{ display:flex; flex-direction:column; gap:.5rem; margin-bottom:.8rem; }
+  .triage-row{ background:var(--panel-alt); border:1px solid var(--border); border-radius:5px; padding:.6rem .75rem; display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; }
+  .triage-row .ti-name{ font-weight:600; }
+  .triage-row .ti-rationale{ color:var(--text-dim); font-size:.82rem; flex:1; min-width:200px; }
+  .triage-actions-bar{ display:flex; gap:.6rem; margin-top:.5rem; }
+  .photo-row{ display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-top:.75rem; }
+  .photo-btn{ background:var(--panel-alt); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:.5rem .8rem; font-size:.85rem; cursor:pointer; }
+  .thumb-strip{ display:flex; gap:.4rem; flex-wrap:wrap; }
+  .thumb{ position:relative; width:44px; height:44px; border-radius:4px; overflow:hidden; border:1px solid var(--border); }
+  .thumb img{ width:100%; height:100%; object-fit:cover; }
+  .thumb .rm{ position:absolute; top:0; right:0; background:rgba(0,0,0,.7); color:var(--danger); font-size:.6rem; width:14px; height:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
+  .submit-row{ margin-top:1rem; display:flex; gap:.6rem; flex-wrap:wrap; }
+  button.primary{ background:var(--green); color:#062b17; border:none; font-weight:700; font-family:var(--font-mono); letter-spacing:.03em; border-radius:4px; padding:.6rem 1.1rem; font-size:.8rem; text-transform:uppercase; cursor:pointer; }
+  button.primary:hover{ background:#1ee07e; }
+  button.ghost{ background:transparent; border:1px solid var(--border); color:var(--text-dim); border-radius:4px; padding:.6rem 1rem; font-size:.85rem; cursor:pointer; }
+  button.ghost:hover{ color:var(--text); border-color:var(--text-dim); }
+
+  .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:.9rem; gap:.75rem; flex-wrap:wrap; }
+  .toolbar input[type=text]{ width:220px; }
+  .compile-btn{ background:var(--amber); color:#241900; border:none; font-weight:700; font-family:var(--font-mono); letter-spacing:.03em; text-transform:uppercase; border-radius:4px; padding:.55rem 1rem; font-size:.76rem; cursor:pointer; }
+  .compile-btn:hover{ background:#e0a020; }
+  .compile-btn:disabled{ opacity:.35; cursor:not-allowed; }
+
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:.88rem; }
+  th{ text-align:left; font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; color:var(--text-dim); letter-spacing:.06em; border-bottom:1px solid var(--border); padding:.5rem .4rem; white-space:nowrap; }
+  td{ padding:.55rem .4rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:hover td{ background:rgba(255,255,255,.02); }
+  .loc-chip{ font-family:var(--font-mono); background:var(--panel-alt); border:1px solid var(--green-dim); color:var(--green); padding:.15rem .45rem; border-radius:3px; font-size:.76rem; letter-spacing:.03em; white-space:nowrap; }
+  .loc-chip.freeform{ border-color:var(--amber-dim); color:var(--amber); }
+  .item-thumbs{ display:flex; gap:3px; }
+  .item-thumbs img{ width:28px; height:28px; object-fit:cover; border-radius:3px; border:1px solid var(--border); }
+  .empty{ text-align:center; color:var(--text-dim); padding:2rem; font-size:.9rem; }
+  .rowbtn{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-family:var(--font-mono); font-size:.7rem; text-transform:uppercase; white-space:nowrap; }
+  .rowbtn.ai:hover{ color:var(--amber); }
+  .rowbtn.del:hover{ color:var(--danger); }
+  .cond-input, .price-input{ width:88px; font-size:.8rem; padding:.3rem .4rem; }
+
+  .stage-empty{ color:var(--text-dim); font-size:.88rem; text-align:center; padding:1.5rem; }
+  textarea.output{ width:100%; min-height:220px; font-family:var(--font-mono); font-size:.78rem; line-height:1.5; resize:vertical; white-space:pre; }
+  .stamp{ display:inline-block; font-family:var(--font-mono); font-size:.65rem; letter-spacing:.08em; color:var(--green); border:1px solid var(--green-dim); border-radius:3px; padding:.1rem .4rem; text-transform:uppercase; }
+
+  .assess-row td{ background:rgba(204,136,0,.07); border-bottom:1px solid var(--border); padding:.6rem .7rem; font-size:.85rem; }
+  .assess-row .val{ color:var(--amber); font-weight:700; }
+  .assess-actions{ display:flex; gap:.5rem; margin-top:.5rem; }
+  .btn-sm{ font-family:var(--font-mono); text-transform:uppercase; font-size:.7rem; padding:.35rem .7rem; border-radius:4px; cursor:pointer; letter-spacing:.03em; }
+  .btn-sm.apply{ background:var(--green); color:#062b17; border:none; font-weight:700; }
+  .btn-sm.discard{ background:transparent; border:1px solid var(--border); color:var(--text-dim); }
+  .spinner-text{ color:var(--text-dim); font-size:.85rem; font-style:italic; }
+
+  .lot-card{ background:var(--panel-alt); border:1px solid var(--border); border-radius:5px; padding:.9rem; margin-bottom:.75rem; }
+  .lot-card h3{ margin:0 0 .25rem; font-family:var(--font-display); font-size:.9rem; font-weight:600; letter-spacing:.02em; }
+  .lot-meta{ font-size:.82rem; color:var(--text-dim); margin-bottom:.55rem; }
+  .lot-price{ color:var(--amber); font-weight:700; font-family:var(--font-mono); }
+  .lot-items{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:.65rem; }
+  .lot-item-chip{ font-size:.76rem; background:var(--bg); border:1px solid var(--border); padding:.15rem .5rem; border-radius:3px; }
+  .lot-actions{ display:flex; gap:.5rem; flex-wrap:wrap; }
+  .ai-tag{ font-family:var(--font-mono); font-size:.6rem; color:var(--amber); border:1px solid var(--amber-dim); padding:0 .35rem; border-radius:3px; margin-left:.4rem; vertical-align:middle; }
+  .local-note{ font-family:var(--font-mono); font-size:.66rem; color:var(--text-dim); letter-spacing:.03em; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg class="hexmark" viewBox="0 0 100 100"><polygon points="50,4 93,27 93,73 50,96 7,73 7,27" fill="none" stroke="#00cc66" stroke-width="5"/></svg>
+    <div>
+      <h1>Bin Tag</h1>
+      <div class="tag">intake &rarr; assess &rarr; lot &rarr; compile</div>
+    </div>
+  </div>
+  <div class="count">
+    <div id="itemCountTag">0 items logged</div>
+    <div class="local-note">local device only &middot; no sync</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Provenance tag library -->
+  <section class="panel">
+    <h2>Provenance tags <span class="prov-flag">reusable stories</span></h2>
+    <div class="tag-lib-add">
+      <div><label>Tag label</label><input type="text" id="tagLabelInput" placeholder="Harry Ames"></div>
+      <div><label>Story</label><textarea id="tagTextInput" rows="1" placeholder="Belonged to Harry Ames, who built the farm and worked Walworth County his entire life. Descends from Nathaniel Ames..."></textarea></div>
+      <button type="button" class="primary" id="addTagBtn" style="height:38px;">Add tag</button>
+    </div>
+    <div class="tag-lib-list" id="tagLibList"></div>
+  </section>
+
+  <!-- Intake -->
+  <section class="panel">
+    <h2>Log an item</h2>
+    <form id="itemForm">
+
+      <div class="loc-mode-toggle">
+        <button type="button" class="mode-btn active" data-mode="hl" id="modeHlBtn">HL Address</button>
+        <button type="button" class="mode-btn" data-mode="freeform" id="modeFreeformBtn">Freeform tag</button>
+      </div>
+
+      <div class="loc-builder" id="hlBuilder">
+        <div><label>Struct</label><input type="text" id="locStruct" placeholder="MH" maxlength="6"></div>
+        <div><label>Zone</label><input type="text" id="locZone" placeholder="GA" maxlength="6"></div>
+        <div><label>Wall+Pos</label><input type="text" id="locWallPos" placeholder="N3" maxlength="6"></div>
+        <div><label>Level+Slot</label><input type="text" id="locLevelSlot" placeholder="A0" maxlength="6"></div>
+      </div>
+
+      <div class="loc-freeform" id="freeformBuilder" style="display:none;">
+        <label>Tag / grouping label</label>
+        <input type="text" id="locFreeform" placeholder="e.g., Blue tape zone, Table 3, Northeast corner pile">
+        <div class="loc-hint">No mapped HIL property here — use whatever grouping you're physically using (tape color, table number, sheet label).</div>
+      </div>
+
+      <div class="form-grid">
+        <div class="full">
+          <label>Item name</label>
+          <input type="text" id="itemName" placeholder="e.g., Stanley No. 4 smoothing plane" required>
+        </div>
+        <div>
+          <label>Category</label>
+          <input type="text" id="itemCategory" placeholder="Hand tools">
+        </div>
+        <div>
+          <label>Qty</label>
+          <input type="number" id="itemQty" value="1" min="1" required>
+        </div>
+        <div>
+          <label>Condition</label>
+          <select id="itemCondition">
+            <option value="">—</option>
+            <option>New</option>
+            <option>Like New</option>
+            <option selected>Good</option>
+            <option>Fair</option>
+            <option>Parts / Repair</option>
+          </select>
+        </div>
+        <div>
+          <label>Asking price</label>
+          <input type="text" id="itemPrice" placeholder="$">
+        </div>
+        <div class="full">
+          <label>Notes / specs</label>
+          <textarea id="itemNotes" rows="2" placeholder="Maker's mark, dimensions, flaws..."></textarea>
+        </div>
+        <div class="full provenance-field">
+          <label>Provenance / story <span class="prov-flag">the markup</span></label>
+          <div class="tag-picker" id="tagPicker"></div>
+          <textarea id="itemProvenanceExtra" rows="1" placeholder="Optional item-specific detail beyond the tag (e.g., 'her everyday set, not the good china')"></textarea>
+        </div>
+      </div>
+
+      <div class="photo-row">
+        <label class="photo-btn" for="photoInput">📷 Add photo(s)</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none;">
+        <div class="thumb-strip" id="pendingThumbs"></div>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="primary">Log item</button>
+        <button type="button" class="ghost" id="clearFormBtn">Clear</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Inventory -->
+  <section class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0;">Logged items</h2>
+      <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;">
+        <input type="text" id="searchInput" placeholder="Search...">
+        <button class="compile-btn" id="compileBtn" disabled>Compile selected (<span id="selCount">0</span>)</button>
+      </div>
+    </div>
+    <div class="tag-picker" id="filterTagRow" style="margin-bottom:.4rem;"></div>
+    <div class="tag-picker" id="filterDispRow" style="margin-bottom:.8rem;"></div>
+    <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:24px;"></th>
+          <th>Location</th>
+          <th>Item</th>
+          <th>Category</th>
+          <th>Qty</th>
+          <th>Condition</th>
+          <th>Price</th>
+          <th>Disposition</th>
+          <th>Photos</th>
+          <th style="text-align:right;">Action</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryBody"></tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- Triage -->
+  <section class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0;">Triage <span class="prov-flag">where to spend time</span></h2>
+      <button class="compile-btn" id="triageBtn">✨ AI triage pass (unsorted items)</button>
+    </div>
+    <div id="triageContainer"><div class="stage-empty">Everything defaults to "Unsorted." Run a triage pass to get suggested dispositions — Individual Listing, Lot, Donate, or Rummage/Marketplace — before spending real time on assessment or listing.</div></div>
+  </section>
+
+  <!-- Lots -->
+  <section class="panel">
+    <div class="toolbar">
+      <h2 style="margin:0;">Lots</h2>
+      <button class="compile-btn" id="suggestLotsBtn">✨ Suggest lots (AI)</button>
+    </div>
+    <div id="lotsContainer"><div class="stage-empty">No lots yet — log a few items, then suggest lots.</div></div>
+  </section>
+
+  <!-- Staging / compile output -->
+  <section class="panel" id="stagePanel" style="display:none;">
+    <h2>Compiled listing <span class="stamp" id="stageStamp"></span></h2>
+    <textarea class="output" id="outputText" readonly></textarea>
+    <div class="submit-row">
+      <button class="primary" id="copyBtn">Copy to clipboard</button>
+      <button class="ghost" id="closeStageBtn">Close</button>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ---------- IndexedDB (local device only — no Firestore, no HIL backend) ---------- */
+const DB_NAME = 'bintag_db';
+const DB_VERSION = 3;
+let db;
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos');
+      if (!d.objectStoreNames.contains('items')) d.createObjectStore('items', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('lots')) d.createObjectStore('lots', { keyPath: 'id' });
+      if (!d.objectStoreNames.contains('tags')) d.createObjectStore('tags', { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbGetAllItems(){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('items', 'readonly');
+    const req = tx.objectStore('items').getAll();
+    req.onsuccess = () => resolve(req.result.sort((a,b) => b.timestamp - a.timestamp));
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbPutItem(item){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('items', 'readwrite');
+    tx.objectStore('items').put(item);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbDeleteItem(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('items', 'readwrite');
+    tx.objectStore('items').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbPutPhoto(id, dataUrl){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.objectStore('photos').put(dataUrl, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbGetPhoto(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readonly');
+    const req = tx.objectStore('photos').get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbDeletePhoto(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('photos', 'readwrite');
+    tx.objectStore('photos').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbGetAllLots(){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('lots', 'readonly');
+    const req = tx.objectStore('lots').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbPutLot(lot){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('lots', 'readwrite');
+    tx.objectStore('lots').put(lot);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbDeleteLot(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('lots', 'readwrite');
+    tx.objectStore('lots').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbGetAllTags(){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('tags', 'readonly');
+    const req = tx.objectStore('tags').getAll();
+    req.onsuccess = () => resolve(req.result.sort((a,b) => a.label.localeCompare(b.label)));
+    req.onerror = () => reject(req.error);
+  });
+}
+function idbPutTag(tag){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('tags', 'readwrite');
+    tx.objectStore('tags').put(tag);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+function idbDeleteTag(id){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('tags', 'readwrite');
+    tx.objectStore('tags').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/* ---------- State ---------- */
+let items = [];
+let lots = [];
+let tags = [];
+let pendingPhotos = [];
+let selectedIds = new Set();
+let selectedTagIds = new Set();
+let activeFilterTagId = null;
+let pendingAssessments = {}; // itemId -> {value_low,value_high,condition_grade,rationale}
+let locMode = 'hl'; // 'hl' | 'freeform'
+const photoCache = {};
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+/* ---------- AI helper (Gemini via Cloudflare Worker proxy) ----------
+   The browser can't hold a Gemini API key safely, so this calls a small
+   Worker (see hil-bintag-agent-worker.js) that holds GEMINI_API_KEY server-side
+   and forwards to Gemini. Update AI_WORKER_URL after deploying that Worker. */
+const AI_WORKER_URL = 'https://hil-bintag-agent.YOUR-SUBDOMAIN.workers.dev/generate';
+
+async function callGemini(systemPrompt, parts){
+  const response = await fetch(AI_WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ system: systemPrompt, parts })
+  });
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    throw new Error(`AI Worker error (${response.status}): ${errText || 'no details'}`);
+  }
+  const data = await response.json();
+  let raw = data.text || "";
+  raw = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+  return JSON.parse(raw);
+}
+
+function dataUrlToGeminiPart(dataUrl){
+  const m = dataUrl.match(/^data:(.+);base64,(.+)$/);
+  if (!m) return null;
+  return { inline_data: { mime_type: m[1], data: m[2] } };
+}
+
+/* ---------- Location mode toggle ---------- */
+const modeHlBtn = document.getElementById('modeHlBtn');
+const modeFreeformBtn = document.getElementById('modeFreeformBtn');
+const hlBuilder = document.getElementById('hlBuilder');
+const freeformBuilder = document.getElementById('freeformBuilder');
+
+modeHlBtn.addEventListener('click', () => setLocMode('hl'));
+modeFreeformBtn.addEventListener('click', () => setLocMode('freeform'));
+
+function setLocMode(mode){
+  locMode = mode;
+  modeHlBtn.classList.toggle('active', mode === 'hl');
+  modeFreeformBtn.classList.toggle('active', mode === 'freeform');
+  hlBuilder.style.display = mode === 'hl' ? 'grid' : 'none';
+  freeformBuilder.style.display = mode === 'freeform' ? 'block' : 'none';
+}
+
+function currentLocation(){
+  if (locMode === 'hl') {
+    const struct = document.getElementById('locStruct').value.toUpperCase().trim();
+    const zone = document.getElementById('locZone').value.toUpperCase().trim();
+    const wallPos = document.getElementById('locWallPos').value.toUpperCase().trim();
+    const levelSlot = document.getElementById('locLevelSlot').value.toUpperCase().trim();
+    if (!struct && !zone && !wallPos && !levelSlot) return { location: '', mode: 'hl' };
+    return { location: [struct, zone, wallPos, levelSlot].filter(Boolean).join('-'), mode: 'hl' };
+  }
+  const tag = document.getElementById('locFreeform').value.trim();
+  return { location: tag, mode: 'freeform' };
+}
+
+/* ---------- Provenance tag library ---------- */
+const tagLibList = document.getElementById('tagLibList');
+const tagPicker = document.getElementById('tagPicker');
+const filterTagRow = document.getElementById('filterTagRow');
+const addTagBtn = document.getElementById('addTagBtn');
+
+addTagBtn.addEventListener('click', async () => {
+  const label = document.getElementById('tagLabelInput').value.trim();
+  const text = document.getElementById('tagTextInput').value.trim();
+  if (!label || !text) { alert('Give the tag both a label and a story.'); return; }
+  const tag = { id: 't_' + Date.now() + '_' + Math.random().toString(36).slice(2,8), label, text };
+  await idbPutTag(tag);
+  tags.push(tag);
+  document.getElementById('tagLabelInput').value = '';
+  document.getElementById('tagTextInput').value = '';
+  renderTagLibrary();
+  renderTagPicker();
+  renderFilterTagRow();
+});
+
+function renderTagLibrary(){
+  if (tags.length === 0) {
+    tagLibList.innerHTML = `<div class="tag-lib-empty">No provenance tags yet — add one above (e.g., "Harry Ames", "Grandma Sharbonneau"), then attach it to items below.</div>`;
+    return;
+  }
+  tagLibList.innerHTML = tags.map(t => `
+    <div class="tag-lib-card">
+      <div>
+        <div class="tl-label">${escapeHtml(t.label)}</div>
+        <div class="tl-text">${escapeHtml(t.text)}</div>
+      </div>
+      <div class="tl-actions">
+        <button class="btn-sm discard" onclick="editTag('${t.id}')">Edit</button>
+        <button class="btn-sm discard" onclick="deleteTag('${t.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.editTag = async (id) => {
+  const t = tags.find(x => x.id === id);
+  if (!t) return;
+  const newLabel = prompt('Tag label:', t.label);
+  if (newLabel === null) return;
+  const newText = prompt('Story:', t.text);
+  if (newText === null) return;
+  t.label = newLabel.trim() || t.label;
+  t.text = newText.trim() || t.text;
+  await idbPutTag(t);
+  renderTagLibrary();
+  renderTagPicker();
+  renderFilterTagRow();
+  renderTable();
+};
+
+window.deleteTag = async (id) => {
+  if (!confirm('Delete this tag? Items already carrying it keep referencing it, but it will no longer expand in new reports.')) return;
+  await idbDeleteTag(id);
+  tags = tags.filter(t => t.id !== id);
+  selectedTagIds.delete(id);
+  renderTagLibrary();
+  renderTagPicker();
+  renderFilterTagRow();
+};
+
+function renderTagPicker(){
+  if (tags.length === 0) {
+    tagPicker.innerHTML = `<span class="tag-chip-empty">No tags yet — add one in Provenance tags above.</span>`;
+    return;
+  }
+  tagPicker.innerHTML = tags.map(t => `
+    <span class="tag-chip ${selectedTagIds.has(t.id) ? 'selected' : ''}" data-tag-id="${t.id}" onclick="toggleFormTag('${t.id}')">${escapeHtml(t.label)}</span>
+  `).join('');
+}
+
+window.toggleFormTag = (id) => {
+  if (selectedTagIds.has(id)) selectedTagIds.delete(id); else selectedTagIds.add(id);
+  renderTagPicker();
+};
+
+function renderFilterTagRow(){
+  if (tags.length === 0) { filterTagRow.innerHTML = ''; return; }
+  filterTagRow.innerHTML = tags.map(t => `
+    <span class="filter-tag-chip" onclick="filterByTag('${t.id}')">${activeFilterTagId === t.id ? '✓ ' : ''}${escapeHtml(t.label)}</span>
+  `).join('') + (activeFilterTagId ? `<span class="filter-tag-chip" onclick="clearTagFilter()">✕ clear filter</span>` : '');
+}
+
+window.filterByTag = (id) => {
+  activeFilterTagId = id;
+  selectedIds = new Set(items.filter(it => (it.provenanceTagIds || []).includes(id)).map(it => it.id));
+  renderFilterTagRow();
+  renderTable();
+};
+
+window.clearTagFilter = () => {
+  activeFilterTagId = null;
+  renderFilterTagRow();
+  renderTable();
+};
+
+function provenanceTextFor(it){
+  const tagLines = (it.provenanceTagIds || [])
+    .map(tid => tags.find(t => t.id === tid))
+    .filter(Boolean)
+    .map(t => `[${t.label}] ${t.text}`);
+  if (it.provenanceExtra) tagLines.push(it.provenanceExtra);
+  return tagLines.join(' / ');
+}
+
+/* ---------- Disposition (triage bucket) ---------- */
+const DISPOSITIONS = [
+  { value: 'unsorted', label: 'Unsorted', cls: 'disp-unsorted' },
+  { value: 'individual', label: 'Individual Listing', cls: 'disp-individual' },
+  { value: 'lot', label: 'Lot', cls: 'disp-lot' },
+  { value: 'donate', label: 'Donate', cls: 'disp-donate' },
+  { value: 'rummage', label: 'Rummage/Marketplace', cls: 'disp-rummage' },
+];
+function dispositionMeta(value){
+  return DISPOSITIONS.find(d => d.value === value) || DISPOSITIONS[0];
+}
+function dispositionSelectHtml(it){
+  const opts = DISPOSITIONS.map(d => `<option value="${d.value}" ${it.disposition === d.value ? 'selected' : ''}>${d.label}</option>`).join('');
+  return `<select class="disp-select ${dispositionMeta(it.disposition).cls}" onchange="updateDisposition('${it.id}', this.value)">${opts}</select>`;
+}
+window.updateDisposition = async (id, value) => {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it.disposition = value;
+  await idbPutItem(it);
+  renderTable();
+};
+
+const filterDispRow = document.getElementById('filterDispRow');
+let activeFilterDisp = null;
+
+function renderFilterDispRow(){
+  filterDispRow.innerHTML = DISPOSITIONS.filter(d => d.value !== 'unsorted').map(d => `
+    <span class="filter-disp-chip" onclick="filterByDisposition('${d.value}')">${activeFilterDisp === d.value ? '✓ ' : ''}${d.label}</span>
+  `).join('') + (activeFilterDisp ? `<span class="filter-disp-chip" onclick="clearDispFilter()">✕ clear filter</span>` : '');
+}
+
+window.filterByDisposition = (value) => {
+  activeFilterDisp = value;
+  selectedIds = new Set(items.filter(it => it.disposition === value).map(it => it.id));
+  renderFilterDispRow();
+  renderTable();
+};
+
+window.clearDispFilter = () => {
+  activeFilterDisp = null;
+  renderFilterDispRow();
+  renderTable();
+};
+
+/* ---------- Intake form ---------- */
+const form = document.getElementById('itemForm');
+const photoInput = document.getElementById('photoInput');
+const pendingThumbs = document.getElementById('pendingThumbs');
+
+photoInput.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  for (const f of files) {
+    const dataUrl = await fileToDataUrl(f);
+    const id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+    pendingPhotos.push({ id, dataUrl });
+  }
+  renderPendingThumbs();
+  photoInput.value = '';
+});
+
+function renderPendingThumbs(){
+  pendingThumbs.innerHTML = pendingPhotos.map(p => `
+    <div class="thumb" data-id="${p.id}">
+      <img src="${p.dataUrl}">
+      <div class="rm" onclick="removePendingPhoto('${p.id}')">×</div>
+    </div>
+  `).join('');
+}
+window.removePendingPhoto = (id) => {
+  pendingPhotos = pendingPhotos.filter(p => p.id !== id);
+  renderPendingThumbs();
+};
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const { location, mode } = currentLocation();
+  if (!location) {
+    alert(locMode === 'hl' ? 'Fill in at least one HL address segment.' : 'Give this group a tag.');
+    return;
+  }
+
+  const item = {
+    id: 'i_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    location,
+    locationMode: mode,
+    name: document.getElementById('itemName').value.trim(),
+    category: document.getElementById('itemCategory').value.trim(),
+    qty: parseInt(document.getElementById('itemQty').value) || 1,
+    condition: document.getElementById('itemCondition').value,
+    price: document.getElementById('itemPrice').value.trim(),
+    notes: document.getElementById('itemNotes').value.trim(),
+    provenanceTagIds: Array.from(selectedTagIds),
+    provenanceExtra: document.getElementById('itemProvenanceExtra').value.trim(),
+    photoIds: pendingPhotos.map(p => p.id),
+    aiRationale: '',
+    disposition: 'unsorted',
+    triageRationale: '',
+    lotId: null,
+    timestamp: Date.now()
+  };
+
+  for (const p of pendingPhotos) {
+    await idbPutPhoto(p.id, p.dataUrl);
+    photoCache[p.id] = p.dataUrl;
+  }
+  await idbPutItem(item);
+
+  items.unshift(item);
+  pendingPhotos = [];
+  renderPendingThumbs();
+  renderTable();
+
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemNotes').value = '';
+  document.getElementById('itemProvenanceExtra').value = '';
+  document.getElementById('itemPrice').value = '';
+  document.getElementById('itemQty').value = '1';
+  document.getElementById('itemName').focus();
+  selectedTagIds = new Set();
+  renderTagPicker();
+});
+
+document.getElementById('clearFormBtn').addEventListener('click', () => {
+  form.reset();
+  pendingPhotos = [];
+  renderPendingThumbs();
+  setLocMode(locMode);
+  selectedTagIds = new Set();
+  renderTagPicker();
+});
+
+/* ---------- Table ---------- */
+const inventoryBody = document.getElementById('inventoryBody');
+const searchInput = document.getElementById('searchInput');
+const compileBtn = document.getElementById('compileBtn');
+const selCount = document.getElementById('selCount');
+const itemCountTag = document.getElementById('itemCountTag');
+
+searchInput.addEventListener('keyup', renderTable);
+
+async function renderTable(){
+  const q = searchInput.value.toLowerCase();
+  const filtered = items.filter(it =>
+    it.name.toLowerCase().includes(q) ||
+    it.location.toLowerCase().includes(q) ||
+    it.category.toLowerCase().includes(q) ||
+    it.notes.toLowerCase().includes(q)
+  );
+
+  itemCountTag.textContent = `${items.length} item${items.length===1?'':'s'} logged`;
+
+  if (filtered.length === 0) {
+    inventoryBody.innerHTML = `<tr><td colspan="10" class="empty">No items yet — log your first one above.</td></tr>`;
+    updateCompileBtn();
+    return;
+  }
+
+  const rowsHtml = [];
+  for (const it of filtered) {
+    const thumbsHtml = await renderItemThumbs(it.photoIds);
+    const checked = selectedIds.has(it.id) ? 'checked' : '';
+    const chipClass = it.locationMode === 'freeform' ? 'loc-chip freeform' : 'loc-chip';
+    rowsHtml.push(`
+      <tr>
+        <td><input type="checkbox" data-id="${it.id}" class="pickbox" ${checked}></td>
+        <td><span class="${chipClass}">${escapeHtml(it.location)}</span></td>
+        <td>${escapeHtml(it.name)}${(it.provenanceTagIds && it.provenanceTagIds.length) || it.provenanceExtra ? ' <span class="ai-tag" style="color:var(--amber);border-color:var(--amber-dim);">STORY</span>' : ''}</td>
+        <td style="color:var(--text-dim);">${escapeHtml(it.category)}</td>
+        <td>${it.qty}</td>
+        <td><input type="text" class="cond-input" value="${escapeHtml(it.condition)}" onchange="updateField('${it.id}','condition',this.value)"></td>
+        <td><input type="text" class="price-input" value="${escapeHtml(it.price)}" onchange="updateField('${it.id}','price',this.value)"></td>
+        <td>${dispositionSelectHtml(it)}</td>
+        <td><div class="item-thumbs">${thumbsHtml}</div></td>
+        <td style="text-align:right;">
+          <button class="rowbtn ai" onclick="assessItem('${it.id}')">Assess</button>
+          &nbsp;
+          <button class="rowbtn del" onclick="deleteItem('${it.id}')">Delete</button>
+        </td>
+      </tr>
+    `);
+    if (pendingAssessments[it.id]) {
+      const a = pendingAssessments[it.id];
+      if (a.loading) {
+        rowsHtml.push(`<tr class="assess-row"><td colspan="10"><span class="spinner-text">Assessing "${escapeHtml(it.name)}"...</span></td></tr>`);
+      } else if (a.error) {
+        rowsHtml.push(`<tr class="assess-row"><td colspan="10">Assessment failed: ${escapeHtml(a.error)}
+          <div class="assess-actions"><button class="btn-sm discard" onclick="discardAssessment('${it.id}')">Dismiss</button></div>
+        </td></tr>`);
+      } else {
+        rowsHtml.push(`<tr class="assess-row"><td colspan="10">
+          <span class="ai-tag">AI</span>
+          Suggested: <span class="val">$${a.value_low}–$${a.value_high}</span>, condition <span class="val">${escapeHtml(a.condition_grade)}</span>
+          <div style="color:var(--text-dim); margin-top:.2rem;">${escapeHtml(a.rationale)}</div>
+          <div class="assess-actions">
+            <button class="btn-sm apply" onclick="applyAssessment('${it.id}')">Apply</button>
+            <button class="btn-sm discard" onclick="discardAssessment('${it.id}')">Discard</button>
+          </div>
+        </td></tr>`);
+      }
+    }
+  }
+  inventoryBody.innerHTML = rowsHtml.join('');
+
+  document.querySelectorAll('.pickbox').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.getAttribute('data-id');
+      if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+      updateCompileBtn();
+    });
+  });
+
+  updateCompileBtn();
+}
+
+async function renderItemThumbs(photoIds){
+  if (!photoIds || photoIds.length === 0) return '';
+  const first = photoIds.slice(0, 3);
+  const imgs = await Promise.all(first.map(async id => {
+    if (!photoCache[id]) photoCache[id] = await idbGetPhoto(id);
+    return `<img src="${photoCache[id]}">`;
+  }));
+  return imgs.join('') + (photoIds.length > 3 ? `<span style="font-size:.7rem;color:var(--text-dim);align-self:center;">+${photoIds.length-3}</span>` : '');
+}
+
+function escapeHtml(s){
+  return (s || '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+window.updateField = async (id, field, value) => {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  it[field] = value;
+  await idbPutItem(it);
+};
+
+window.deleteItem = async (id) => {
+  await idbDeleteItem(id);
+  const it = items.find(i => i.id === id);
+  if (it) for (const pid of it.photoIds) await idbDeletePhoto(pid);
+  items = items.filter(i => i.id !== id);
+  selectedIds.delete(id);
+  delete pendingAssessments[id];
+  renderTable();
+};
+
+function updateCompileBtn(){
+  selCount.textContent = selectedIds.size;
+  compileBtn.disabled = selectedIds.size === 0;
+}
+
+/* ---------- AI Assessment ---------- */
+window.assessItem = async (id) => {
+  const it = items.find(i => i.id === id);
+  if (!it) return;
+  pendingAssessments[id] = { loading: true };
+  renderTable();
+
+  try {
+    const imgIds = (it.photoIds || []).slice(0, 2);
+    const imgParts = [];
+    for (const pid of imgIds) {
+      if (!photoCache[pid]) photoCache[pid] = await idbGetPhoto(pid);
+      const part = dataUrlToGeminiPart(photoCache[pid]);
+      if (part) imgParts.push(part);
+    }
+    const desc = `Item: ${it.name}\nCategory: ${it.category || 'unspecified'}\nQty: ${it.qty}\nNotes: ${it.notes || 'none'}\nProvenance/story: ${provenanceTextFor(it) || 'none documented'}`;
+    const parts = [...imgParts, { text: desc }];
+    const systemPrompt = `You are an expert appraiser helping catalog items from a personal collection for resale (eBay or estate sale). Given a photo and description of ONE item, respond with ONLY a JSON object, no markdown fences, no extra text: {"value_low": number, "value_high": number, "condition_grade": "New"|"Like New"|"Good"|"Fair"|"Parts / Repair", "rationale": "<one short sentence>"}. Give a realistic resale value range in USD based on typical secondhand marketplace prices. If a documented provenance/story is present (verifiable origin, named prior owner, dated family history, notable prior use), factor in a reasonable markup over an unprovenanced equivalent — collectors and estate buyers pay a premium for a credible story, not just the object. If no provenance is documented, price it as a plain secondhand item. Mention the provenance's effect on price in the rationale when it applies.`;
+
+    const result = await callGemini(systemPrompt, parts);
+    pendingAssessments[id] = result;
+  } catch (err) {
+    pendingAssessments[id] = { error: err.message || String(err) };
+  }
+  renderTable();
+};
+
+window.applyAssessment = async (id) => {
+  const it = items.find(i => i.id === id);
+  const a = pendingAssessments[id];
+  if (!it || !a || a.loading || a.error) return;
+  it.price = `$${a.value_low}-$${a.value_high}`;
+  it.condition = a.condition_grade;
+  it.aiRationale = a.rationale;
+  await idbPutItem(it);
+  delete pendingAssessments[id];
+  renderTable();
+};
+
+window.discardAssessment = (id) => {
+  delete pendingAssessments[id];
+  renderTable();
+};
+
+/* ---------- Triage (bulk disposition sorting) ---------- */
+const triageContainer = document.getElementById('triageContainer');
+const triageBtn = document.getElementById('triageBtn');
+let pendingTriage = null; // array of {id, suggested, rationale} awaiting review
+
+triageBtn.addEventListener('click', runTriagePass);
+
+async function runTriagePass(){
+  const unsorted = items.filter(it => !it.disposition || it.disposition === 'unsorted');
+  if (unsorted.length === 0) {
+    alert('Nothing unsorted — everything already has a disposition.');
+    return;
+  }
+  triageBtn.disabled = true;
+  triageBtn.textContent = 'Thinking...';
+
+  try {
+    const summary = unsorted.map(it => ({
+      id: it.id,
+      name: it.name,
+      category: it.category,
+      condition: it.condition,
+      price: it.price,
+      notes: it.notes,
+      has_provenance: !!(it.provenanceTagIds && it.provenanceTagIds.length) || !!it.provenanceExtra
+    }));
+    const systemPrompt = `You are triaging a large batch of cataloged secondhand items to decide where effort should go before an estate/resale push. You will receive a JSON array of items (id, name, category, condition, price, notes, has_provenance). For EACH item, classify it into exactly one bucket:
+- "individual": genuinely valuable or distinctive enough to warrant its own listing and full photo assessment. Documented provenance (has_provenance true) is a strong signal toward this bucket even for otherwise ordinary objects.
+- "lot": fine to sell, but more efficient grouped with similar items than listed alone (common tools, kitchenware, craft supplies, etc).
+- "donate": little to no resale value, not worth booth/listing time, but usable — donate it.
+- "rummage": low value, sell for cheap/quick cash in bulk at a rummage sale or local marketplace flat-price pile, not worth individual listing effort.
+Be decisive and realistic — most ordinary secondhand household items are "lot" or "rummage", not "individual". Respond with ONLY a JSON array, no markdown fences: [{"id": string, "disposition": "individual"|"lot"|"donate"|"rummage", "rationale": "<one short phrase>"}]. Every input id must appear exactly once.`;
+    const userContent = [{ text: JSON.stringify(summary) }];
+    const results = await callGemini(systemPrompt, userContent);
+
+    pendingTriage = results
+      .map(r => {
+        const it = items.find(i => i.id === r.id);
+        if (!it) return null;
+        return { id: r.id, name: it.name, suggested: r.disposition, rationale: r.rationale || '' };
+      })
+      .filter(Boolean);
+    renderTriage();
+  } catch (err) {
+    alert('Triage pass failed: ' + (err.message || err));
+  }
+  triageBtn.disabled = false;
+  triageBtn.textContent = '✨ AI triage pass (unsorted items)';
+}
+
+function renderTriage(){
+  if (!pendingTriage || pendingTriage.length === 0) {
+    triageContainer.innerHTML = `<div class="stage-empty">Everything defaults to "Unsorted." Run a triage pass to get suggested dispositions — Individual Listing, Lot, Donate, or Rummage/Marketplace — before spending real time on assessment or listing.</div>`;
+    return;
+  }
+  const rows = pendingTriage.map((t, i) => {
+    const opts = DISPOSITIONS.filter(d => d.value !== 'unsorted').map(d => `<option value="${d.value}" ${t.suggested === d.value ? 'selected' : ''}>${d.label}</option>`).join('');
+    return `
+      <div class="triage-row">
+        <span class="ti-name">${escapeHtml(t.name)}</span>
+        <select class="disp-select ${dispositionMeta(t.suggested).cls}" onchange="pendingTriage[${i}].suggested=this.value; this.className='disp-select ' + dispositionMeta(this.value).cls;">${opts}</select>
+        <span class="ti-rationale">${escapeHtml(t.rationale)}</span>
+      </div>
+    `;
+  }).join('');
+  triageContainer.innerHTML = `
+    <div class="triage-review">${rows}</div>
+    <div class="triage-actions-bar">
+      <button class="btn-sm apply" onclick="applyTriage()">Apply all (${pendingTriage.length})</button>
+      <button class="btn-sm discard" onclick="discardTriage()">Discard</button>
+    </div>
+  `;
+}
+
+window.applyTriage = async () => {
+  if (!pendingTriage) return;
+  for (const t of pendingTriage) {
+    const it = items.find(i => i.id === t.id);
+    if (!it) continue;
+    it.disposition = t.suggested;
+    it.triageRationale = t.rationale;
+    await idbPutItem(it);
+  }
+  pendingTriage = null;
+  renderTriage();
+  renderTable();
+};
+
+window.discardTriage = () => {
+  pendingTriage = null;
+  renderTriage();
+};
+
+/* ---------- Lots ---------- */
+const lotsContainer = document.getElementById('lotsContainer');
+const suggestLotsBtn = document.getElementById('suggestLotsBtn');
+
+suggestLotsBtn.addEventListener('click', suggestLots);
+
+async function suggestLots(){
+  if (items.length < 2) {
+    alert('Log at least a couple items first.');
+    return;
+  }
+  suggestLotsBtn.disabled = true;
+  suggestLotsBtn.textContent = 'Thinking...';
+
+  try {
+    const summary = items.map(it => ({
+      id: it.id,
+      name: it.name,
+      category: it.category,
+      condition: it.condition,
+      price: it.price,
+      qty: it.qty,
+      provenance_tags: (it.provenanceTagIds || []).map(tid => (tags.find(t => t.id === tid) || {}).label).filter(Boolean)
+    }));
+    const systemPrompt = `You are helping group cataloged resale items into sensible lots for a fast, profitable estate sale or eBay sale. You will receive a JSON array of items (id, name, category, condition, price, qty, provenance_tags). Group them into lots that make sense to sell together — similar category or theme, or bundle low-value miscellany into a single "grab bag" style lot, and keep standout valuable items as their own solo lot if that sells better alone. Items sharing the same provenance_tags (e.g. the same named person or family collection) are usually strong candidates to be grouped together as a themed lot, since the shared story adds value to selling them as a set — prefer this grouping when it doesn't fight badly against category/size logic. Respond with ONLY a JSON array, no markdown fences: [{"lot_name": string, "item_ids": [string,...], "rationale": string, "suggested_price": number}]. Every item id from the input must appear in exactly one lot.`;
+    const userContent = [{ text: JSON.stringify(summary) }];
+    const suggestions = await callGemini(systemPrompt, userContent);
+
+    lots = suggestions.map(s => ({
+      id: 'l_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+      name: s.lot_name,
+      itemIds: s.item_ids,
+      rationale: s.rationale,
+      suggestedPrice: s.suggested_price,
+      approved: false
+    }));
+    renderLots();
+  } catch (err) {
+    alert('Lot suggestion failed: ' + (err.message || err));
+  }
+  suggestLotsBtn.disabled = false;
+  suggestLotsBtn.textContent = '✨ Suggest lots (AI)';
+}
+
+function renderLots(){
+  if (!lots || lots.length === 0) {
+    lotsContainer.innerHTML = `<div class="stage-empty">No lots yet — log a few items, then suggest lots.</div>`;
+    return;
+  }
+  lotsContainer.innerHTML = lots.map(lot => {
+    const lotItems = lot.itemIds.map(id => items.find(i => i.id === id)).filter(Boolean);
+    const chips = lotItems.map(it => `<span class="lot-item-chip">${escapeHtml(it.name)}</span>`).join('');
+    return `
+      <div class="lot-card">
+        <h3>${escapeHtml(lot.name)} ${lot.approved ? '<span class="stamp">approved</span>' : ''}</h3>
+        <div class="lot-meta">${lotItems.length} item${lotItems.length===1?'':'s'} &middot; suggested <span class="lot-price">$${lot.suggestedPrice}</span></div>
+        <div class="lot-meta">${escapeHtml(lot.rationale)}</div>
+        <div class="lot-items">${chips}</div>
+        <div class="lot-actions">
+          ${!lot.approved ? `<button class="btn-sm apply" onclick="approveLot('${lot.id}')">Approve lot</button>` : ''}
+          <button class="btn-sm discard" onclick="compileLot('${lot.id}')">Compile listing</button>
+          <button class="btn-sm discard" onclick="removeLot('${lot.id}')">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.approveLot = async (id) => {
+  const lot = lots.find(l => l.id === id);
+  if (!lot) return;
+  lot.approved = true;
+  await idbPutLot(lot);
+  for (const it of items) {
+    if (lot.itemIds.includes(it.id)) {
+      it.lotId = lot.id;
+      await idbPutItem(it);
+    }
+  }
+  renderLots();
+};
+
+window.removeLot = async (id) => {
+  await idbDeleteLot(id);
+  lots = lots.filter(l => l.id !== id);
+  renderLots();
+};
+
+window.compileLot = (id) => {
+  const lot = lots.find(l => l.id === id);
+  if (!lot) return;
+  const lotItems = lot.itemIds.map(iid => items.find(i => i.id === iid)).filter(Boolean);
+  showCompiled(lotItems, lot.name, lot.suggestedPrice);
+};
+
+/* ---------- Compile ---------- */
+const stagePanel = document.getElementById('stagePanel');
+const outputText = document.getElementById('outputText');
+const stageStamp = document.getElementById('stageStamp');
+
+compileBtn.addEventListener('click', () => {
+  const selected = items.filter(it => selectedIds.has(it.id));
+  showCompiled(selected);
+});
+
+function showCompiled(itemsArr, lotName, lotPrice){
+  const blocks = itemsArr.map(it => {
+    const provText = provenanceTextFor(it);
+    const lines = [
+      `ITEM: ${it.name}`,
+      provText ? `★ PROVENANCE: ${provText}` : null,
+      it.disposition && it.disposition !== 'unsorted' ? `DISPOSITION: ${dispositionMeta(it.disposition).label}` : null,
+      `LOCATION: ${it.location}${it.locationMode === 'freeform' ? ' (freeform tag)' : ''}`,
+      it.category ? `CATEGORY: ${it.category}` : null,
+      `QTY: ${it.qty}`,
+      it.condition ? `CONDITION: ${it.condition}` : null,
+      it.price ? `PRICE: ${it.price}` : null,
+      it.notes ? `NOTES: ${it.notes}` : null,
+      it.photoIds.length ? `PHOTOS: ${it.photoIds.length} attached` : null,
+    ].filter(Boolean);
+    return lines.join('\n');
+  });
+  let header = '';
+  if (lotName) header = `LOT: ${lotName}${lotPrice ? ` — suggested price $${lotPrice}` : ''}\n\n`;
+  outputText.value = header + blocks.join('\n\n---\n\n');
+  stageStamp.textContent = `${itemsArr.length} item${itemsArr.length===1?'':'s'}`;
+  stagePanel.style.display = 'block';
+  stagePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  outputText.select();
+  document.execCommand('copy');
+  const btn = document.getElementById('copyBtn');
+  const orig = btn.textContent;
+  btn.textContent = 'Copied ✓';
+  setTimeout(() => btn.textContent = orig, 1400);
+});
+
+document.getElementById('closeStageBtn').addEventListener('click', () => {
+  stagePanel.style.display = 'none';
+});
+
+/* ---------- Init ---------- */
+(async function init(){
+  db = await openDB();
+  items = await idbGetAllItems();
+  items.forEach(it => { if (!it.disposition) it.disposition = 'unsorted'; });
+  lots = await idbGetAllLots();
+  tags = await idbGetAllTags();
+  renderTagLibrary();
+  renderTagPicker();
+  renderFilterTagRow();
+  renderFilterDispRow();
+  renderTable();
+  renderLots();
+  renderTriage();
+})();
+</script>
+</body>
+</html>
