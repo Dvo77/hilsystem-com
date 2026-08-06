@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL People</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0b; --panel:#111411;
+    --green:#00cc66; --green-dim:#0a4a28;
+    --amber:#cc8800; --amber-dim:#4a3308; --amber-bright:#e6a627;
+    --text:#e8e6df; --text-dim:#8a8f89;
+    --hairline:rgba(204,136,0,0.28);
+    --danger:#cc4433;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse at top, rgba(204,136,0,0.06), transparent 55%), var(--bg);
+    color:var(--text);
+    font-family:'Barlow Condensed', sans-serif;
+    padding:40px 20px 80px;
+  }
+  .page{max-width:920px;margin:0 auto;}
+  a{color:inherit;}
+
+  .eyebrow{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.18em;
+    text-transform:uppercase; color:var(--green);
+    display:flex; align-items:center; gap:10px; margin-bottom:24px;
+  }
+  .eyebrow::before{content:"";width:8px;height:8px;background:var(--green);
+    clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);}
+  .eyebrow .path{color:var(--text-dim);}
+  .eyebrow .back{margin-left:auto;color:var(--amber-bright);cursor:pointer;text-decoration:none;}
+  .eyebrow .back:hover{color:var(--amber);}
+
+  h1.title{
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:26px;
+    letter-spacing:0.02em; color:#f4ede0; margin:0 0 4px; text-transform:uppercase;
+  }
+  .subtitle{color:var(--text-dim);font-size:16px;margin:0 0 28px;}
+
+  /* buttons */
+  .btn{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.08em;
+    text-transform:uppercase; padding:10px 18px; border:1px solid var(--hairline);
+    background:transparent; color:var(--text); cursor:pointer; text-decoration:none;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber-bright);}
+  .btn.primary{border-color:var(--green-dim);color:var(--green);background:rgba(0,204,102,0.06);}
+  .btn.primary:hover{border-color:var(--green);}
+  .btn.danger{border-color:rgba(204,68,51,0.4);color:#e0685a;}
+  .btn.danger:hover{border-color:var(--danger);}
+  .btn.small{padding:6px 12px;font-size:11px;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;}
+
+  /* ===== LIST VIEW ===== */
+  .list-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+  .people-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:14px;}
+  .person-card{
+    border:1px solid var(--hairline); background:var(--panel); padding:16px;
+    cursor:pointer; position:relative;
+  }
+  .person-card:hover{border-color:var(--amber);}
+  .person-card .thumb{
+    width:100%; aspect-ratio:1; background:var(--bg); border:1px solid var(--hairline);
+    margin-bottom:12px; display:flex; align-items:center; justify-content:center;
+    color:var(--text-dim); font-family:'Space Mono',monospace; font-size:11px; overflow:hidden;
+  }
+  .person-card .thumb img{width:100%;height:100%;object-fit:cover;}
+  .person-card .pname{font-size:18px;color:var(--text);margin:0 0 4px;}
+  .person-card .pdates{font-family:'Space Mono',monospace;font-size:11px;color:var(--amber-bright);}
+  .person-card .ppublic{
+    position:absolute; top:12px; right:12px; font-family:'Space Mono',monospace;
+    font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim);
+  }
+  .empty-state{
+    border:1px dashed var(--hairline); padding:48px 24px; text-align:center; color:var(--text-dim);
+  }
+  .empty-state .btn{margin-top:16px;}
+
+  /* ===== FORM VIEW ===== */
+  .form-frame{border:1px solid var(--hairline); padding:32px; background:var(--panel);}
+  fieldset{border:none; padding:0; margin:0 0 28px;}
+  legend{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.16em;
+    text-transform:uppercase; color:var(--text-dim); display:flex; align-items:center;
+    gap:14px; width:100%; margin-bottom:16px; padding:0;
+  }
+  legend::after{content:"";flex:1;height:1px;background:var(--hairline);}
+  .field-row{display:grid;grid-template-columns:repeat(auto-fit, minmax(220px,1fr));gap:16px;margin-bottom:16px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{
+    font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--amber);
+  }
+  .field input, .field textarea, .field select{
+    background:var(--bg); border:1px solid var(--hairline); color:var(--text);
+    padding:10px 12px; font-family:'Barlow Condensed', sans-serif; font-size:16px;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{
+    outline:none; border-color:var(--amber);
+  }
+  .field textarea{resize:vertical;min-height:100px;}
+  .field.checkbox{flex-direction:row;align-items:center;gap:10px;}
+  .field.checkbox input{width:auto;}
+
+  .linked-row{
+    display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    border:1px solid var(--hairline); padding:10px 12px; background:var(--bg);
+  }
+  .linked-row input{flex:1;background:transparent;border:none;color:var(--text);font-size:16px;padding:2px 0;}
+  .linked-row input:focus{outline:none;}
+  .linked-row .link-status{
+    font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.06em;
+    text-transform:uppercase; white-space:nowrap;
+  }
+  .linked-row .link-status.linked{color:var(--green);}
+  .linked-row .link-status.unlinked{color:var(--text-dim);}
+  .linked-row .create-btn{
+    font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase;
+    color:var(--amber-bright); cursor:pointer; white-space:nowrap; text-decoration:underline;
+  }
+  .linked-row .remove-btn{color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;}
+  .linked-row .remove-btn:hover{color:var(--danger);}
+
+  .add-child-btn{
+    font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--green); cursor:pointer; display:inline-block; margin-top:4px;
+  }
+
+  .photo-upload{
+    width:140px; height:140px; border:1px dashed var(--hairline); display:flex;
+    align-items:center; justify-content:center; color:var(--text-dim); cursor:pointer;
+    font-family:'Space Mono',monospace; font-size:11px; text-align:center; padding:10px;
+    overflow:hidden;
+  }
+  .photo-upload img{width:100%;height:100%;object-fit:cover;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--panel); border:1px solid var(--green-dim); color:var(--green);
+    padding:12px 22px; font-family:'Space Mono',monospace; font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity 0.25s;
+  }
+  .toast.show{opacity:1;}
+  .toast.error{border-color:rgba(204,68,51,0.4);color:#e0685a;}
+
+  [hidden]{display:none !important;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ===== LIST VIEW ===== -->
+  <div id="view-list">
+    <div class="eyebrow">HIL People <span class="path">/ Person Records</span></div>
+    <h1 class="title">People</h1>
+    <p class="subtitle">Provenance figures — link items, kits, and museum records to a real person.</p>
+
+    <div class="list-toolbar">
+      <input id="search-input" type="text" placeholder="Search people..."
+        style="background:var(--panel);border:1px solid var(--hairline);color:var(--text);padding:10px 14px;font-size:16px;min-width:220px;">
+      <button class="btn primary" onclick="openForm(null)">+ New Person</button>
+    </div>
+
+    <div id="people-grid" class="people-grid"></div>
+    <div id="empty-state" class="empty-state" hidden>
+      <div>No people yet.</div>
+      <button class="btn primary" onclick="openForm(null)">Create your first person record</button>
+    </div>
+  </div>
+
+  <!-- ===== FORM VIEW ===== -->
+  <div id="view-form" hidden>
+    <div class="eyebrow">
+      HIL People <span class="path" id="form-breadcrumb">/ New Person</span>
+      <a class="back" onclick="backToList()">&larr; Back to People</a>
+    </div>
+
+    <div class="form-frame">
+      <fieldset>
+        <legend>Identity</legend>
+        <div class="field-row">
+          <div class="field" style="grid-column:1/-1;">
+            <label>Full name</label>
+            <input id="f-name" type="text" placeholder="Dr. Harry Benjamin Piper">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Photo</label>
+            <div class="photo-upload" id="photo-upload-box" onclick="document.getElementById('f-photo-file').click()">
+              Click to add photo
+            </div>
+            <input type="file" id="f-photo-file" accept="image/*" hidden onchange="handlePhotoSelect(event)">
+          </div>
+          <div class="field">
+            <label>Occupation</label>
+            <input id="f-occupation" type="text" placeholder="Doctoring">
+          </div>
+          <div class="field">
+            <label>Primary location</label>
+            <input id="f-location" type="text" placeholder="Sharon, Wisconsin">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dates and place</legend>
+        <div class="field-row">
+          <div class="field">
+            <label>Born</label>
+            <input id="f-born" type="text" placeholder="September 2, 1888">
+          </div>
+          <div class="field">
+            <label>Died</label>
+            <input id="f-died" type="text" placeholder="April 20, 1972">
+          </div>
+          <div class="field">
+            <label>Burial place</label>
+            <input id="f-burial" type="text" placeholder="Sharon, Walworth County, Wisconsin">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Spouse</legend>
+        <div id="spouse-row"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Parents</legend>
+        <div id="father-row"></div>
+        <div id="mother-row"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Children</legend>
+        <div id="children-list"></div>
+        <span class="add-child-btn" onclick="addChildRow()">+ Add child</span>
+      </fieldset>
+
+      <fieldset>
+        <legend>Story</legend>
+        <div class="field-row">
+          <div class="field" style="grid-column:1/-1;">
+            <label>Biography / provenance story</label>
+            <textarea id="f-story" placeholder="Belonged to or is historically associated with..."></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Visibility</legend>
+        <div class="field checkbox">
+          <input id="f-public" type="checkbox">
+          <label style="text-transform:none;font-family:'Barlow Condensed',sans-serif;font-size:16px;color:var(--text);letter-spacing:normal;">
+            Make this person's page public on the History Wall
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="btn-row">
+        <button class="btn primary" onclick="savePerson()">Save Person</button>
+        <button class="btn" id="btn-view-public" onclick="previewPublic()" hidden>Preview Public Page</button>
+        <button class="btn danger" id="btn-delete" onclick="deletePerson()" hidden>Delete</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!--
+  ============================================================
+  SHELL + FIREBASE WIRING
+  ============================================================
+  1. This file expects hil-shell.js to already be loaded on the
+     page (same pattern as every other tool: <script src="hil-shell.js"></script>
+     placed before this block, then HILShell.init({...}) called).
+  2. After HILShell.init() resolves, it should have already run
+     firebase.initializeApp() once for the whole app and put the
+     signed-in user on window. This file does NOT call
+     firebase.initializeApp() again — only firebase.firestore().
+  3. If your shell exposes db/auth/uid under different names
+     (e.g. HILShell.db instead of firebase.firestore()), swap the
+     three lines marked "SHELL HOOK" below and everything else
+     works unchanged.
+============================================================
+-->
+<script src="hil-shell.js"></script>
+<script>
+HILShell.init({
+  tool: "people",
+  title: "HIL People"
+}).then(() => {
+  initPeopleTool();
+});
+
+// ---- SHELL HOOK: adjust these three lines to match hil-shell.js's actual globals ----
+function db(){ return firebase.firestore(); }
+function currentUid(){ return firebase.auth().currentUser ? firebase.auth().currentUser.uid : (HILShell.uid || null); }
+function isSignedIn(){ return !!currentUid(); }
+// --------------------------------------------------------------------------------------
+
+let peopleCache = {};       // id -> person doc, populated on list load
+let currentPersonId = null; // null = creating new
+let currentSpouse = { name: "", person_id: null };
+let currentFather = { name: "", person_id: null };
+let currentMother = { name: "", person_id: null };
+let currentChildren = [];   // [{name, person_id, dates}]
+let pendingPhotoFile = null;
+let pendingPhotoUrl = null;
+
+function slugify(name){
+  return name.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-");
+}
+
+function showToast(msg, isError){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isError ? " error" : "");
+  setTimeout(() => { t.className = "toast"; }, 2600);
+}
+
+function initPeopleTool(){
+  loadPeopleList();
+  document.getElementById("search-input").addEventListener("input", (e) => {
+    renderPeopleGrid(e.target.value.trim().toLowerCase());
+  });
+
+  // Support deep links: hil-people.html?open=<id> or ?new=1&name=...&father_id=...
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("open")) {
+    openForm(params.get("open"));
+  } else if (params.get("new")) {
+    openForm(null, {
+      name: params.get("name") || "",
+      father_id: params.get("father_id") || null,
+      mother_id: params.get("mother_id") || null
+    });
+  }
+}
+
+function loadPeopleList(){
+  db().collection("people")
+    .where("owner_uid", "==", currentUid())
+    .orderBy("display_name")
+    .get()
+    .then((snap) => {
+      peopleCache = {};
+      snap.forEach((doc) => { peopleCache[doc.id] = { id: doc.id, ...doc.data() }; });
+      renderPeopleGrid("");
+    })
+    .catch((err) => {
+      console.error(err);
+      showToast("Couldn't load people — check Firestore rules/index.", true);
+    });
+}
+
+function renderPeopleGrid(filterText){
+  const grid = document.getElementById("people-grid");
+  const empty = document.getElementById("empty-state");
+  grid.innerHTML = "";
+
+  const list = Object.values(peopleCache).filter((p) =>
+    !filterText || (p.display_name || "").toLowerCase().includes(filterText)
+  );
+
+  if (list.length === 0) {
+    empty.hidden = false;
+    grid.hidden = true;
+    return;
+  }
+  empty.hidden = true;
+  grid.hidden = false;
+
+  list.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = "person-card";
+    card.onclick = () => openForm(p.id);
+
+    const dates = [p.born_date, p.died_date].filter(Boolean).join(" – ");
+
+    card.innerHTML = `
+      <span class="ppublic">${p.public ? "Public" : "Private"}</span>
+      <div class="thumb">${p.hero_photo ? `<img src="${p.hero_photo}" alt="">` : "No photo"}</div>
+      <div class="pname">${escapeHtml(p.display_name || "Unnamed")}</div>
+      <div class="pdates">${escapeHtml(dates)}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+
+// ============================================================
+// FORM
+// ============================================================
+
+function openForm(personId, prefill){
+  currentPersonId = personId;
+  pendingPhotoFile = null;
+  pendingPhotoUrl = null;
+
+  document.getElementById("view-list").hidden = true;
+  document.getElementById("view-form").hidden = false;
+  document.getElementById("btn-delete").hidden = !personId;
+  document.getElementById("btn-view-public").hidden = !personId;
+
+  if (personId && peopleCache[personId]) {
+    const p = peopleCache[personId];
+    document.getElementById("form-breadcrumb").textContent = "/ " + p.display_name;
+    document.getElementById("f-name").value = p.display_name || "";
+    document.getElementById("f-occupation").value = p.occupation || "";
+    document.getElementById("f-location").value = p.location || "";
+    document.getElementById("f-born").value = p.born_date || "";
+    document.getElementById("f-died").value = p.died_date || "";
+    document.getElementById("f-burial").value = p.burial_place || "";
+    document.getElementById("f-story").value = p.story || "";
+    document.getElementById("f-public").checked = !!p.public;
+    pendingPhotoUrl = p.hero_photo || null;
+    setPhotoPreview(pendingPhotoUrl);
+
+    currentSpouse = p.spouse || { name: "", person_id: null };
+    currentFather = p.father || { name: "", person_id: null };
+    currentMother = p.mother || { name: "", person_id: null };
+    currentChildren = (p.children || []).map((c) => ({ ...c }));
+  } else {
+    document.getElementById("form-breadcrumb").textContent = "/ New Person";
+    document.getElementById("f-name").value = (prefill && prefill.name) || "";
+    document.getElementById("f-occupation").value = "";
+    document.getElementById("f-location").value = "";
+    document.getElementById("f-born").value = "";
+    document.getElementById("f-died").value = "";
+    document.getElementById("f-burial").value = "";
+    document.getElementById("f-story").value = "";
+    document.getElementById("f-public").checked = false;
+    setPhotoPreview(null);
+
+    currentSpouse = { name: "", person_id: null };
+    currentFather = (prefill && prefill.father_id)
+      ? { name: peopleCache[prefill.father_id] ? peopleCache[prefill.father_id].display_name : "", person_id: prefill.father_id }
+      : { name: "", person_id: null };
+    currentMother = (prefill && prefill.mother_id)
+      ? { name: peopleCache[prefill.mother_id] ? peopleCache[prefill.mother_id].display_name : "", person_id: prefill.mother_id }
+      : { name: "", person_id: null };
+    currentChildren = [];
+  }
+
+  renderRelationRow("spouse-row", "Spouse", currentSpouse, (updated) => { currentSpouse = updated; });
+  renderRelationRow("father-row", "Father", currentFather, (updated) => { currentFather = updated; });
+  renderRelationRow("mother-row", "Mother", currentMother, (updated) => { currentMother = updated; });
+  renderChildren();
+
+  window.scrollTo(0, 0);
+}
+
+function backToList(){
+  document.getElementById("view-form").hidden = true;
+  document.getElementById("view-list").hidden = false;
+  loadPeopleList();
+}
+
+function setPhotoPreview(url){
+  const box = document.getElementById("photo-upload-box");
+  box.innerHTML = url ? `<img src="${url}" alt="">` : "Click to add photo";
+}
+
+function handlePhotoSelect(event){
+  const file = event.target.files[0];
+  if (!file) return;
+  pendingPhotoFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => { setPhotoPreview(e.target.result); };
+  reader.readAsDataURL(file);
+  // NOTE: actual upload to R2 (hilsystem-assets) happens in savePerson(),
+  // reusing whatever upload helper the Museum/Vault tools already call —
+  // wire uploadToR2(file) below to that shared helper.
+}
+
+// ---- relation rows (spouse / father / mother) ----
+
+function renderRelationRow(containerId, roleLabel, relation, onChange){
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+
+  const row = document.createElement("div");
+  row.className = "linked-row";
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = roleLabel + " name";
+  nameInput.value = relation.name || "";
+  nameInput.oninput = () => { relation.name = nameInput.value; onChange(relation); refreshStatus(); };
+
+  const status = document.createElement("span");
+  status.className = "link-status";
+
+  const action = document.createElement("span");
+
+  function refreshStatus(){
+    if (relation.person_id && peopleCache[relation.person_id]) {
+      status.className = "link-status linked";
+      status.textContent = "Linked";
+      action.innerHTML = `<span class="create-btn" onclick="openForm('${relation.person_id}')">Open record</span>`;
+    } else if (relation.name && relation.name.trim()) {
+      status.className = "link-status unlinked";
+      status.textContent = "No record yet";
+      action.innerHTML = `<span class="create-btn" data-role="${containerId}">Create record</span>`;
+      action.querySelector(".create-btn").onclick = () => createStubFromRelation(containerId, relation, onChange);
+    } else {
+      status.textContent = "";
+      action.innerHTML = "";
+    }
+  }
+  refreshStatus();
+
+  row.appendChild(nameInput);
+  row.appendChild(status);
+  row.appendChild(action);
+  container.appendChild(row);
+}
+
+function createStubFromRelation(containerId, relation, onChange){
+  // Save the current person first isn't required — we just hand off to a
+  // new form pre-filled with the name. If this is the father/mother slot,
+  // no reverse link is set here (a parent doesn't need father_id pointing
+  // back at the child) — reverse linking only matters child -> parent.
+  if (!currentPersonId) {
+    showToast("Save this person first, then create linked records.", true);
+    return;
+  }
+  const params = new URLSearchParams();
+  params.set("new", "1");
+  params.set("name", relation.name);
+  window.location.href = "hil-people.html?" + params.toString();
+}
+
+// ---- children (repeatable) ----
+
+function renderChildren(){
+  const container = document.getElementById("children-list");
+  container.innerHTML = "";
+  currentChildren.forEach((child, idx) => {
+    const row = document.createElement("div");
+    row.className = "linked-row";
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "Child's name";
+    nameInput.value = child.name || "";
+    nameInput.oninput = () => { child.name = nameInput.value; refreshStatus(); };
+
+    const datesInput = document.createElement("input");
+    datesInput.type = "text";
+    datesInput.placeholder = "1920 – 2018";
+    datesInput.style.maxWidth = "140px";
+    datesInput.value = child.dates || "";
+    datesInput.oninput = () => { child.dates = datesInput.value; };
+
+    const status = document.createElement("span");
+    status.className = "link-status";
+    const action = document.createElement("span");
+
+    function refreshStatus(){
+      if (child.person_id && peopleCache[child.person_id]) {
+        status.className = "link-status linked";
+        status.textContent = "Linked";
+        action.innerHTML = `<span class="create-btn" onclick="openForm('${child.person_id}')">Open record</span>`;
+      } else if (child.name && child.name.trim()) {
+        status.className = "link-status unlinked";
+        status.textContent = "No record yet";
+        action.innerHTML = `<span class="create-btn">Create record</span>`;
+        action.querySelector(".create-btn").onclick = () => createChildStub(idx);
+      } else {
+        status.textContent = "";
+        action.innerHTML = "";
+      }
+    }
+    refreshStatus();
+
+    const removeBtn = document.createElement("span");
+    removeBtn.className = "remove-btn";
+    removeBtn.textContent = "\u00d7";
+    removeBtn.onclick = () => { currentChildren.splice(idx, 1); renderChildren(); };
+
+    row.appendChild(nameInput);
+    row.appendChild(datesInput);
+    row.appendChild(status);
+    row.appendChild(action);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
+  });
+}
+
+function addChildRow(){
+  currentChildren.push({ name: "", person_id: null, dates: "" });
+  renderChildren();
+}
+
+function createChildStub(idx){
+  if (!currentPersonId) {
+    showToast("Save this person first, then create linked records for children.", true);
+    return;
+  }
+  const child = currentChildren[idx];
+  const params = new URLSearchParams();
+  params.set("new", "1");
+  params.set("name", child.name);
+  params.set(document.getElementById("f-name").value.trim() ? "father_id" : "mother_id", currentPersonId);
+  // NOTE: assumes the current person is being used as the father_id link.
+  // If building a mother's record, change the param above to mother_id
+  // (simple manual swap for now — revisit if this comes up often).
+  window.location.href = "hil-people.html?" + params.toString();
+}
+
+// ============================================================
+// SAVE / DELETE
+// ============================================================
+
+function uploadToR2(file){
+  // TODO: wire to the same R2 upload helper Museum/Vault already use
+  // (hilsystem-assets bucket, assets.hilsystem.com CDN). Returning the
+  // existing/preview URL for now so save doesn't hard-fail before that's wired in.
+  return Promise.resolve(pendingPhotoUrl);
+}
+
+function savePerson(){
+  const name = document.getElementById("f-name").value.trim();
+  if (!name) {
+    showToast("Name is required.", true);
+    return;
+  }
+  if (!isSignedIn()) {
+    showToast("Sign in required.", true);
+    return;
+  }
+
+  const doSave = (photoUrl) => {
+    const data = {
+      owner_uid: currentUid(),
+      display_name: name,
+      slug: slugify(name),
+      occupation: document.getElementById("f-occupation").value.trim(),
+      location: document.getElementById("f-location").value.trim(),
+      born_date: document.getElementById("f-born").value.trim(),
+      died_date: document.getElementById("f-died").value.trim(),
+      burial_place: document.getElementById("f-burial").value.trim(),
+      story: document.getElementById("f-story").value.trim(),
+      public: document.getElementById("f-public").checked,
+      hero_photo: photoUrl || null,
+      spouse: currentSpouse.name ? currentSpouse : null,
+      father: currentFather.name ? currentFather : null,
+      mother: currentMother.name ? currentMother : null,
+      children: currentChildren.filter((c) => c.name && c.name.trim()),
+      updated_at: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const ref = currentPersonId
+      ? db().collection("people").doc(currentPersonId)
+      : db().collection("people").doc();
+
+    if (!currentPersonId) {
+      data.created_at = firebase.firestore.FieldValue.serverTimestamp();
+      data.heart_count = 0;
+    }
+
+    ref.set(data, { merge: true })
+      .then(() => {
+        currentPersonId = ref.id;
+        peopleCache[ref.id] = { id: ref.id, ...data };
+        showToast("Saved.");
+        document.getElementById("btn-delete").hidden = false;
+        document.getElementById("btn-view-public").hidden = false;
+        document.getElementById("form-breadcrumb").textContent = "/ " + name;
+      })
+      .catch((err) => {
+        console.error(err);
+        showToast("Save failed — see console.", true);
+      });
+  };
+
+  if (pendingPhotoFile) {
+    uploadToR2(pendingPhotoFile).then(doSave);
+  } else {
+    doSave(pendingPhotoUrl);
+  }
+}
+
+function deletePerson(){
+  if (!currentPersonId) return;
+  if (!confirm("Delete this person record? Items linked to them will keep their stored name/story but lose the live link.")) return;
+
+  db().collection("people").doc(currentPersonId).delete()
+    .then(() => {
+      delete peopleCache[currentPersonId];
+      showToast("Deleted.");
+      backToList();
+    })
+    .catch((err) => {
+      console.error(err);
+      showToast("Delete failed — see console.", true);
+    });
+}
+
+function previewPublic(){
+  if (!currentPersonId) return;
+  const p = peopleCache[currentPersonId];
+  window.open("/people/" + (p.slug || currentPersonId), "_blank");
+}
+</script>
+</body>
+</html>
