@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Room Code Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+<style>
+  /* ── LAYOUT ── */
+  .hil-container { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── UTILITIES ── */
+  .hil-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .hil-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--hil-text-muted); text-transform: uppercase; }
+  .hil-input, .hil-select {
+    background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 14px; padding: 10px 11px; outline: none; width: 100%;
+    transition: border-color 0.15s;
+  }
+  .hil-input:focus, .hil-select:focus { border-color: var(--hil-green); }
+  .hil-input::placeholder { color: var(--hil-text-muted); font-weight: 300; }
+  .hil-select { cursor: pointer; }
+  .hil-select option { background: var(--hil-surface-2); }
+
+  .hil-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 2px;
+    padding: 9px 18px; border: 1px solid var(--hil-border);
+    background: var(--hil-surface-2); color: var(--hil-text);
+    cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .hil-btn:hover { border-color: var(--hil-text-muted); }
+  .hil-btn.primary { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .hil-btn.primary:hover { background: var(--hil-green-dim); }
+  .hil-btn.small { padding: 5px 12px; font-size: 9px; }
+  .hil-btn.danger { border-color: var(--hil-danger); color: var(--hil-danger); }
+
+  .hil-section-label {
+    font-family: var(--font-display); font-size: 9px; letter-spacing: 3px;
+    color: var(--hil-text-muted); border-bottom: 1px solid var(--hil-border);
+    padding-bottom: 6px; margin-bottom: 12px; margin-top: 4px;
+  }
+
+  .hil-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .hil-grid-2 { grid-template-columns: 1fr; } }
+
+  /* ── PANELS ── */
+  .rcg-panel {
+    background: var(--hil-surface);
+    border: 1px solid var(--hil-border);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+
+  .rcg-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; cursor: pointer;
+  }
+
+  .rcg-panel.collapsed .rcg-panel-body { display: none; }
+  .rcg-panel-header .rcg-caret { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); margin-left: 8px; }
+  .rcg-setup-summary { display: none; font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); }
+  .rcg-panel.collapsed .rcg-setup-summary { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .rcg-setup-summary .struct-chip { transform: scale(0.9); transform-origin: left; }
+
+  .rcg-panel-title {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.15em; color: var(--hil-green); text-transform: uppercase;
+  }
+
+  .rcg-badge {
+    font-family: var(--font-mono); font-size: 9px;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    color: var(--hil-text-muted); padding: 2px 8px; letter-spacing: 0.05em;
+  }
+  .rcg-badge.saved { color: var(--hil-green); border-color: var(--hil-green); }
+
+  /* ── SAVE BAR ── */
+  .rcg-save-bar {
+    display: none; align-items: center; gap: 12px;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    border-left: 3px solid var(--hil-green);
+    padding: 10px 16px; margin-bottom: 16px;
+  }
+  .rcg-save-bar.visible { display: flex; }
+  .rcg-save-status {
+    font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); flex: 1;
+  }
+  .rcg-save-status.ok  { color: var(--hil-green); }
+  .rcg-save-status.err { color: var(--hil-danger); }
+
+  /* ── LOADED BANNER ── */
+  .rcg-loaded {
+    display: none; background: rgba(0,204,102,0.06);
+    border: 1px solid rgba(0,204,102,0.25);
+    padding: 10px 16px; margin-bottom: 16px;
+    font-family: var(--font-mono); font-size: 10px; color: var(--hil-green); letter-spacing: 0.06em;
+  }
+  .rcg-loaded.visible { display: block; }
+
+  /* ── STRUCTURES ── */
+  .struct-chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .struct-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    padding: 5px 10px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    color: var(--hil-green); letter-spacing: 0.08em;
+  }
+  .struct-chip-label {
+    font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+    color: var(--hil-text); letter-spacing: 0.03em;
+  }
+  .struct-remove {
+    background: none; border: none; color: var(--hil-text-muted);
+    cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;
+  }
+  .struct-remove:hover { color: var(--hil-danger); }
+
+  .struct-add-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .struct-code-input { font-size: 14px !important; padding: 7px 10px !important; width: 80px !important; flex-shrink: 0; text-transform: uppercase; }
+  .struct-name-input { font-size: 14px !important; padding: 7px 10px !important; flex: 1; min-width: 160px; }
+
+  .struct-hint {
+    font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted);
+    margin-top: 6px; letter-spacing: 0.05em; line-height: 1.7;
+  }
+
+  /* ── STRUCTURE PICKER ── */
+  .struct-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .struct-pick-btn {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; cursor: pointer;
+    border: 1px solid var(--hil-border);
+    padding: 6px 12px; background: var(--hil-surface-2);
+    color: var(--hil-text-muted); transition: all 0.15s; text-transform: uppercase;
+  }
+  .struct-pick-btn.active { border-color: var(--hil-green); color: var(--hil-green); background: rgba(0,204,102,0.06); }
+  .struct-pick-btn:hover { border-color: var(--hil-green); color: var(--hil-green); }
+
+  /* ── ROOM INPUT ── */
+  .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .btn-add {
+    background: var(--hil-green); color: #000; border: none;
+    font-family: var(--font-display); font-size: 18px; font-weight: 700;
+    padding: 9px 18px; cursor: pointer; line-height: 1; flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .btn-add:hover { background: var(--hil-green-dim); }
+
+  .room-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; min-height: 0; }
+
+  .rcg-empty {
+    text-align: center; padding: 24px 16px;
+    color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 10px; line-height: 2;
+  }
+
+  .room-pill {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    padding: 7px 10px 7px 14px; gap: 8px;
+    animation: rcg-slide 0.15s ease;
+  }
+  @keyframes rcg-slide { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+  .pill-struct { font-family: var(--font-mono); font-size: 10px; color: var(--hil-green); font-weight: 700; letter-spacing: 0.06em; flex-shrink: 0; }
+  .pill-name { font-size: 15px; font-weight: 600; flex: 1; font-family: var(--font-ui); }
+  .pill-remove { background: none; border: none; color: var(--hil-text-muted); font-size: 16px; padding: 0 4px; cursor: pointer; line-height: 1; }
+  .pill-remove:hover { color: var(--hil-danger); }
+
+  .btn-generate {
+    width: 100%; background: var(--hil-green); color: #000; border: none;
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    letter-spacing: 3px; padding: 14px; cursor: pointer; text-transform: uppercase;
+    transition: background 0.15s; margin-top: 4px;
+  }
+  .btn-generate:hover { background: var(--hil-green-dim); }
+  .btn-generate:disabled { background: var(--hil-border); color: var(--hil-text-muted); cursor: not-allowed; }
+
+  .btn-clear {
+    background: none; color: var(--hil-text-muted);
+    font-family: var(--font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.08em; padding: 5px 10px;
+    border: 1px solid var(--hil-border); cursor: pointer;
+    margin-top: 8px; float: right; text-transform: uppercase;
+  }
+  .btn-clear:hover { color: var(--hil-danger); border-color: var(--hil-danger); }
+
+  /* ── RESULTS ── */
+  .rcg-results { display: none; }
+  .rcg-results.visible { display: block; animation: rcg-fade 0.2s ease; }
+  @keyframes rcg-fade { from { opacity:0; } to { opacity:1; } }
+
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .results-title { font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: 3px; color: var(--hil-green); }
+
+  .code-grid { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+
+  .code-row {
+    display: flex; align-items: stretch;
+    border: 1px solid var(--hil-border); overflow: hidden;
+    background: var(--hil-surface);
+  }
+  .code-row.standard { border-color: #1a3a10; }
+  .code-row.generated { border-color: #1a2238; }
+  .code-row.conflict  { border-color: var(--hil-warning); }
+
+  .code-badge {
+    font-family: var(--font-mono); font-size: 16px; font-weight: 700;
+    padding: 12px 14px; min-width: 76px; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0.08em; flex-shrink: 0;
+  }
+  .code-row.standard  .code-badge { background: #0f2008; color: #c8ff00; }
+  .code-row.generated .code-badge { background: #0a1520; color: var(--hil-green); }
+  .code-row.conflict  .code-badge { background: #1e1408; color: var(--hil-warning); }
+
+  .code-badge input {
+    background: transparent; border: none;
+    border-bottom: 1px solid currentColor; color: inherit;
+    font-family: var(--font-mono); font-size: 16px; font-weight: 700;
+    letter-spacing: 0.08em; text-align: center;
+    width: 60px; padding: 0; outline: none; text-transform: uppercase;
+  }
+
+  .code-info {
+    padding: 10px 14px; flex: 1;
+    border-left: 1px solid var(--hil-border);
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  }
+  .code-info-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .code-room-name { font-size: 16px; font-weight: 700; letter-spacing: 0.03em; font-family: var(--font-ui); }
+  .code-name-input {
+    background: transparent; border: none; border-bottom: 1px solid transparent;
+    color: var(--hil-text); font-size: 16px; font-weight: 700; letter-spacing: 0.03em;
+    font-family: var(--font-ui); padding: 0 0 2px; outline: none; flex: 1; min-width: 90px;
+  }
+  .code-name-input:focus { border-bottom-color: var(--hil-green); }
+  .code-nickname-input {
+    background: transparent; border: none; border-bottom: 1px dashed var(--hil-border);
+    color: var(--hil-green); font-size: 11px; font-style: italic;
+    font-family: var(--font-ui); padding: 2px 0 4px; outline: none; width: 100%;
+    margin-top: 2px;
+  }
+  .code-nickname-input::placeholder { color: var(--hil-text-muted); font-style: italic; }
+  .code-nickname-input:focus { border-bottom-color: var(--hil-green); border-bottom-style: solid; }
+  .code-row.saved .code-badge { background: #0a1520; color: var(--hil-green); }
+  .code-row.saved .code-source { color: var(--hil-green); }
+  .code-struct-tag {
+    font-family: var(--font-mono); font-size: 9px; color: var(--hil-green);
+    background: rgba(0,204,102,0.08); border: 1px solid rgba(0,204,102,0.2);
+    padding: 1px 6px; letter-spacing: 0.06em;
+  }
+  .code-source { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 0.05em; }
+  .code-row.standard .code-source { color: #4a7a2a; }
+  .code-row.conflict  .code-source { color: var(--hil-warning); }
+
+  .conflict-badge {
+    font-family: var(--font-mono); font-size: 9px;
+    background: var(--hil-warning); color: #000;
+    padding: 1px 5px; letter-spacing: 0.05em;
+  }
+
+  .conflict-note {
+    background: rgba(204,136,0,0.08); border: 1px solid var(--hil-warning);
+    padding: 12px 16px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;
+  }
+  .conflict-note strong { color: var(--hil-warning); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; display: block; margin-bottom: 5px; }
+
+  /* ── EXPORT BLOCK ── */
+  .export-block { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 16px; margin-top: 16px; }
+  .export-block pre { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text); line-height: 1.9; white-space: pre-wrap; word-break: break-all; }
+  .export-block pre .code-hi { color: var(--hil-green); font-weight: 700; }
+  .export-block pre .struct-hi { color: #c8ff00; }
+
+  /* ── HINT ── */
+  .rcg-hint {
+    font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted);
+    line-height: 1.8; padding: 12px 0 0; border-top: 1px solid var(--hil-border); margin-top: 12px;
+  }
+  .rcg-hint span { color: var(--hil-green); }
+
+  /* ── TOAST ── */
+  .rcg-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--hil-green); color: #000;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    padding: 10px 18px; letter-spacing: 0.08em;
+    opacity: 0; transform: translateY(8px); transition: all 0.2s;
+    pointer-events: none; z-index: 3000;
+  }
+  .rcg-toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <!-- SAVE BAR -->
+  <div class="rcg-save-bar" id="saveBar">
+    <span class="rcg-save-status" id="saveStatus">Sign in to save zones to your HIL property registry</span>
+    <button class="hil-btn primary small" id="saveBtn" onclick="saveToFirestore()" disabled>SAVE TO FIRESTORE</button>
+  </div>
+
+  <!-- LOADED BANNER -->
+  <div class="rcg-loaded" id="loadedBanner"></div>
+
+  <!-- PROPERTY SETUP -->
+  <div class="rcg-panel" id="setupPanel">
+    <div class="rcg-panel-header" onclick="toggleSetup()">
+      <div class="rcg-panel-title">PROPERTY SETUP</div>
+      <div style="display:flex;align-items:center">
+        <div class="rcg-setup-summary" id="setupSummary"></div>
+        <div class="rcg-badge" id="propBadge">NOT SAVED</div>
+        <span class="rcg-caret" id="setupCaret">▾</span>
+      </div>
+    </div>
+
+    <div class="rcg-panel-body" id="setupBody">
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">PROPERTY NAME</label>
+          <input class="hil-input" type="text" id="propName" placeholder="Dan's Place · Hollow Moon Homestead…">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">STREET ADDRESS (OPTIONAL)</label>
+          <input class="hil-input" type="text" id="propAddress" placeholder="123 Main St, Elkhorn WI…">
+        </div>
+      </div>
+
+      <div class="hil-section-label">STRUCTURES ON THIS PROPERTY</div>
+      <div class="struct-hint">Shop, barn, shed, house — each gets a short code. Zones live inside structures.</div>
+
+      <div class="struct-chips" id="structChips">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted);padding:8px 0" id="structEmpty">Add structures below</div>
+      </div>
+
+      <div class="struct-add-row">
+        <input class="hil-input struct-code-input" type="text" id="structCode" placeholder="SH" maxlength="4" oninput="this.value=this.value.toUpperCase()">
+        <input class="hil-input struct-name-input" type="text" id="structName" placeholder="Shop · Barn · Garage · Main House · Shed…">
+        <button class="hil-btn small" onclick="addStruct()">+ ADD</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE INPUT -->
+  <div class="rcg-panel">
+    <div class="hil-section-label">ADD ZONES — PLAIN ENGLISH</div>
+
+    <div id="structPickerWrap" style="display:none; margin-bottom:10px">
+      <div class="hil-label" style="margin-bottom:6px">ASSIGN TO STRUCTURE</div>
+      <div class="struct-picker" id="structPicker"></div>
+    </div>
+
+    <div class="input-row">
+      <input class="hil-input" type="text" id="roomInput" placeholder="e.g. Metal Shop, Kitchen, Master Bedroom…" autocomplete="off">
+      <button class="btn-add" onclick="addRoom()" title="Add zone">+</button>
+    </div>
+
+    <div class="room-list" id="roomList">
+      <div class="rcg-empty" id="emptyState">Type a zone name above and press + or Enter</div>
+    </div>
+
+    <button class="btn-generate" id="generateBtn" onclick="generate()" disabled>⚡ GENERATE CODES</button>
+    <button class="btn-clear" onclick="clearAll()">CLEAR ALL</button>
+    <div style="clear:both"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="rcg-results" id="rcgResults">
+
+    <div class="results-header">
+      <div class="results-title">YOUR ZONE CODES</div>
+      <button class="hil-btn small" onclick="copyAll()">COPY ALL</button>
+    </div>
+
+    <div class="code-grid" id="codeGrid"></div>
+
+    <div class="conflict-note" id="conflictNote" style="display:none">
+      <strong>⚠ CONFLICTS DETECTED</strong>
+      <span id="conflictText"></span>
+    </div>
+
+    <div class="export-block">
+      <div class="hil-section-label">EXPORT — paste into wiki, context card, or AI session</div>
+      <pre id="exportText"></pre>
+      <button class="hil-btn small" style="margin-top:10px" onclick="copyExport()">COPY EXPORT BLOCK</button>
+    </div>
+
+    <div class="rcg-hint">
+      <span>STANDARD</span> codes match architecture defaults · <span>GENERATED</span> codes are auto-built from the name · amber rows are conflicts.<br>
+      Tap any code badge to edit it before saving.
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="rcg-toast" id="rcgToast"></div>
+
+<!-- FIREBASE MODULE -->
+<script type="module">
+import { getFirestore, doc, setDoc, deleteDoc, collection, getDocs, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// Wait for Shell to init Firebase, then grab db
+async function waitForDb(retries = 20) {
+  for (let i = 0; i < retries; i++) {
+    if (window.db) return window.db;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
+}
+
+// ── SAVE TO FIRESTORE (schema v1.3) ──
+window.saveToFirestore = async () => {
+  const user = window.currentUser;
+  if (!user) { showToast('Sign in first'); return; }
+
+  const db = await waitForDb();
+  if (!db) { showToast('Firebase not ready', true); return; }
+
+  const uid        = user.uid;
+  const propName   = document.getElementById('propName').value.trim() || 'My Property';
+  const propAddr   = document.getElementById('propAddress').value.trim();
+  const structCodes = window._structs?.map(s => s.code) || [];
+
+  setSaveStatus('Saving…', false);
+  document.getElementById('saveBtn').disabled = true;
+
+  try {
+    // One property per user — stable ID based on uid
+    const propId = window._currentPropertyId || `prop_${uid.slice(0,8)}`;
+    window._currentPropertyId = propId;
+
+    // Write property document
+    await setDoc(doc(db, 'users', uid, 'properties', propId), {
+      property_id:  propId,
+      name:         propName,
+      address:      propAddr || null,
+      struct_codes: structCodes,
+      owner_uid:    uid,
+      updated_at:   serverTimestamp(),
+    }, { merge: true });
+
+    // Write zone documents
+    const codeRows   = document.querySelectorAll('.code-row[data-code]');
+    const saves      = [];
+    codeRows.forEach(row => {
+      const code      = row.querySelector('.code-badge input')?.value?.trim().toUpperCase() || row.dataset.code;
+      const label     = row.querySelector('.code-name-input')?.value?.trim() || row.dataset.label;
+      const nickname  = row.querySelector('.code-nickname-input')?.value?.trim() || '';
+      const canonical = row.dataset.canonical || 'other';
+      const struct    = row.dataset.struct || '';
+      if (!code || code === '??' || !label) return;
+      saves.push(
+        setDoc(doc(db, 'users', uid, 'properties', propId, 'zones', code), {
+          code,
+          label,
+          zone_nickname:  nickname || null,
+          struct_code:    struct,
+          canonical_type: canonical,
+          color:          null,
+          icon:           null,
+          created_at:     serverTimestamp(),
+          updated_at:     serverTimestamp(),
+        }, { merge: true })
+      );
+    });
+
+    await Promise.all(saves);
+
+    setSaveStatus(`✓ ${saves.length} zones saved to Firestore`, true);
+    const badge = document.getElementById('propBadge');
+    badge.textContent = 'SAVED ✓';
+    badge.classList.add('saved');
+    showToast('SAVED ✓');
+  } catch(e) {
+    console.error('Save error', e);
+    setSaveStatus('Save failed — ' + e.message, false, true);
+  }
+
+  document.getElementById('saveBtn').disabled = false;
+};
+
+// ── DELETE A SAVED ZONE ──
+// removeRoom() (regular script, below) only has access to the in-memory
+// window._rooms array — it can't reach deleteDoc directly since that's
+// module-scoped. This is the same window.* exposure pattern saveToFirestore
+// and loadExistingProperty already use for the same reason. Returns true on
+// success so removeRoom knows whether it's safe to also drop the local pill.
+window.deleteZoneDoc = async (code) => {
+  const user = window.currentUser;
+  const propId = window._currentPropertyId;
+  if (!user || !propId || !code) return false;
+  const db = await waitForDb();
+  if (!db) return false;
+  try {
+    await deleteDoc(doc(db, 'users', user.uid, 'properties', propId, 'zones', code));
+    return true;
+  } catch (e) {
+    console.error('Zone delete error', e);
+    return false;
+  }
+};
+
+// ── LOAD EXISTING PROPERTY ──
+window.loadExistingProperty = async (uid) => {
+  const db = await waitForDb();
+  if (!db) return;
+  try {
+    const propsSnap = await getDocs(collection(db, 'users', uid, 'properties'));
+    if (propsSnap.empty) return;
+    const propDoc = propsSnap.docs[0];
+    const prop    = propDoc.data();
+    window._currentPropertyId = propDoc.id;
+
+    document.getElementById('propName').value    = prop.name || '';
+    document.getElementById('propAddress').value = prop.address || '';
+
+    if (prop.struct_codes?.length) {
+      window._structs = prop.struct_codes.map(c => ({ code: c, name: c }));
+      renderStructChips();
+      renderStructPicker();
+    }
+
+    const zonesSnap = await getDocs(collection(db, 'users', uid, 'properties', propDoc.id, 'zones'));
+    if (!zonesSnap.empty) {
+      window._rooms = [];
+      zonesSnap.forEach(z => {
+        const d = z.data();
+        window._rooms.push({
+          name: d.label, structCode: d.struct_code || '',
+          savedCode: z.id, nickname: d.zone_nickname || ''
+        });
+      });
+      renderRoomList();
+      document.getElementById('generateBtn').disabled = false;
+      generate(true);
+      const banner = document.getElementById('loadedBanner');
+      banner.textContent = `✓ Loaded ${window._rooms.length} zones from existing property "${prop.name}"`;
+      banner.classList.add('visible');
+      const badge = document.getElementById('propBadge');
+      badge.textContent = 'SAVED ✓';
+      badge.classList.add('saved');
+    }
+    if (window._structs?.length) setSetupCollapsed(true);
+  } catch(e) { console.error('Load error', e); }
+};
+
+function setSaveStatus(msg, ok, err) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = 'rcg-save-status' + (ok ? ' ok' : err ? ' err' : '');
+}
+</script>
+
+<!-- MAIN SCRIPT -->
+<script>
+// ── HIL SHELL INIT ──
+HILShell.init({
+  toolId:      'room-codes',
+  toolName:    'Room Codes',
+  requireAuth: false, // works without auth, auth gates the save
+  onAuth: (user) => {
+    if (user) {
+      document.getElementById('saveBar').classList.add('visible');
+      document.getElementById('saveBtn').disabled = false;
+      document.getElementById('saveStatus').textContent = 'Ready to save zones to your HIL property registry';
+      if (window.loadExistingProperty) window.loadExistingProperty(user.uid);
+    }
+  },
+});
+
+// ── STANDARDS MAP ──
+const STANDARDS = {
+  'basement':'BM','kitchen':'KT','living room':'LR','bedroom':'BR','bathroom':'BA',
+  'garage':'GR','office':'OF','shop':'SH','workshop':'WS','deck':'DK','attic':'AT',
+  'hallway':'HW','hall':'HW','master bedroom':'MB','master bath':'MBA',
+  'master bathroom':'MBA','master suite':'MBB','laundry':'LN','laundry room':'LN',
+  'dining room':'DR','dining':'DR','pantry':'PT','mudroom':'MR','mud room':'MR',
+  'foyer':'FY','entryway':'EW','entry':'EW','utility room':'UT','utility':'UT',
+  'storage':'ST','great room':'GRM','sunroom':'SR','sun room':'SR',
+  'powder room':'PW','half bath':'PW','loft':'LF','bonus room':'BN',
+  'playroom':'PL','play room':'PL','gym':'GM','library':'LB','den':'DN',
+  'nursery':'NR','craft room':'CR','media room':'MD','studio':'SU',
+  'wine cellar':'WC','cellar':'CL','crawl space':'CS','mechanical room':'MC',
+  'server room':'SV','tack room':'TZ','tack zone':'TZ','goat barn':'GB',
+  'barn':'BN','shed':'SD','metal shop':'MM','minimax':'MX',
+  // ── SUB-ZONES (3-char) ──
+  'master bedroom closet':'MBC','master closet':'MBC',
+  'master bedroom bathroom':'MBB','master bed bath':'MBB',
+  'master bathroom':'MBA','master bath':'MBA',
+  'kitchen pantry':'KP','kitchen closet':'KC',
+  'bedroom closet':'BRC','bedroom 2':'BR2','bedroom 3':'BR3','bedroom 4':'BR4',
+  'bathroom 2':'BA2','bathroom 3':'BA3',
+  'laundry closet':'LNC','utility closet':'UTC',
+  'garage storage':'GRS','basement storage':'BMS','basement bathroom':'BMB',
+  'back bedroom':'BBR','back bedroom closet':'BBC','front bedroom':'FBR',
+  'guest bedroom':'GBR','guest bathroom':'GBA','guest room':'GBR',
+  'wall of sort':'WOS','old granddad':'OGD','old grand dad':'OGD',
+  'server rack':'SVR','command center':'CC',
+};
+
+const CANONICAL = {
+  'BM':'basement','KT':'kitchen','LR':'living room','BR':'bedroom','BA':'bathroom',
+  'GR':'garage','OF':'office','SH':'workshop','WS':'workshop','MM':'workshop',
+  'AT':'storage','LN':'utility','DR':'dining room','PT':'kitchen','MR':'other',
+  'FY':'other','EW':'other','UT':'utility','ST':'storage','SR':'other',
+  'PW':'bathroom','LF':'other','BN':'barn','PL':'other','GM':'other',
+  'LB':'other','DN':'other','NR':'bedroom','CR':'studio','MD':'other',
+  'WC':'other','CL':'basement','CS':'other','MC':'utility','SV':'office',
+  'TZ':'barn','GB':'barn','SD':'storage','MB':'bedroom','MBB':'bathroom',
+  'GRM':'living room','SU':'studio','MX':'workshop',
+};
+
+// ── STATE ──
+window._rooms   = window._rooms   || [];
+window._structs = window._structs || [];
+window._activeStruct = '';
+window._currentPropertyId = null;
+
+// Expose as local aliases
+Object.defineProperty(window, 'rooms',         { get: () => window._rooms,        set: v => window._rooms = v });
+Object.defineProperty(window, 'structs',       { get: () => window._structs,      set: v => window._structs = v });
+Object.defineProperty(window, 'activeStruct',  { get: () => window._activeStruct, set: v => window._activeStruct = v });
+
+// ── STRUCTS ──
+function addStruct() {
+  const code = document.getElementById('structCode').value.trim().toUpperCase();
+  const name = document.getElementById('structName').value.trim() || code;
+  if (!code) return;
+  if (window._structs.find(s => s.code === code)) { flashBorder('structCode'); return; }
+  const wasEmpty = window._structs.length === 0;
+  window._structs.push({ code, name });
+  document.getElementById('structCode').value = '';
+  document.getElementById('structName').value = '';
+  if (!window._activeStruct) window._activeStruct = code;
+  renderStructChips();
+  renderStructPicker();
+  // First structure added — collapse setup so the person can move on to naming zones
+  if (wasEmpty) setSetupCollapsed(true);
+}
+
+function toggleSetup() {
+  const panel = document.getElementById('setupPanel');
+  setSetupCollapsed(!panel.classList.contains('collapsed'));
+}
+
+function setSetupCollapsed(collapsed) {
+  const panel = document.getElementById('setupPanel');
+  const caret = document.getElementById('setupCaret');
+  panel.classList.toggle('collapsed', collapsed);
+  caret.textContent = collapsed ? '▸' : '▾';
+  if (collapsed) renderSetupSummary();
+}
+
+function renderSetupSummary() {
+  const summary  = document.getElementById('setupSummary');
+  const propName = document.getElementById('propName').value.trim();
+  const chips = window._structs.map(s => `
+    <div class="struct-chip"><span>${s.code}</span><span class="struct-chip-label">${s.name}</span></div>`).join('');
+  summary.innerHTML = (propName ? `<span>${propName}</span>` : '') + chips;
+}
+
+function removeStruct(code) {
+  window._structs = window._structs.filter(s => s.code !== code);
+  if (window._activeStruct === code) window._activeStruct = window._structs[0]?.code || '';
+  renderStructChips();
+  renderStructPicker();
+}
+
+function renderStructChips() {
+  const container = document.getElementById('structChips');
+  const empty     = document.getElementById('structEmpty');
+  if (!window._structs.length) {
+    container.innerHTML = ''; container.appendChild(empty);
+    empty.style.display = ''; return;
+  }
+  empty.style.display = 'none';
+  container.innerHTML = window._structs.map(s => `
+    <div class="struct-chip">
+      <span>${s.code}</span>
+      <span class="struct-chip-label">${s.name}</span>
+      <button class="struct-remove" onclick="removeStruct('${s.code}')">×</button>
+    </div>`).join('');
+  if (document.getElementById('setupPanel').classList.contains('collapsed')) renderSetupSummary();
+}
+
+function renderStructPicker() {
+  const wrap   = document.getElementById('structPickerWrap');
+  const picker = document.getElementById('structPicker');
+  if (!window._structs.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  picker.innerHTML = window._structs.map(s => `
+    <button class="struct-pick-btn ${window._activeStruct === s.code ? 'active' : ''}"
+      onclick="setActiveStruct('${s.code}')">
+      ${s.code} <span style="font-size:9px;opacity:.7">${s.name}</span>
+    </button>`).join('');
+}
+
+function setActiveStruct(code) {
+  window._activeStruct = code;
+  renderStructPicker();
+}
+
+// ── ROOMS ──
+function normalize(str) { return str.toLowerCase().trim().replace(/\s+/g,' '); }
+
+function generateCode(name) {
+  const key = normalize(name);
+  if (STANDARDS[key]) return { code: STANDARDS[key], type: 'standard' };
+  const words = key.split(' ').filter(w => w.length > 0);
+  if (words.length === 1) {
+    const w = words[0];
+    if (w.length <= 2) return { code: w.toUpperCase(), type: 'generated' };
+    return { code: (w[0] + w[w.length-1]).toUpperCase(), type: 'generated' };
+  } else if (words.length === 2) {
+    return { code: (words[0][0] + words[1][0]).toUpperCase(), type: 'generated' };
+  } else {
+    const meaningful = words.filter(w => !['the','a','an','of','in','at','on'].includes(w));
+    const src = meaningful.length >= 2 ? meaningful : words;
+    return { code: (src[0][0] + src[1][0]).toUpperCase(), type: 'generated' };
+  }
+}
+
+function addRoom() {
+  const input = document.getElementById('roomInput');
+  const val   = input.value.trim();
+  if (!val) return;
+  if (window._rooms.find(r => normalize(r.name) === normalize(val))) {
+    flashBorder('roomInput'); input.value = ''; return;
+  }
+  window._rooms.push({ name: val, structCode: window._activeStruct });
+  input.value = ''; input.focus();
+  renderRoomList();
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('rcgResults').classList.remove('visible');
+}
+
+async function removeRoom(idx, btn) {
+  const room = window._rooms[idx];
+  if (!room) return;
+
+  // Already-saved zones (loaded from Firestore) need the real doc deleted —
+  // splicing the local array alone just hides the pill until the next
+  // reload brings it right back, since nothing was ever removed server-side.
+  if (room.savedCode) {
+    if (!confirm(`Delete the saved zone "${room.name}" (${room.savedCode})? This can't be undone.`)) return;
+    if (btn) btn.disabled = true;
+    const ok = await window.deleteZoneDoc(room.savedCode);
+    if (!ok) {
+      showToast('Could not delete zone — try again');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    showToast(`Deleted "${room.name}" ✓`);
+  }
+
+  window._rooms.splice(idx, 1);
+  renderRoomList();
+  document.getElementById('generateBtn').disabled = window._rooms.length === 0;
+  document.getElementById('rcgResults').classList.remove('visible');
+}
+
+function clearAll() {
+  window._rooms = [];
+  renderRoomList();
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('rcgResults').classList.remove('visible');
+}
+
+function renderRoomList() {
+  const list  = document.getElementById('roomList');
+  const empty = document.getElementById('emptyState');
+  if (!window._rooms.length) {
+    list.innerHTML = ''; list.appendChild(empty); empty.style.display = ''; return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = window._rooms.map((r, i) => `
+    <div class="room-pill">
+      ${r.structCode ? `<span class="pill-struct">${r.structCode}</span>` : ''}
+      <span class="pill-name">${r.name}</span>
+      <button class="pill-remove" onclick="removeRoom(${i}, this)">×</button>
+    </div>`).join('');
+}
+
+// ── GENERATE ──
+function generate(silent) {
+  const generated = window._rooms.map(r => {
+    if (r.savedCode) {
+      // Already has a real saved code — keep it stable, don't recompute
+      return { name: r.name, structCode: r.structCode || '', code: r.savedCode, type: 'saved', nickname: r.nickname || '' };
+    }
+    const result = generateCode(r.name);
+    return { name: r.name, structCode: r.structCode || '', code: result.code, type: result.type, nickname: r.nickname || '' };
+  });
+
+  // Detect conflicts
+  const codeCounts = {};
+  generated.forEach(g => { codeCounts[g.code] = (codeCounts[g.code]||0) + 1; });
+  const conflicts = Object.entries(codeCounts).filter(([,c]) => c > 1).map(([code]) => code);
+  const final = generated.map(g => ({ ...g, conflict: conflicts.includes(g.code) }));
+
+  // Resolve conflicts with alternates
+  const usedCodes = new Set(final.filter(f => !f.conflict).map(f => f.code));
+  final.forEach(f => {
+    if (!f.conflict) return;
+    const words = normalize(f.name).split(' ').filter(w => w.length > 0);
+    const candidates = [];
+    if (words.length >= 2) {
+      candidates.push(words[0][0].toUpperCase() + words[1][words[1].length-1].toUpperCase());
+      candidates.push(words[0][words[0].length-1].toUpperCase() + words[1][0].toUpperCase());
+      if (words[1].length > 1) candidates.push((words[0][0] + words[1][1]).toUpperCase());
+    }
+    if (words[0].length > 2) {
+      candidates.push((words[0][0] + words[0][1]).toUpperCase());
+      candidates.push((words[0][1] + words[0][words[0].length-1]).toUpperCase());
+    }
+    for (const c of candidates) {
+      if (!usedCodes.has(c) && c !== f.code) { f.suggestedCode = c; usedCodes.add(c); break; }
+    }
+    if (!f.suggestedCode) f.suggestedCode = '??';
+  });
+
+  renderResults(final, conflicts, silent);
+}
+
+function renderResults(items, conflicts, silent) {
+  const grid         = document.getElementById('codeGrid');
+  const conflictNote = document.getElementById('conflictNote');
+  const conflictText = document.getElementById('conflictText');
+  const exportPre    = document.getElementById('exportText');
+
+  grid.innerHTML = items.map((item, idx) => {
+    const rowClass    = item.conflict ? 'conflict' : item.type === 'standard' ? 'standard' : item.type === 'saved' ? 'saved' : 'generated';
+    const sourceLabel = item.type === 'standard' ? 'ARCHITECTURE STANDARD'
+                      : item.type === 'saved' ? 'SAVED ZONE'
+                      : item.conflict ? `CONFLICT — try: ${item.suggestedCode}` : 'GENERATED';
+    const displayCode = item.conflict ? (item.suggestedCode || item.code) : item.code;
+    const canonical   = CANONICAL[displayCode] || 'other';
+    const structTag   = item.structCode ? `<span class="code-struct-tag">${item.structCode}</span>` : '';
+    return `
+      <div class="code-row ${rowClass}"
+           data-code="${displayCode}"
+           data-label="${item.name}"
+           data-nickname="${item.nickname || ''}"
+           data-canonical="${canonical}"
+           data-struct="${item.structCode}"
+           id="coderow-${idx}">
+        <div class="code-badge">
+          <input type="text" maxlength="4"
+            value="${displayCode}"
+            oninput="this.value=this.value.toUpperCase(); updateRowCode(${idx}, this.value)"
+            title="Edit zone code">
+        </div>
+        <div class="code-info">
+          <div class="code-info-row">
+            <input type="text" class="code-name-input"
+              value="${item.name}"
+              oninput="updateRowLabel(${idx}, this.value)"
+              title="Edit zone name">
+            ${structTag}
+            ${item.conflict ? '<span class="conflict-badge">CONFLICT</span>' : ''}
+          </div>
+          <input type="text" class="code-nickname-input"
+            value="${item.nickname || ''}"
+            placeholder="+ nickname (just for fun, e.g. &quot;The Underwear Box&quot;)"
+            oninput="updateRowNickname(${idx}, this.value)"
+            title="Cosmetic only — never changes the real code">
+          <div class="code-source">${sourceLabel}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  if (conflicts.length > 0) {
+    conflictText.textContent = items.filter(i => i.conflict).map(i => `"${i.name}"`).join(', ') + ' generated the same code. Suggested alternates shown above.';
+    conflictNote.style.display = '';
+  } else {
+    conflictNote.style.display = 'none';
+  }
+
+  // Export block
+  const propName = document.getElementById('propName').value.trim() || 'PROPERTY';
+  const lines = items.map(item => {
+    const code   = item.conflict ? (item.suggestedCode || item.code + '*') : item.code;
+    const flag   = item.conflict ? ' ← RESOLVE' : item.type === 'standard' ? ' ← standard' : '';
+    const sTag   = item.structCode ? `[${item.structCode}] ` : '';
+    return `${code.padEnd(6)} ${sTag}${item.name}${flag}`;
+  });
+
+  exportPre.innerHTML = `# HL ZONE CODE REGISTER\n# PROPERTY: ${propName}\n# Generated: ${new Date().toLocaleDateString()}\n\n` +
+    lines.map(l => {
+      const parts = l.split(' ');
+      const rest  = parts.slice(1).join(' ');
+      const sm    = rest.match(/^\[([A-Z]+)\]\s*/);
+      if (sm) {
+        const after = rest.replace(sm[0], '');
+        return `<span class="code-hi">${parts[0]}</span> <span class="struct-hi">[${sm[1]}]</span> ${after}`;
+      }
+      return `<span class="code-hi">${parts[0]}</span> ${rest}`;
+    }).join('\n');
+
+  if (!silent) document.getElementById('rcgResults').classList.add('visible');
+}
+
+function updateRowCode(idx, newCode) {
+  const row = document.getElementById(`coderow-${idx}`);
+  if (row) { row.dataset.code = newCode; row.dataset.canonical = CANONICAL[newCode] || 'other'; }
+}
+
+function updateRowLabel(idx, newLabel) {
+  const row = document.getElementById(`coderow-${idx}`);
+  if (row) row.dataset.label = newLabel;
+}
+
+function updateRowNickname(idx, newNickname) {
+  const row = document.getElementById(`coderow-${idx}`);
+  if (row) row.dataset.nickname = newNickname;
+}
+
+// ── COPY ──
+function copyAll() {
+  const rows  = document.querySelectorAll('.code-row');
+  const lines = Array.from(rows).map(row => {
+    const code = row.querySelector('.code-badge input')?.value || row.dataset.code;
+    const label = row.querySelector('.code-name-input')?.value || row.dataset.label;
+    const nick = row.querySelector('.code-nickname-input')?.value || '';
+    const sTag = row.dataset.struct ? `[${row.dataset.struct}] ` : '';
+    return `${code}  ${sTag}${label}` + (nick ? ` (aka "${nick}")` : '');
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => showToast('COPIED'));
+}
+
+function copyExport() {
+  const text = document.getElementById('exportText').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('COPIED'));
+}
+
+// ── TOAST + UTILS ──
+function showToast(msg) {
+  const t = document.getElementById('rcgToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function flashBorder(id) {
+  const el = document.getElementById(id);
+  el.style.borderColor = 'var(--hil-danger)';
+  setTimeout(() => el.style.borderColor = '', 600);
+}
+
+// ── KEYBOARD ──
+document.getElementById('roomInput').addEventListener('keydown', e => { if (e.key === 'Enter') addRoom(); });
+document.getElementById('structName').addEventListener('keydown', e => { if (e.key === 'Enter') addStruct(); });
+document.getElementById('structCode').addEventListener('keydown', e => { if (e.key === 'Enter') addStruct(); });
+</script>
+</body>
+</html>
