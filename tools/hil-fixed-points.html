@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Fixed Points — Electrical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+
+<style>
+  .hil-container { max-width: 1180px; margin: 0 auto; padding: 24px 16px 100px; }
+
+  .rd-page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  .rd-page-head h1 { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--hil-green); text-transform: uppercase; }
+  .rd-back { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-decoration: none; letter-spacing: 1px; }
+  .rd-back:hover { color: var(--hil-green); }
+  .rd-sub { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 1px; margin-bottom: 16px; }
+
+  .rd-main { display: grid; grid-template-columns: 200px 1fr 300px; gap: 16px; }
+  @media (max-width: 1100px) { .rd-main { grid-template-columns: 170px 1fr 300px; } }
+  @media (max-width: 860px) { .rd-main { grid-template-columns: 1fr; } }
+
+  .fp-room-sidebar { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 10px; align-self: start; }
+  .fp-room-sidebar h3 { font-family: var(--font-display); font-size: 10px; letter-spacing: 2.5px; color: var(--hil-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--hil-border); padding-bottom: 8px; margin-bottom: 8px; }
+  .fp-room-item {
+    font-family: var(--font-mono); font-size: 11px; padding: 8px 8px; cursor: pointer;
+    border: 1px solid transparent; color: var(--hil-text-muted); margin-bottom: 3px; line-height: 1.4;
+  }
+  .fp-room-item:hover { border-color: var(--hil-border); color: var(--hil-text); }
+  .fp-room-item.active { border-color: var(--hil-green); background: var(--hil-green-dim); color: var(--hil-green); }
+  .fp-room-item .code { display: block; opacity: .6; font-size: 9px; letter-spacing: 1px; }
+  .fp-room-switch-property { font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; color: var(--hil-text-muted); cursor: pointer; text-decoration: underline; margin-top: 10px; display: block; }
+  @media (max-width: 860px) {
+    .fp-room-sidebar { display: flex; flex-direction: column; margin-bottom: 12px; }
+  }
+
+  .fp-legend-grid { display: flex; flex-direction: column; gap: 6px; }
+  .fp-legend-row { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; }
+  .fp-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .fp-legend-code { color: var(--hil-text); width: 44px; flex-shrink: 0; letter-spacing: 1px; }
+  .fp-legend-label { color: var(--hil-text-muted); }
+
+  .fp-preset-btn {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .5px;
+    padding: 8px 12px; background: var(--hil-bg); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer;
+  }
+  .fp-preset-btn.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-dim); }
+  .fp-preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .rv-opening { cursor: pointer; }
+  .rv-opening:hover rect { stroke-width: 2.5; }
+
+  .rd-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .rd-tool-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px;
+    padding: 9px 14px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer; transition: all .15s;
+  }
+  .rd-tool-btn:hover { border-color: var(--hil-text-muted); }
+  .rd-tool-btn.active { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .rd-tool-btn.danger { color: var(--hil-danger); border-color: var(--hil-border); }
+  .rd-tool-btn.danger:hover { border-color: var(--hil-danger); }
+  .rd-tool-btn.small { padding: 6px 10px; font-size: 9px; }
+  .rd-hint { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: .5px; margin-left: auto; }
+
+  .fp-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .fp-filter-chip {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 1px; padding: 6px 10px;
+    background: var(--hil-surface-2); border: 1px solid var(--hil-border); color: var(--hil-text-muted); cursor: pointer;
+  }
+  .fp-filter-chip.active { border-color: var(--blue,#4a9eed); color: var(--blue,#4a9eed); background: rgba(74,158,237,.12); }
+
+  .rd-canvas-wrap { background: var(--hil-surface); border: 1px solid var(--hil-border); overflow: hidden; touch-action: none; }
+  .rd-canvas-wrap.placing { cursor: crosshair; }
+  svg.rd-svg { display: block; width: 100%; height: auto; }
+
+  .rd-room-bg { stroke-width: 2; }
+  .rd-container-icon { cursor: pointer; }
+  .rd-container-icon.selected > circle:first-child { stroke-width: 5; }
+
+  .rd-panel { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 14px; align-self: start; }
+  .rd-panel h3 { font-family: var(--font-display); font-size: 10px; letter-spacing: 2.5px; color: var(--hil-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--hil-border); padding-bottom: 8px; margin-bottom: 10px; }
+  .rd-item-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px; cursor: pointer; border: 1px solid transparent; transition: all .12s; }
+  .rd-item-row:hover { background: var(--hil-surface-2); }
+  .rd-item-row.selected { border-color: var(--hil-green); background: var(--hil-green-dim); }
+  .rd-item-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .rd-item-info { flex: 1; min-width: 0; }
+  .rd-item-name { font-size: 13px; color: var(--hil-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rd-item-sub { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; }
+  .rd-empty-panel { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-align: center; padding: 20px 8px; line-height: 1.6; }
+
+  .rd-edit-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hil-border); }
+  .rd-field { margin-bottom: 10px; }
+  .rd-field label { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+  .rd-field input, .rd-field select {
+    width: 100%; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 10px; outline: none;
+  }
+  .rd-field input:focus, .rd-field select:focus { border-color: var(--hil-green); }
+  .rd-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rd-edit-actions .rd-tool-btn { flex: 1; text-align: center; }
+  .rd-field-row { display: flex; gap: 8px; }
+  .rd-field-row .rd-field { flex: 1; }
+
+  .rd-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .rd-modal-overlay.open { display: flex; }
+  .rd-modal { background: var(--hil-surface); border: 1px solid var(--hil-green); padding: 24px; width: 380px; max-width: 100%; max-height: 88vh; overflow-y: auto; }
+  .rd-modal h2 { font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; color: var(--hil-green); text-transform: uppercase; margin-bottom: 16px; }
+  .rd-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .rd-modal-actions .rd-tool-btn { flex: 1; text-align: center; }
+  .rd-type-note { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); margin-top: -4px; margin-bottom: 12px; line-height: 1.5; }
+
+  .rv-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rv-swatch { width: 26px; height: 26px; cursor: pointer; border: 2px solid transparent; }
+  .rv-swatch.active { border-color: #fff; }
+  .rd-icon-picker { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rd-icon-swatch {
+    width: 46px; height: 46px; cursor: pointer; border: 2px solid var(--hil-border);
+    background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 4px; transition: border-color .12s;
+  }
+  .rd-icon-swatch.active { border-color: var(--hil-green); }
+  .rd-icon-swatch svg { width: 22px; height: 22px; }
+  .rd-icon-swatch span { font-family: var(--font-mono); font-size: 7px; color: #444; margin-top: 1px; }
+
+  .fp-picker-list { display: flex; flex-direction: column; gap: 8px; }
+  .fp-picker-item { padding: 10px 12px; background: var(--hil-surface-2); border: 1px solid var(--hil-border); cursor: pointer; font-family: var(--font-mono); font-size: 12px; }
+  .fp-picker-item:hover { border-color: var(--hil-green); }
+
+  .fp-circuit-addr {
+    font-family: var(--font-mono); font-size: 13px; color: var(--hil-green);
+    background: var(--hil-bg); border: 1px solid var(--hil-border); padding: 8px 10px; margin-bottom: 8px;
+  }
+  .fp-related-list { margin-top: 4px; }
+  .fp-related-row {
+    display: flex; align-items: center; gap: 6px; padding: 5px 6px; font-family: var(--font-mono); font-size: 10px;
+    color: var(--hil-text-muted); cursor: pointer; border: 1px solid transparent;
+  }
+  .fp-related-row:hover { border-color: var(--hil-border); color: var(--hil-text); }
+
+  .fp-breaker-grid-wrap { background: #0e0e0e; border: 1px solid var(--hil-border); padding: 10px; margin-bottom: 10px; }
+  .fp-breaker-add-form { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .fp-breaker-add-form .rd-field-row { align-items: flex-end; }
+  .fp-breaker-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .fp-breaker-list-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    font-family: var(--font-mono); font-size: 10px; padding: 6px 8px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+  }
+  .fp-breaker-list-row .del { color: var(--hil-danger); cursor: pointer; }
+
+  /* ---------- RACK ELEVATION (drag-and-drop device placement) ---------- */
+  .rkdev-frame { background: #0e0e0e; border: 1px solid var(--hil-border); padding: 8px; margin-top: 4px; }
+  .rkdev-fillstat { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: .5px; margin-bottom: 6px; text-align: right; }
+  .rkdev-body {
+    position: relative; border: 1px solid var(--hil-border);
+    background: repeating-linear-gradient(180deg, #1c1c1c 0px, #1c1c1c 1px, #161616 1px, #161616 2px);
+  }
+  .rkdev-u-row { position: relative; display: grid; grid-template-columns: 26px 1fr; align-items: stretch; border-bottom: 1px dashed #2a2a2a; }
+  .rkdev-u-row:last-child { border-bottom: none; }
+  .rkdev-u-label { font-family: var(--font-mono); font-size: 8px; color: var(--hil-text-muted); display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; user-select: none; }
+  .rkdev-slot { position: relative; min-height: 26px; }
+  .rkdev-guide { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; pointer-events: none; opacity: 0; transition: opacity .1s; }
+  .rkdev-guide.show { opacity: 1; background: rgba(76,217,255,.12); border: 1px dashed #4cd9ff; }
+  .rkdev-guide.show.blocked { background: rgba(204,51,51,.14); border: 1px dashed var(--hil-danger); }
+
+  .rkdev-face {
+    position: absolute; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 6px; cursor: grab; user-select: none; touch-action: none; overflow: hidden;
+    border: 1px solid rgba(0,0,0,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    background: #1a3a42; color: #cdeef5; font-family: var(--font-mono);
+  }
+  .rkdev-face.role-pdu { background: var(--hil-amber); color: #1a1200; }
+  .rkdev-face.role-switch { background: var(--hil-green); color: #001a08; }
+  .rkdev-face.role-kvm { background: #4c8cd9; color: #001222; }
+  .rkdev-face:active { cursor: grabbing; }
+  .rkdev-face .rkdev-fname { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rkdev-face .rkdev-fmeta { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .rkdev-conn-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.25); }
+  .rkdev-conn-dot.on-power { background: var(--hil-amber); border-color: var(--hil-amber); }
+  .rkdev-conn-dot.on-net { background: var(--hil-green); border-color: var(--hil-green); }
+  .rkdev-conn-dot.on-kvm { background: #4c8cd9; border-color: #4c8cd9; }
+
+  .rkdev-tray { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-height: 20px; }
+  .rkdev-tray-hint { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); text-align: center; padding: 6px; border: 1px dashed var(--hil-border); }
+  .rkdev-tray-card {
+    background: #1a3a42; color: #cdeef5; border-radius: 2px; padding: 6px 8px; cursor: grab; user-select: none;
+    display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 10px;
+    touch-action: none; border: 1px solid rgba(0,0,0,.5);
+  }
+  .rkdev-tray-card:active { cursor: grabbing; }
+  .rkdev-drag-ghost {
+    position: fixed; pointer-events: none; z-index: 2000; opacity: .9; border-radius: 2px;
+    display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600;
+    font-family: var(--font-mono); border: 1px solid rgba(0,0,0,.5); box-shadow: 0 6px 20px rgba(0,0,0,.6);
+    background: #1a3a42; color: #cdeef5;
+  }
+  .rkdev-shake { animation: rkdev-shake .3s; }
+  @keyframes rkdev-shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
+
+  .rkdev-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 2001; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .rkdev-modal { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 16px; width: 100%; max-width: 340px; max-height: 85vh; overflow-y: auto; font-family: var(--font-mono); }
+  .rkdev-modal h3 { font-family: var(--font-display); font-size: 12px; letter-spacing: 1.5px; color: var(--hil-green); margin: 0 0 2px; text-transform: uppercase; }
+  .rkdev-modal .rkdev-modal-sub { font-size: 9px; color: var(--hil-text-muted); margin-bottom: 12px; }
+  .rkdev-modal label { font-size: 9px; color: var(--hil-text-muted); text-transform: uppercase; letter-spacing: .5px; display: block; margin: 10px 0 3px; }
+  .rkdev-modal select, .rkdev-modal input[type=number] {
+    width: 100%; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 11px; padding: 6px 7px;
+  }
+  .rkdev-toggle-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .rkdev-toggle-btn {
+    flex: 1; min-width: 56px; text-align: center; background: var(--hil-bg); border: 1px solid var(--hil-border);
+    color: var(--hil-text-muted); font-family: var(--font-mono); font-size: 9px; text-transform: uppercase;
+    letter-spacing: .5px; padding: 6px 4px; cursor: pointer;
+  }
+  .rkdev-toggle-btn.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-dim); }
+  .rkdev-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .rkdev-modal-actions button { flex: 1; font-family: var(--font-mono); font-size: 10px; letter-spacing: .5px; text-transform: uppercase; padding: 8px; cursor: pointer; border: 1px solid var(--hil-border); }
+  .rkdev-modal-cancel { background: var(--hil-bg); color: var(--hil-text); }
+  .rkdev-modal-cancel:hover { border-color: var(--hil-text-muted); }
+  .rkdev-modal-save { background: var(--hil-green-dim); color: var(--hil-green); border-color: var(--hil-green-dim); }
+  .rkdev-modal-save:hover { border-color: var(--hil-green); }
+  .rkdev-modal-warn { font-size: 9px; color: var(--hil-amber); margin-top: 4px; }
+  .rkdev-modal-remove { color: var(--hil-danger); font-size: 9px; letter-spacing: .5px; cursor: pointer; text-align: center; margin-top: 12px; text-transform: uppercase; }
+
+  /* ---------- PANEL APPLIANCE LINKING (breaker <-> item_record) ---------- */
+  .pnl-drop-row { transition: background .1s, border-color .1s; }
+  .pnl-drop-row.pnl-drag-over { background: var(--hil-green-dim); border-color: var(--hil-green) !important; }
+  .pnl-linked-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px 4px; }
+  .pnl-chip {
+    display: inline-flex; align-items: center; gap: 4px; background: #1a3a42; color: #cdeef5;
+    font-family: var(--font-mono); font-size: 9px; padding: 3px 6px; border-radius: 2px; cursor: grab;
+    border: 1px solid rgba(0,0,0,.5); touch-action: none;
+  }
+  .pnl-chip:active { cursor: grabbing; }
+  .pnl-chip-x { color: var(--hil-danger); cursor: pointer; font-weight: 700; }
+  .pnl-tray { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; min-height: 20px; }
+  .pnl-tray-hint { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); text-align: center; padding: 6px; border: 1px dashed var(--hil-border); }
+  .pnl-tray-card {
+    background: #1a3a42; color: #cdeef5; border-radius: 2px; padding: 6px 8px; cursor: grab; user-select: none;
+    font-family: var(--font-mono); font-size: 10px; touch-action: none; border: 1px solid rgba(0,0,0,.5);
+  }
+  .pnl-tray-card:active { cursor: grabbing; }
+  .pnl-drag-ghost {
+    position: fixed; pointer-events: none; z-index: 2000; opacity: .9; border-radius: 2px;
+    padding: 4px 8px; font-size: 10px; font-weight: 600; font-family: var(--font-mono);
+    border: 1px solid rgba(0,0,0,.5); box-shadow: 0 6px 20px rgba(0,0,0,.6);
+    background: #1a3a42; color: #cdeef5;
+  }
+
+  .fp-checkbox-row { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); }
+</style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <div class="rd-page-head">
+    <div>
+      <h1 id="rd-title">Fixed Points — Electrical</h1>
+    </div>
+    <a class="rd-back" href="./hil-smart-home.html">← Back to Smart Home</a>
+  </div>
+  <div class="rd-sub" id="rd-sub">Loading…</div>
+
+  <div id="fp-picker-wrap" style="display:none">
+    <div class="rd-panel" style="max-width:480px">
+      <h3 id="fp-picker-title">Choose a Room</h3>
+      <div class="fp-picker-list" id="fp-picker-list"></div>
+    </div>
+  </div>
+
+  <div id="fp-main-wrap" style="display:none">
+  <div class="rd-main">
+    <div class="fp-room-sidebar">
+      <h3>Rooms</h3>
+      <div id="fp-room-list"><div class="rd-empty-panel" style="padding:8px 0">Loading…</div></div>
+      <span class="fp-room-switch-property" onclick="switchProperty()">↺ Switch property</span>
+    </div>
+    <div>
+      <div class="rd-toolbar">
+        <button class="rd-tool-btn" id="btn-place" onclick="setMode('place')">＋ Add Point</button>
+        <button class="rd-tool-btn active" id="btn-view" onclick="setMode('view')">↖ View</button>
+        <button class="rd-tool-btn small" onclick="openModal('legend-modal')">🔑 Legend</button>
+        <span class="rd-hint" id="rd-hint">Loading…</span>
+      </div>
+
+      <div class="fp-filters" id="fp-filters"></div>
+
+      <div class="rd-canvas-wrap" id="canvas-wrap">
+        <svg class="rd-svg" id="rd-svg" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22281f" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <g id="room-layer"></g>
+          <g id="points-layer"></g>
+          <g id="compass"></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rd-panel">
+      <h3>Fixed Points <span id="c-count">(0)</span></h3>
+      <div id="c-list"><div class="rd-empty-panel">Nothing placed yet.<br>Tap Add Point to start.</div></div>
+
+      <div class="rd-edit-block" id="edit-block" style="display:none">
+        <h3>Selected</h3>
+        <div class="rd-field">
+          <label>Label</label>
+          <input type="text" id="edit-name" placeholder="Optional — e.g. 'above counter'">
+        </div>
+        <div class="rd-dim-readout" id="edit-address" style="font-family:var(--font-mono);font-size:11px;color:var(--hil-green);margin-bottom:10px"></div>
+
+        <div class="rd-field-row">
+          <div class="rd-field">
+            <label>Level</label>
+            <select id="edit-level"></select>
+          </div>
+          <div class="rd-field" id="edit-color-wrap">
+            <label>Color</label>
+            <div class="rv-swatches" id="edit-color"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-circuit" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field">
+              <label>Panel</label>
+              <select id="edit-panel-ref" onchange="onPanelRefChange()"></select>
+            </div>
+            <div class="rd-field">
+              <label>Breaker</label>
+              <select id="edit-breaker-id" onchange="onBreakerSelectChange()"></select>
+            </div>
+          </div>
+          <div class="fp-circuit-addr" id="edit-circuit-addr">No circuit linked</div>
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Voltage</label><input type="number" id="edit-voltage" placeholder="120"></div>
+            <div class="rd-field" id="edit-amperage-wrap"><label>Amperage</label><input type="number" id="edit-amperage" placeholder="15"></div>
+          </div>
+          <div id="edit-also-on-circuit" style="display:none">
+            <label style="display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--hil-text-muted);text-transform:uppercase;margin-bottom:4px">Also on this circuit</label>
+            <div class="fp-related-list" id="edit-also-on-circuit-list"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-duplex" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Top (A) — HA entity</label><input type="text" id="edit-sub-a" placeholder="switch.kt_n3_a0_a"></div>
+            <div class="rd-field"><label>Bottom (B) — HA entity</label><input type="text" id="edit-sub-b" placeholder="switch.kt_n3_a0_b"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-data" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Patch Panel Port</label><input type="text" id="edit-patch-port" placeholder="e.g. 1A"></div>
+            <div class="rd-field"><label>Cable Run To</label><input type="text" id="edit-cable-run" placeholder="Destination HL address"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-light" style="display:none">
+          <div class="rd-field">
+            <label>Controlled By</label>
+            <select id="edit-controlled-by"></select>
+          </div>
+        </div>
+
+        <div id="edit-controls-list-wrap" style="display:none">
+          <label style="display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;color:var(--hil-text-muted);text-transform:uppercase;margin-bottom:4px">Controls</label>
+          <div class="fp-related-list" id="edit-controls-list"></div>
+        </div>
+
+        <div id="edit-fields-panel" style="display:none">
+          <div class="rd-field">
+            <label>Panel Code <span style="opacity:.6">(e.g. S2)</span></label>
+            <input type="text" id="edit-panel-code" placeholder="S2" maxlength="6" style="text-transform:uppercase">
+          </div>
+          <div class="fp-breaker-grid-wrap">
+            <svg id="breaker-grid-svg" width="100%" viewBox="0 0 260 220"></svg>
+          </div>
+          <div class="fp-breaker-list" id="fp-breaker-list"></div>
+          <div class="fp-breaker-add-form">
+            <div class="rd-field-row">
+              <div class="rd-field"><label>Row</label><select id="brk-row"></select></div>
+              <div class="rd-field"><label>Col</label><select id="brk-col"><option value="1">1 (Left)</option><option value="2">2 (Right)</option><option value="3">3 (Center)</option></select></div>
+            </div>
+            <div class="rd-field"><label>Label</label><input type="text" id="brk-label" placeholder="e.g. Kitchen Outlets"></div>
+            <div class="fp-checkbox-row"><input type="checkbox" id="brk-tandem"> Tandem (-T)</div>
+            <div class="fp-checkbox-row"><input type="checkbox" id="brk-dp"> Double Pole (-2P)</div>
+            <button class="rd-tool-btn small" onclick="addBreaker()">＋ Add Breaker</button>
+          </div>
+
+          <div class="rd-hint" style="margin:14px 0 8px;display:block;border-top:1px solid var(--hil-border);padding-top:12px">
+            LINKED APPLIANCES <span style="opacity:.6">— real Vault items, drag onto a breaker row above</span>
+          </div>
+          <div class="pnl-tray" id="pnl-tray">
+            <div class="pnl-tray-hint">Search below, then drag a card onto a breaker row above</div>
+          </div>
+          <div class="rd-field">
+            <label>Find Appliance <span style="opacity:.6">(search Vault, adds to tray above)</span></label>
+            <input type="text" id="pnl-search" placeholder="Start typing an item name…" autocomplete="off">
+            <div id="pnl-search-results" style="margin-top:4px"></div>
+          </div>
+        </div>
+
+        <div id="edit-fields-rack" style="display:none">
+          <div class="rd-field-row">
+            <div class="rd-field"><label>Rack Code <span style="opacity:.6">(e.g. RK1)</span></label><input type="text" id="edit-rack-code" placeholder="RK1" maxlength="6" style="text-transform:uppercase"></div>
+            <div class="rd-field"><label>Height (RU)</label><input type="number" id="edit-rack-size" min="1" max="60" value="12" onchange="onRackSizeChange()"></div>
+          </div>
+          <div class="rd-hint" style="margin:0 0 8px;display:block">RU1 is the bottom of the rack — same bottom-up rule as everything else.</div>
+          <div class="fp-breaker-grid-wrap">
+            <svg id="rack-grid-svg" width="100%" viewBox="0 0 260 220"></svg>
+          </div>
+          <div class="fp-breaker-list" id="fp-rack-port-list"></div>
+          <div class="fp-breaker-add-form">
+            <div class="rd-field-row">
+              <div class="rd-field"><label>RU</label><select id="rk-ru"></select></div>
+              <div class="rd-field"><label>Port</label><select id="rk-col"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+            </div>
+            <div class="rd-field"><label>Port Type</label><input type="text" id="rk-porttype" placeholder="RJ45 / USB / HDMI / Power"></div>
+            <div class="rd-field"><label>Label</label><input type="text" id="rk-label" placeholder="e.g. Uplink to switch"></div>
+            <div class="rd-field"><label>Terminates At <span style="opacity:.6">(HL address or free text)</span></label><input type="text" id="rk-term" placeholder="e.g. RK2-RU10-1 or panel breaker addr"></div>
+            <button class="rd-tool-btn small" onclick="addRackPort()">＋ Add Port</button>
+          </div>
+
+          <div class="rd-hint" style="margin:14px 0 8px;display:block;border-top:1px solid var(--hil-border);padding-top:12px">
+            RACK-MOUNTED DEVICES <span style="opacity:.6">— real Vault items, drag to place, tap to wire</span>
+          </div>
+          <div class="rkdev-frame">
+            <div class="rkdev-fillstat" id="rkdev-fillstat"></div>
+            <div class="rkdev-body" id="rkdev-body"></div>
+          </div>
+          <div class="rkdev-tray" id="rkdev-tray">
+            <div class="rkdev-tray-hint">Search below, then drag a card up into the rack</div>
+          </div>
+          <div class="rd-field">
+            <label>Find Item <span style="opacity:.6">(search Vault, adds to tray above)</span></label>
+            <input type="text" id="rk-dev-search" placeholder="Start typing an item name…" autocomplete="off">
+            <div id="rk-dev-search-results" style="margin-top:4px"></div>
+          </div>
+        </div>
+
+
+        <div class="rd-field">
+          <label>HA Entity <span style="opacity:.6">(single point)</span></label>
+          <input type="text" id="edit-ha-entity" placeholder="switch.kt_n3_a0">
+        </div>
+        <div class="rd-field">
+          <label>Installed Item ID <span style="opacity:.6">(optional — smart device here)</span></label>
+          <input type="text" id="edit-installed-item" placeholder="item_records doc id">
+        </div>
+        <div class="rd-field">
+          <label>Notes</label>
+          <input type="text" id="edit-notes" placeholder="Anything worth remembering">
+        </div>
+
+        <div class="rd-hint" style="margin:6px 0 0;display:block">Drag the icon on the canvas to move it.</div>
+        <div class="rd-edit-actions">
+          <button class="rd-tool-btn" onclick="savePointDetail()">💾 Save</button>
+          <button class="rd-tool-btn danger" onclick="deletePoint()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="rd-modal-overlay" id="new-point-modal">
+  <div class="rd-modal">
+    <h2>New Fixed Point</h2>
+    <div class="rd-type-note">Placed at this spot on the wall. Address is computed automatically from position — fill in the rest after placing.</div>
+    <div class="rd-field">
+      <label>Type</label>
+      <div class="rd-icon-picker" id="nc-type-picker"></div>
+    </div>
+    <div class="rd-modal-actions">
+      <button class="rd-tool-btn" onclick="saveNewPoint()">💾 Place</button>
+      <button class="rd-tool-btn danger" onclick="closeModal('new-point-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="rd-modal-overlay" id="legend-modal">
+  <div class="rd-modal">
+    <h2>Legend</h2>
+    <div class="fp-legend-grid" id="fp-legend-grid"></div>
+    <div class="rd-modal-actions">
+      <button class="rd-tool-btn" onclick="closeModal('legend-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="rd-modal-overlay" id="opening-edit-modal">
+  <div class="rd-modal">
+    <h2 id="opening-edit-title">Door Width</h2>
+    <div class="fp-preset-row" id="opening-edit-presets"></div>
+    <div class="rd-field">
+      <label>Width (inches)</label>
+      <input type="number" id="opening-edit-width" min="6" max="240" step="1" placeholder="32">
+    </div>
+    <div class="rd-modal-actions">
+      <button class="rd-tool-btn" onclick="saveOpeningWidth()">✓ Save</button>
+      <button class="rd-tool-btn danger" onclick="deleteOpeningFromModal()">🗑 Delete</button>
+    </div>
+    <div class="rd-modal-actions" style="margin-top:6px">
+      <button class="rd-tool-btn" onclick="closeModal('opening-edit-modal')" style="flex:1;text-align:center">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SNAP = 20;
+const PALETTE = ['#00cc66','#4a9eed','#ffd84c','#ff5c5c','#cc8800','#8a6de0','#4cd9ff','#ff8fb3'];
+
+const TYPE_DEFS = {
+  outlet:     { code: 'OT',   label: 'Outlet',        defaultColor: '#00cc66', hasCircuit: true, isDuplex: true,
+    glyph: '<rect x="6" y="4" width="12" height="16" rx="2" stroke="#222" stroke-width="1.6" fill="none"/><circle cx="12" cy="9" r="1.6" fill="#222"/><circle cx="12" cy="15" r="1.6" fill="#222"/>' },
+  switch:     { code: 'SW',   label: 'Switch',        defaultColor: '#cc8800', hasCircuit: true, isDuplex: false,
+    glyph: '<circle cx="12" cy="12" r="8" stroke="#222" stroke-width="1.6" fill="none"/><line x1="8" y1="15" x2="15" y2="7" stroke="#222" stroke-width="1.8" stroke-linecap="round"/>' },
+  gfci:       { code: 'GFCI', label: 'GFCI',          defaultColor: '#ff5c5c', hasCircuit: true, isDuplex: true,
+    glyph: '<rect x="6" y="4" width="12" height="16" rx="2" stroke="#222" stroke-width="1.6" fill="none"/><circle cx="12" cy="9" r="1.6" fill="#222"/><circle cx="12" cy="15" r="1.6" fill="#222"/><rect x="7.5" y="4.8" width="3.2" height="2" fill="#222"/><rect x="13.3" y="4.8" width="3.2" height="2" fill="#222"/>' },
+  data_port:  { code: 'KS',   label: 'Data/Keystone', defaultColor: '#4a9eed', hasCircuit: false, isDuplex: false,
+    glyph: '<rect x="5" y="5" width="14" height="14" transform="rotate(45 12 12)" stroke="#222" stroke-width="1.6" fill="none"/><line x1="8" y1="8" x2="16" y2="16" stroke="#222" stroke-width="1.4"/>' },
+  panel:      { code: 'PL',   label: 'Breaker Panel', defaultColor: '#8a6de0', hasCircuit: false, isDuplex: false, isPanel: true,
+    glyph: '<rect x="4" y="3" width="16" height="18" rx="1" stroke="#222" stroke-width="1.6" fill="none"/><line x1="4" y1="8" x2="20" y2="8" stroke="#222" stroke-width="1.2"/><line x1="12" y1="8" x2="12" y2="21" stroke="#222" stroke-width="1.2"/>' },
+  light:      { code: 'LT',   label: 'Light Fixture', defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<circle cx="12" cy="11" r="6" stroke="#222" stroke-width="1.6" fill="none"/><path d="M9 17l1.5 3h3L15 17" stroke="#222" stroke-width="1.4" fill="none" stroke-linejoin="round"/>' },
+  chandelier: { code: 'CH',   label: 'Chandelier',    defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<circle cx="12" cy="6" r="2" stroke="#222" stroke-width="1.4" fill="none"/><path d="M12 8v3M12 11L6 18M12 11l6 7M12 11L4 15M12 11l8 4" stroke="#222" stroke-width="1.2" fill="none"/><circle cx="6" cy="18" r="1.3" fill="#222"/><circle cx="18" cy="18" r="1.3" fill="#222"/><circle cx="4" cy="15" r="1.3" fill="#222"/><circle cx="20" cy="15" r="1.3" fill="#222"/>' },
+  sconce:     { code: 'SC',   label: 'Wall Sconce',   defaultColor: '#ffd84c', hasCircuit: true, isDuplex: false, isLoad: true,
+    glyph: '<line x1="4" y1="20" x2="4" y2="4" stroke="#222" stroke-width="1.8"/><path d="M4 8h8a4 4 0 0 1 0 8H4" stroke="#222" stroke-width="1.6" fill="none"/>' },
+  rack:       { code: 'RK',   label: 'Rack / Patch Panel', defaultColor: '#4cd9ff', hasCircuit: false, isDuplex: false, isRack: true,
+    glyph: '<rect x="5" y="2" width="14" height="20" stroke="#222" stroke-width="1.6" fill="none"/><line x1="5" y1="7" x2="19" y2="7" stroke="#222" stroke-width="1.2"/><line x1="5" y1="12" x2="19" y2="12" stroke="#222" stroke-width="1.2"/><line x1="5" y1="17" x2="19" y2="17" stroke="#222" stroke-width="1.2"/>' },
+};
+const TYPE_LIST = ['outlet','switch','gfci','data_port','panel','light','chandelier','sconce','rack'];
+const LEVELS = ['A','B','C','D','E','F','G'];
+const BREAKER_ROWS = ['H','G','F','E','D','C','B','A'];
+
+let db, currentUser;
+let _collection,_doc,_setDoc,_addDoc,_updateDoc,_deleteDoc,_onSnapshot,_serverTimestamp,_query,_where,_getDoc,_getDocs;
+
+const params = new URLSearchParams(location.search);
+let propertyId = params.get('property');
+let zoneCode = params.get('zone');
+
+let property = null;
+let zone = null;
+let structScale = {};
+let allPoints = [];
+let points = [];
+let openings = [];
+let unsubOpenings = null;
+let openingEditId = null;
+const DOOR_PRESETS = [28, 30, 32, 36];
+const WINDOW_PRESETS = [24, 30, 36, 48];
+let unsubAllPoints = null;
+let unsubZone = null;
+let unsubZoneList = null;
+let allZones = [];
+let mode = 'view';
+let selectedId = null;
+let pendingPlacePoint = null;
+let newPointType = 'outlet';
+let draggingId = null;
+let activeFilter = 'all';
+
+HILShell.init({
+  toolId:      'fixed-points',
+  toolName:    'Fixed Points',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+  currentUser = user;
+
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection = fsdk.collection; _doc = fsdk.doc; _setDoc = fsdk.setDoc;
+  _addDoc = fsdk.addDoc; _updateDoc = fsdk.updateDoc; _deleteDoc = fsdk.deleteDoc;
+  _onSnapshot = fsdk.onSnapshot; _serverTimestamp = fsdk.serverTimestamp;
+  _query = fsdk.query; _where = fsdk.where; _getDoc = fsdk.getDoc; _getDocs = fsdk.getDocs;
+
+  db = window.db;
+  buildLevelSelect();
+  buildFilters();
+  buildBreakerRowSelect();
+  buildLegend();
+
+  if (!propertyId || !zoneCode) {
+    await showPicker();
+  } else {
+    startZone();
+  }
+}
+
+async function showPicker() {
+  document.getElementById('fp-picker-wrap').style.display = 'block';
+  document.getElementById('rd-sub').textContent = 'Pick a room to overlay electrical points on.';
+
+  if (!propertyId) {
+    const snap = await _getDocs(_collection(db, 'users', currentUser.uid, 'properties'));
+    const props = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (props.length === 1) {
+      propertyId = props[0].id;
+      return showZonePicker();
+    }
+    document.getElementById('fp-picker-title').textContent = 'Choose a Property';
+    document.getElementById('fp-picker-list').innerHTML = props.length
+      ? props.map(p => `<div class="fp-picker-item" onclick="pickProperty('${p.id}')">${escapeHtml(p.name || p.id)}</div>`).join('')
+      : `<div class="rd-empty-panel">No properties found. Build a floor plan first in Room Visualizer.</div>`;
+    return;
+  }
+  showZonePicker();
+}
+
+function pickProperty(id) {
+  propertyId = id;
+  showZonePicker();
+}
+
+async function showZonePicker() {
+  document.getElementById('fp-picker-title').textContent = 'Choose a Room';
+  const snap = await _getDocs(_collection(db, 'users', currentUser.uid, 'properties', propertyId, 'zones'));
+  const zones = snap.docs.map(d => ({ code: d.id, ...d.data() }));
+  document.getElementById('fp-picker-list').innerHTML = zones.length
+    ? zones.map(z => `<div class="fp-picker-item" onclick="pickZone('${z.code}')">${escapeHtml(z.label)} <span style="opacity:.5">(${z.code})</span></div>`).join('')
+    : `<div class="rd-empty-panel">No rooms drawn yet on this property. Draw one in Room Visualizer first.</div>`;
+}
+
+function pickZone(code) {
+  zoneCode = code;
+  const url = new URL(location.href);
+  url.searchParams.set('property', propertyId);
+  url.searchParams.set('zone', zoneCode);
+  history.replaceState(null, '', url);
+  document.getElementById('fp-picker-wrap').style.display = 'none';
+  startZone();
+}
+
+function jumpToPoint(id) {
+  const p = allPoints.find(pt => pt.id === id);
+  if (!p) return;
+  if (p.zone_code === zoneCode) { selectPoint(id); return; }
+  switchZone(p.zone_code);
+  setTimeout(() => selectPoint(id), 50);
+}
+
+async function startZone() {
+  try {
+    const propSnap = await _getDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId));
+    if (propSnap.exists()) {
+      property = propSnap.data();
+      structScale = (property.floorplan && property.floorplan.struct_scale) || {};
+    }
+  } catch (e) { /* scale defaults to 1 ft/square if this fails — non-fatal */ }
+
+  document.getElementById('fp-main-wrap').style.display = 'block';
+  watchZone();
+  watchAllPoints();
+  watchZoneList();
+  watchOpenings();
+}
+
+function watchOpenings() {
+  if (unsubOpenings) unsubOpenings();
+  const q = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'openings');
+  unsubOpenings = _onSnapshot(q, snap => {
+    openings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderRoom();
+  }, err => HILShell.toast('Openings load error: ' + err.message, 'error'));
+}
+
+function openingsForZone() {
+  if (!zone || !zone.struct_code) return [];
+  return openings.filter(o => o.struct_code === zone.struct_code);
+}
+
+function watchZone() {
+  if (unsubZone) unsubZone();
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', zoneCode);
+  unsubZone = _onSnapshot(zoneRef, snap => {
+    if (!snap.exists()) {
+      document.getElementById('rd-sub').textContent = 'This room no longer exists — it may have been deleted from the Floor Plan.';
+      return;
+    }
+    zone = snap.data();
+    document.getElementById('rd-title').textContent = 'Fixed Points — ' + zone.label;
+    document.getElementById('rd-sub').textContent = `${zone.struct_code} · ${zoneCode} · Electrical overlay`;
+    renderRoom();
+    recomputeAddresses();
+  }, err => HILShell.toast('Room load error: ' + err.message, 'error'));
+}
+
+function watchZoneList() {
+  if (unsubZoneList) unsubZoneList();
+  const q = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'zones');
+  unsubZoneList = _onSnapshot(q, snap => {
+    allZones = snap.docs.map(d => ({ code: d.id, ...d.data() })).sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+    renderZoneSidebar();
+  }, err => HILShell.toast('Room list load error: ' + err.message, 'error'));
+}
+
+function renderZoneSidebar() {
+  const el = document.getElementById('fp-room-list');
+  if (!allZones.length) {
+    el.innerHTML = `<div class="rd-empty-panel" style="padding:8px 0">No rooms on this property yet.</div>`;
+    return;
+  }
+  el.innerHTML = allZones.map(z => `
+    <div class="fp-room-item ${z.code === zoneCode ? 'active' : ''}" onclick="switchZone('${z.code}')">
+      ${escapeHtml(z.label)}
+      <span class="code">${z.struct_code} · ${z.code}</span>
+    </div>
+  `).join('');
+}
+
+function switchZone(code) {
+  if (code === zoneCode) return;
+  zoneCode = code;
+  selectedId = null;
+  hideEditBlock();
+  const url = new URL(location.href);
+  url.searchParams.set('property', propertyId);
+  url.searchParams.set('zone', zoneCode);
+  history.replaceState(null, '', url);
+  watchZone();
+  points = allPoints.filter(p => p.zone_code === zoneCode);
+  recomputeAddresses();
+  renderZoneSidebar();
+}
+
+function switchProperty() {
+  if (unsubZone) unsubZone();
+  if (unsubAllPoints) unsubAllPoints();
+  if (unsubZoneList) unsubZoneList();
+  if (unsubOpenings) unsubOpenings();
+  propertyId = null;
+  zoneCode = null;
+  selectedId = null;
+  hideEditBlock();
+  document.getElementById('fp-main-wrap').style.display = 'none';
+  const url = new URL(location.href);
+  url.searchParams.delete('property');
+  url.searchParams.delete('zone');
+  history.replaceState(null, '', url);
+  showPicker();
+}
+
+function buildLegend() {
+  const el = document.getElementById('fp-legend-grid');
+  el.innerHTML = TYPE_LIST.map(t => {
+    const def = TYPE_DEFS[t];
+    return `
+      <div class="fp-legend-row">
+        <div class="fp-legend-dot" style="background:${def.defaultColor}"></div>
+        <div class="fp-legend-code">${def.code}</div>
+        <div class="fp-legend-label">${def.label}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function onOpeningClick(openingId, evt) {
+  evt.stopPropagation();
+  if (mode === 'place') return;
+  const o = openings.find(x => x.id === openingId);
+  if (!o) return;
+  openingEditId = openingId;
+  const presets = o.type === 'door' ? DOOR_PRESETS : o.type === 'window' ? WINDOW_PRESETS : [];
+  const currentWidth = o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48);
+  const title = o.type === 'door' ? 'Door' : o.type === 'window' ? 'Window' : 'Opening';
+  document.getElementById('opening-edit-title').textContent = title + ' Width';
+  document.getElementById('opening-edit-presets').innerHTML = presets.map(w => `
+    <button class="fp-preset-btn ${w === currentWidth ? 'active' : ''}" data-w="${w}" onclick="pickOpeningEditPreset(${w})">${w}"</button>
+  `).join('');
+  document.getElementById('opening-edit-width').value = currentWidth;
+  openModal('opening-edit-modal');
+}
+
+function pickOpeningEditPreset(w) {
+  document.getElementById('opening-edit-width').value = w;
+  [...document.getElementById('opening-edit-presets').children].forEach(b => b.classList.toggle('active', parseInt(b.dataset.w, 10) === w));
+}
+
+async function saveOpeningWidth() {
+  if (!openingEditId) return;
+  const widthIn = parseInt(document.getElementById('opening-edit-width').value, 10);
+  if (!widthIn || widthIn < 6 || widthIn > 240) { HILShell.toast('Enter a width between 6 and 240 inches', 'error'); return; }
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'openings', openingEditId),
+      { width_in: widthIn, updated_at: _serverTimestamp() });
+    HILShell.toast('Saved — ' + widthIn + '" opening', 'success');
+  } catch (err) {
+    HILShell.toast('Could not save: ' + err.message, 'error');
+    return;
+  }
+  openingEditId = null;
+  closeModal('opening-edit-modal');
+}
+
+async function deleteOpeningFromModal() {
+  if (!openingEditId) return;
+  if (!confirm('Remove this opening?')) return;
+  try {
+    await _deleteDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'openings', openingEditId));
+    HILShell.toast('Removed', 'success');
+  } catch (err) {
+    HILShell.toast('Could not delete: ' + err.message, 'error');
+    return;
+  }
+  openingEditId = null;
+  closeModal('opening-edit-modal');
+}
+
+function renderRoom() {
+  if (!zone || !zone.map_polygon) return;
+  const pts = zone.map_polygon.points || [];
+  if (!pts.length) return;
+
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const pad = 40;
+  const vb = `${minX - pad} ${minY - pad} ${(maxX - minX) + pad * 2} ${(maxY - minY) + pad * 2}`;
+  document.getElementById('rd-svg').setAttribute('viewBox', vb);
+
+  const ptsAttr = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const openingsMarkup = openingsForZone().map(o => {
+    const color = o.type === 'door' ? '#cc8800' : o.type === 'window' ? '#4cd9ff' : '#8a9a86';
+    const label = o.type === 'door' ? 'D' : o.type === 'window' ? 'W' : '';
+    const widthIn = o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48);
+    const scale = (zone.struct_code && structScale[zone.struct_code]) || 1;
+    const pxPerFt = SNAP / scale;
+    const lengthPx = Math.max(14, (widthIn / 12) * pxPerFt);
+    const angle = o.angle || 0;
+    return `
+      <g class="rv-opening" transform="translate(${o.x},${o.y}) rotate(${angle})" onclick="onOpeningClick('${o.id}', event)">
+        <rect x="${-lengthPx/2}" y="-5" width="${lengthPx}" height="10" fill="${color}" stroke="#000" stroke-width="1.5" opacity="0.85"></rect>
+        ${label ? `<text x="0" y="4" transform="rotate(${-angle})" text-anchor="middle" font-size="9" font-weight="bold" fill="#000" font-family="monospace" pointer-events="none">${label}</text>` : ''}
+      </g>
+    `;
+  }).join('');
+  document.getElementById('room-layer').innerHTML = `
+    <rect x="${minX - pad}" y="${minY - pad}" width="${(maxX-minX)+pad*2}" height="${(maxY-minY)+pad*2}" fill="url(#grid)"/>
+    <polygon class="rd-room-bg" points="${ptsAttr}" fill="${zone.color}22" stroke="${zone.color}"></polygon>
+    ${openingsMarkup}
+  `;
+
+  const cx = maxX + pad - 34, cy = minY + pad + 34;
+  document.getElementById('compass').innerHTML = `
+    <circle cx="${cx}" cy="${cy}" r="26" fill="rgba(0,0,0,.55)" stroke="#4a9eed" stroke-width="1.5"></circle>
+    <text x="${cx}" y="${cy-14}" text-anchor="middle" font-size="12" fill="#4a9eed" font-weight="bold" font-family="monospace">N</text>
+    <text x="${cx+19}" y="${cy+4}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">E</text>
+    <text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">S</text>
+    <text x="${cx-19}" y="${cy+4}" text-anchor="middle" font-size="10" fill="#7a8a76" font-family="monospace">W</text>
+    <line x1="${cx}" y1="${cy-18}" x2="${cx}" y2="${cy+18}" stroke="#3a453a" stroke-width="1"></line>
+    <line x1="${cx-18}" y1="${cy}" x2="${cx+18}" y2="${cy}" stroke="#3a453a" stroke-width="1"></line>
+  `;
+}
+
+function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+      (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+const WALL_DIST_THRESHOLD = 60;
+function nearestPointOnSegmentFP(p, a, b) {
+  const abx = b.x - a.x, aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  if (len2 === 0) return a;
+  let t = ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return { x: a.x + abx * t, y: a.y + aby * t };
+}
+
+function anchorForPosition(pos) {
+  const poly = zone?.map_polygon?.points;
+  if (!poly || poly.length < 3) return 'F';
+
+  const xs = poly.map(p => p.x), ys = poly.map(p => p.y);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+
+  let bestDist = Infinity, bestSeg = null;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const nearest = nearestPointOnSegmentFP(pos, a, b);
+    const d = Math.hypot(nearest.x - pos.x, nearest.y - pos.y);
+    if (d < bestDist) { bestDist = d; bestSeg = { a, b, mid: { x: (a.x+b.x)/2, y: (a.y+b.y)/2 } }; }
+  }
+
+  if (bestDist > WALL_DIST_THRESHOLD || !bestSeg) return 'F';
+
+  const dx = Math.abs(bestSeg.b.x - bestSeg.a.x);
+  const dy = Math.abs(bestSeg.b.y - bestSeg.a.y);
+  if (dy > dx) {
+    return bestSeg.mid.x < cx ? 'W' : 'E';
+  } else {
+    return bestSeg.mid.y < cy ? 'N' : 'S';
+  }
+}
+
+function recomputeAddresses() {
+  if (!zone || !zone.struct_code) return;
+  const structCode = zone.struct_code;
+  const list = points.filter(p => p.room_position);
+
+  const groups = {};
+  list.forEach(p => {
+    const anchor = anchorForPosition(p.room_position);
+    p._anchor = anchor;
+    (groups[anchor] = groups[anchor] || []).push(p);
+  });
+
+  Object.entries(groups).forEach(([anchor, items]) => {
+    if (anchor === 'F') {
+      items.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
+    } else if (anchor === 'N' || anchor === 'S') {
+      items.sort((a, b) => a.room_position.x - b.room_position.x);
+    } else {
+      items.sort((a, b) => a.room_position.y - b.room_position.y);
+    }
+    items.forEach((p, i) => {
+      const col = anchor === 'F' ? '' : String(i + 1);
+      const level = p.level || 'A';
+      p._computedAddress = `${structCode}-${zoneCode}-${anchor}${col}-${level}0`;
+    });
+  });
+
+  list.forEach(p => {
+    if (p._computedAddress && p._computedAddress !== p.hl_address) {
+      _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+        { hl_address: p._computedAddress, updated_at: _serverTimestamp() }).catch(() => {});
+    }
+  });
+
+  renderPoints();
+  renderList();
+}
+
+function watchAllPoints() {
+  if (unsubAllPoints) unsubAllPoints();
+  const q = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points');
+  unsubAllPoints = _onSnapshot(q, snap => {
+    allPoints = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    points = allPoints.filter(p => p.zone_code === zoneCode);
+    recomputeAddresses();
+    refreshOpenEditPanel();
+  }, err => HILShell.toast('Fixed Points load error: ' + err.message, 'error'));
+}
+
+function refreshOpenEditPanel() {
+  if (selectedId && findPoint(selectedId)) selectPoint(selectedId);
+}
+
+function setMode(m) {
+  mode = m;
+  selectedId = null;
+  hideEditBlock();
+  document.getElementById('btn-place').classList.toggle('active', m === 'place');
+  document.getElementById('btn-view').classList.toggle('active', m === 'view');
+  document.getElementById('canvas-wrap').classList.toggle('placing', m === 'place');
+  document.getElementById('rd-hint').textContent = m === 'place'
+    ? 'Tap anywhere inside the room to place a point'
+    : 'Tap a point to select it, or drag it to move';
+  renderPoints();
+}
+
+function buildFilters() {
+  const el = document.getElementById('fp-filters');
+  const chips = [{ key: 'all', label: 'All' }, ...TYPE_LIST.map(t => ({ key: t, label: TYPE_DEFS[t].code }))];
+  el.innerHTML = chips.map(c => `<div class="fp-filter-chip ${c.key === activeFilter ? 'active' : ''}" data-filter="${c.key}" onclick="setFilter('${c.key}')">${c.label}</div>`).join('');
+}
+function setFilter(key) {
+  activeFilter = key;
+  document.querySelectorAll('.fp-filter-chip').forEach(el => el.classList.toggle('active', el.dataset.filter === key));
+  renderPoints();
+  renderList();
+}
+function visiblePoints() {
+  return activeFilter === 'all' ? points : points.filter(p => p.type === activeFilter);
+}
+
+function buildLevelSelect() {
+  const sel = document.getElementById('edit-level');
+  sel.innerHTML = LEVELS.map(l => `<option value="${l}">${l}${l === 'A' ? ' (floor/low)' : ''}</option>`).join('');
+}
+function buildBreakerRowSelect() {
+  const sel = document.getElementById('brk-row');
+  sel.innerHTML = BREAKER_ROWS.map(r => `<option value="${r}">${r}${r === 'A' ? ' (bottom)' : (r === 'H' ? ' (top)' : '')}</option>`).join('');
+}
+
+document.getElementById('rd-svg').addEventListener('click', evt => {
+  if (mode !== 'place') return;
+  const p = svgPointFromEvent(evt);
+  if (!zone || !pointInPolygon(p, zone.map_polygon.points)) {
+    HILShell.toast('Place inside the room outline', 'error');
+    return;
+  }
+  pendingPlacePoint = p;
+  newPointType = 'outlet';
+  buildTypePicker();
+  openModal('new-point-modal');
+});
+
+function buildTypePicker() {
+  const el = document.getElementById('nc-type-picker');
+  el.innerHTML = TYPE_LIST.map(t => `
+    <div class="rd-icon-swatch ${t === newPointType ? 'active' : ''}" data-type="${t}" onclick="pickNewType('${t}')">
+      <svg viewBox="0 0 24 24">${TYPE_DEFS[t].glyph}</svg>
+      <span>${TYPE_DEFS[t].code}</span>
+    </div>
+  `).join('');
+}
+function pickNewType(t) {
+  newPointType = t;
+  document.querySelectorAll('#nc-type-picker .rd-icon-swatch').forEach(el => el.classList.toggle('active', el.dataset.type === t));
+}
+
+function svgPointFromEvent(evt) {
+  const svg = document.getElementById('rd-svg');
+  const pt = svg.createSVGPoint();
+  const t = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+  pt.x = t.clientX; pt.y = t.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: Math.round(loc.x / SNAP) * SNAP, y: Math.round(loc.y / SNAP) * SNAP };
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function saveNewPoint() {
+  if (!pendingPlacePoint) { HILShell.toast('Placement point lost — tap the room again', 'error'); return; }
+
+  const type = newPointType;
+  const def = TYPE_DEFS[type];
+  const pointId = `${def.code}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const roomPosition = { x: pendingPlacePoint.x, y: pendingPlacePoint.y };
+
+  const doc = {
+    hl_address: null,
+    family: 'E',
+    type,
+    name: '',
+    level: 'A',
+    color: def.defaultColor,
+    room_position: roomPosition,
+    zone_code: zoneCode,
+    struct_code: zone.struct_code,
+    sub_points: { A: null, B: null },
+    ha_entity: null,
+    installed_item_id: null,
+    panel_ref: null, breaker_id: null, circuit: null,
+    voltage: (def.hasCircuit ? 120 : null),
+    amperage: null,
+    patch_panel_port: null, cable_run_to: null,
+    controlled_by: null,
+    panel_code: def.isPanel ? 'P1' : null,
+    breakers: def.isPanel ? [] : null,
+    rack_code: def.isRack ? 'RK1' : null,
+    rack_size_ru: def.isRack ? 12 : null,
+    rack_ports: def.isRack ? [] : null,
+    notes: '',
+    owner_uid: currentUser.uid,
+    created_at: _serverTimestamp(), updated_at: _serverTimestamp(),
+  };
+
+  try {
+    await _setDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', pointId), doc);
+  } catch (err) {
+    HILShell.toast('Could not place point: ' + err.message, 'error');
+    return; // leave the modal open so nothing is lost
+  }
+  HILShell.toast('Placed: ' + def.label, 'success');
+
+  pendingPlacePoint = null;
+  closeModal('new-point-modal');
+}
+
+function renderPoints() {
+  const layer = document.getElementById('points-layer');
+  layer.innerHTML = visiblePoints().map(p => {
+    const pos = p.room_position || { x: 0, y: 0 };
+    const isSelected = selectedId === p.id;
+    const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+    const color = p.color || def.defaultColor;
+    const glyph = def.glyph;
+
+    const bg = `<circle cx="${pos.x}" cy="${pos.y}" r="14" fill="#fff" stroke="${color}" stroke-width="3"></circle>`;
+    const glyphG = `<g transform="translate(${pos.x-9},${pos.y-9}) scale(0.75)">${glyph}</g>`;
+
+    return `
+      <g class="rd-container-icon ${isSelected ? 'selected' : ''}"
+        onmousedown="startDrag(event,'${p.id}')"
+        ontouchstart="startDrag(event,'${p.id}')"
+        onclick="selectPoint('${p.id}', event)">
+        ${bg}${glyphG}
+      </g>
+    `;
+  }).join('');
+}
+
+function findPoint(id) { return allPoints.find(p => p.id === id); }
+
+function selectPoint(id, evt) {
+  if (evt) evt.stopPropagation();
+  if (mode === 'place') return;
+  selectedId = id;
+  const p = findPoint(id);
+  if (!p) { hideEditBlock(); return; }
+
+  const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+
+  document.getElementById('edit-block').style.display = 'block';
+  document.getElementById('edit-name').value = p.name || '';
+  updateAddressReadout();
+  document.getElementById('edit-level').value = p.level || 'A';
+  buildColorSwatches('edit-color', p.color || def.defaultColor);
+
+  document.getElementById('edit-fields-circuit').style.display = def.hasCircuit ? 'block' : 'none';
+  document.getElementById('edit-amperage-wrap').style.display = (p.type === 'switch' || def.isLoad) ? 'none' : 'block';
+  document.getElementById('edit-fields-duplex').style.display = def.isDuplex ? 'block' : 'none';
+  document.getElementById('edit-fields-data').style.display = (p.type === 'data_port') ? 'block' : 'none';
+  document.getElementById('edit-fields-light').style.display = def.isLoad ? 'block' : 'none';
+  document.getElementById('edit-controls-list-wrap').style.display = (p.type === 'switch') ? 'block' : 'none';
+  document.getElementById('edit-fields-panel').style.display = def.isPanel ? 'block' : 'none';
+  document.getElementById('edit-fields-rack').style.display = def.isRack ? 'block' : 'none';
+
+  if (def.hasCircuit) {
+    populatePanelRefSelect(p.panel_ref);
+    onPanelRefChange(p.breaker_id);
+    document.getElementById('edit-voltage').value = p.voltage ?? '';
+    document.getElementById('edit-amperage').value = p.amperage ?? '';
+    renderAlsoOnCircuit(p);
+  }
+  if (def.isDuplex) {
+    document.getElementById('edit-sub-a').value = (p.sub_points && p.sub_points.A) || '';
+    document.getElementById('edit-sub-b').value = (p.sub_points && p.sub_points.B) || '';
+  }
+  if (p.type === 'data_port') {
+    document.getElementById('edit-patch-port').value = p.patch_panel_port || '';
+    document.getElementById('edit-cable-run').value = p.cable_run_to || '';
+  }
+  if (def.isLoad) {
+    populateControlledBySelect(p.controlled_by);
+  }
+  if (p.type === 'switch') {
+    renderControlsList(p);
+  }
+  if (def.isPanel) {
+    document.getElementById('edit-panel-code').value = p.panel_code || 'P1';
+    renderBreakerGrid(p);
+    panelApplianceTray = []; // don't carry pending search picks over from a previously-viewed panel
+    loadPanelAppliances(p); // also calls renderBreakerList once appliances are loaded
+  }
+  if (def.isRack) {
+    document.getElementById('edit-rack-code').value = p.rack_code || 'RK1';
+    document.getElementById('edit-rack-size').value = p.rack_size_ru || 12;
+    buildRackRuSelect(p.rack_size_ru || 12);
+    renderRackGrid(p);
+    renderRackPortList(p);
+    rackTray = []; // don't carry pending search picks over from a previously-viewed rack
+    loadRackDevices(p);
+  }
+
+  document.getElementById('edit-ha-entity').value = p.ha_entity || '';
+  document.getElementById('edit-installed-item').value = p.installed_item_id || '';
+  document.getElementById('edit-notes').value = p.notes || '';
+
+  renderPoints();
+  renderList();
+}
+
+function hideEditBlock() {
+  document.getElementById('edit-block').style.display = 'none';
+}
+
+function updateAddressReadout() {
+  const p = findPoint(selectedId);
+  const el = document.getElementById('edit-address');
+  if (!p || !el) return;
+  el.textContent = p._computedAddress || p.hl_address || '';
+}
+
+function buildColorSwatches(containerId, activeColor) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = PALETTE.map(c => `<div class="rv-swatch ${c === activeColor ? 'active' : ''}" data-color="${c}" style="background:${c}" onclick="pickColor('${containerId}','${c}')"></div>`).join('');
+  el.dataset.selected = activeColor;
+}
+function pickColor(containerId, color) {
+  const el = document.getElementById(containerId);
+  el.dataset.selected = color;
+  [...el.children].forEach(s => s.classList.toggle('active', s.dataset.color === color));
+}
+
+function allPanels() { return allPoints.filter(p => p.type === 'panel'); }
+
+function breakerAddress(panel, brk) {
+  if (!panel || !brk) return null;
+  const code = panel.panel_code || 'P1';
+  let addr = `EL-${panel.zone_code}-${code}-${brk.col}${brk.row}`;
+  if (brk.tandem) addr += '-T';
+  if (brk.double_pole) addr += '-2P';
+  return addr;
+}
+
+function populatePanelRefSelect(currentPanelId) {
+  const sel = document.getElementById('edit-panel-ref');
+  const panels = allPanels();
+  sel.innerHTML = `<option value="">— No panel linked —</option>` +
+    panels.map(pl => `<option value="${pl.id}" ${pl.id === currentPanelId ? 'selected' : ''}>${escapeHtml(pl.name || pl.panel_code || pl.id)} (${pl.zone_code})</option>`).join('');
+}
+
+function onPanelRefChange(presetBreakerId) {
+  const panelId = document.getElementById('edit-panel-ref').value;
+  const panel = allPoints.find(p => p.id === panelId);
+  const brkSel = document.getElementById('edit-breaker-id');
+  const breakers = (panel && panel.breakers) || [];
+  brkSel.innerHTML = `<option value="">— Select breaker —</option>` +
+    breakers.map(b => `<option value="${b.id}">${b.label ? escapeHtml(b.label) + ' — ' : ''}${b.col}${b.row}${b.tandem ? '-T' : ''}${b.double_pole ? '-2P' : ''}</option>`).join('');
+  if (presetBreakerId) brkSel.value = presetBreakerId;
+  onBreakerSelectChange();
+}
+
+function onBreakerSelectChange() {
+  const panelId = document.getElementById('edit-panel-ref').value;
+  const breakerId = document.getElementById('edit-breaker-id').value;
+  const panel = allPoints.find(p => p.id === panelId);
+  const brk = panel && (panel.breakers || []).find(b => b.id === breakerId);
+  const el = document.getElementById('edit-circuit-addr');
+  el.textContent = brk ? breakerAddress(panel, brk) : 'No circuit linked';
+}
+
+function renderAlsoOnCircuit(p) {
+  const wrap = document.getElementById('edit-also-on-circuit');
+  const list = document.getElementById('edit-also-on-circuit-list');
+  if (!p.panel_ref || !p.breaker_id) { wrap.style.display = 'none'; return; }
+  const siblings = allPoints.filter(o => o.id !== p.id && o.panel_ref === p.panel_ref && o.breaker_id === p.breaker_id);
+  if (!siblings.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  list.innerHTML = siblings.map(s => `
+    <div class="fp-related-row" onclick="jumpToPoint('${s.id}')">
+      <span>●</span> ${escapeHtml(s.name || TYPE_DEFS[s.type].label)} — ${s.zone_code}${s.zone_code !== zoneCode ? ' ↗' : ''}
+    </div>
+  `).join('');
+}
+
+function populateControlledBySelect(currentSwitchId) {
+  const sel = document.getElementById('edit-controlled-by');
+  const switches = allPoints.filter(p => p.type === 'switch');
+  sel.innerHTML = `<option value="">— No switch linked —</option>` +
+    switches.map(s => `<option value="${s.id}" ${s.id === currentSwitchId ? 'selected' : ''}>${escapeHtml(s.name || s._computedAddress || s.id)} (${s.zone_code})</option>`).join('');
+}
+
+function renderControlsList(p) {
+  const list = document.getElementById('edit-controls-list');
+  const controlled = allPoints.filter(o => o.controlled_by === p.id);
+  if (!controlled.length) { list.innerHTML = `<div class="rd-hint" style="margin-left:0">Not linked to any fixtures yet.</div>`; return; }
+  list.innerHTML = controlled.map(c => `
+    <div class="fp-related-row" onclick="jumpToPoint('${c.id}')">
+      <span>●</span> ${escapeHtml(c.name || TYPE_DEFS[c.type].label)} — ${c.zone_code}${c.zone_code !== zoneCode ? ' ↗' : ''}
+    </div>
+  `).join('');
+}
+
+function renderBreakerGrid(panel) {
+  const svg = document.getElementById('breaker-grid-svg');
+  const breakers = panel.breakers || [];
+  const rows = BREAKER_ROWS;
+  const cellW = 60, cellH = 22, gap = 4, labelW = 20;
+  const hasCenter = breakers.some(b => b.col === '3');
+  const cols = hasCenter ? ['1','2','3'] : ['1','2'];
+
+  let svgRows = '';
+  rows.forEach((row, ri) => {
+    const y = ri * (cellH + gap);
+    svgRows += `<text x="10" y="${y + cellH/2 + 4}" text-anchor="middle" font-size="9" fill="#00cc66" font-family="monospace">${row}</text>`;
+    cols.forEach((col, ci) => {
+      const x = labelW + ci * (cellW + gap);
+      const brk = breakers.find(b => b.row === row && b.col === col);
+      const fill = brk ? 'rgba(0,204,102,.16)' : '#1a1a1a';
+      const stroke = brk ? '#00cc66' : '#333';
+      const text = brk ? (brk.label ? brk.label.slice(0, 10) : `${col}${row}`) : `${col}${row}`;
+      const textColor = brk ? '#00cc66' : '#555';
+      svgRows += `
+        <rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+        <text x="${x + cellW/2}" y="${y + cellH/2 + 3}" text-anchor="middle" font-size="8" fill="${textColor}" font-family="monospace">${escapeHtml(text)}</text>
+      `;
+    });
+  });
+  const totalW = labelW + cols.length * (cellW + gap);
+  const totalH = rows.length * (cellH + gap);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.innerHTML = svgRows;
+}
+
+function renderBreakerList(panel) {
+  const el = document.getElementById('fp-breaker-list');
+  const breakers = panel.breakers || [];
+  if (!breakers.length) { el.innerHTML = `<div class="rd-hint" style="margin-left:0">No breakers added yet.</div>`; return; }
+  el.innerHTML = breakers.map(b => {
+    const linked = panelAppliances.filter(it => it.panel_connection?.breaker_id === b.id);
+    return `
+      <div class="fp-breaker-list-row pnl-drop-row" data-breaker-id="${b.id}">
+        <span>${breakerAddress(panel, b)}${b.label ? ' — ' + escapeHtml(b.label) : ''}</span>
+        <span class="del" onclick="deleteBreaker('${b.id}')">🗑</span>
+      </div>
+      ${linked.length ? `<div class="pnl-linked-chips">
+        ${linked.map(it => `
+          <span class="pnl-chip" data-item-id="${it.id}">
+            ${escapeHtml(it.display_name || it.name || it.id)}
+            <span class="pnl-chip-x" data-unlink="${it.id}">×</span>
+          </span>
+        `).join('')}
+      </div>` : ''}
+    `;
+  }).join('');
+
+  el.querySelectorAll('[data-unlink]').forEach(x => {
+    x.addEventListener('click', e => {
+      e.stopPropagation();
+      unlinkApplianceFromBreaker(x.dataset.unlink);
+    });
+  });
+  // Already-linked chips are draggable too, so moving an appliance to a
+  // different breaker doesn't require unlinking first.
+  el.querySelectorAll('.pnl-chip').forEach(chip => {
+    const item = panelAppliances.find(it => it.id === chip.dataset.itemId);
+    if (item) attachPanelDrag(chip, item, false);
+  });
+}
+
+async function addBreaker() {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const row = document.getElementById('brk-row').value;
+  const col = document.getElementById('brk-col').value;
+  const label = document.getElementById('brk-label').value.trim();
+  const tandem = document.getElementById('brk-tandem').checked;
+  const double_pole = document.getElementById('brk-dp').checked;
+  const id = 'brk_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const breakers = [...(p.breakers || []), { id, row, col, label, tandem, double_pole }];
+
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+      { breakers, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not add breaker: ' + err.message, 'error');
+    return;
+  }
+  p.breakers = breakers;
+  document.getElementById('brk-label').value = '';
+  document.getElementById('brk-tandem').checked = false;
+  document.getElementById('brk-dp').checked = false;
+  renderBreakerGrid(p);
+  renderBreakerList(p);
+  HILShell.toast('Breaker added', 'success');
+}
+
+async function deleteBreaker(breakerId) {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const breakers = (p.breakers || []).filter(b => b.id !== breakerId);
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+      { breakers, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not delete breaker: ' + err.message, 'error');
+    return;
+  }
+  p.breakers = breakers;
+  renderBreakerGrid(p);
+  renderBreakerList(p);
+}
+
+// ══════════════════════════════════════
+// PANEL-LINKED APPLIANCES (panel_connection) — real item_records, linking
+// an appliance directly to a breaker. Mirrors the panel_ref/breaker_id
+// pattern outlets and switches already use, just living on the item_record
+// side. panel_connection is a narrow frontend-writable field-level
+// exception on item_records (same write class as room_position and
+// rack_position), so these functions write directly via _updateDoc — no
+// hil-admin-action round trip. See firestore.rules item_records
+// update-exception block.
+//
+// Unlike rack_position, multiple appliances CAN legitimately share one
+// breaker (a fridge and a microwave on the same kitchen circuit) — so
+// there's no collision check here, just a many-to-one query.
+//
+// Known gap: deleting a breaker doesn't clear panel_connection on any
+// appliance still pointing at it — same class of orphan-reference risk
+// that already exists elsewhere (e.g. removing a rack PDU that other
+// devices are still wired to). Not handled here; flag if that's wanted.
+// ══════════════════════════════════════
+
+let panelAppliances = [];      // items currently linked to a breaker on the selected panel
+let panelApplianceTray = [];   // items picked via search, awaiting drag-in (not yet written)
+let panelDragCtx = null;
+
+async function loadPanelAppliances(panel) {
+  try {
+    const snap = await _getDocs(_query(
+      _collection(db, 'users', currentUser.uid, 'item_records'),
+      _where('panel_connection.fixed_point_id', '==', panel.id)
+    ));
+    panelAppliances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    HILShell.toast('Could not load linked appliances: ' + err.message, 'error');
+    panelAppliances = [];
+  }
+  renderBreakerList(panel);
+  renderPanelApplianceTray();
+}
+
+function renderPanelApplianceTray() {
+  const tray = document.getElementById('pnl-tray');
+  if (!tray) return;
+  if (!panelApplianceTray.length) {
+    tray.innerHTML = '<div class="pnl-tray-hint">Search below, then drag a card onto a breaker row above</div>';
+    return;
+  }
+  tray.innerHTML = '';
+  panelApplianceTray.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'pnl-tray-card';
+    card.dataset.id = it.id;
+    card.textContent = it.name;
+    tray.appendChild(card);
+    attachPanelDrag(card, it, true);
+  });
+}
+
+// Simpler drag than the rack elevation: no spatial grid math needed since
+// breaker rows are just a list. A floating ghost follows the pointer;
+// document.elementFromPoint() finds which breaker row (if any) it's
+// currently over, highlighting it live.
+function attachPanelDrag(el, refItem, isTrayItem) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false;
+    function move(ev) {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) > 6 || Math.abs(ev.clientY - startY) > 6) {
+          dragging = true;
+          beginPanelDrag(refItem, isTrayItem, ev);
+        } else return;
+      }
+      onPanelDragMove(ev);
+    }
+    function up(ev) {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (dragging) onPanelDragEnd(ev);
+    }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  });
+}
+
+function beginPanelDrag(item, isTrayItem, e) {
+  const ghost = document.createElement('div');
+  ghost.className = 'pnl-drag-ghost';
+  ghost.textContent = item.name || item.display_name || item.id;
+  document.body.appendChild(ghost);
+  panelDragCtx = { item, isTrayItem, ghost, overBreakerId: null };
+  positionPanelGhost(e.clientX, e.clientY);
+  document.body.style.userSelect = 'none';
+}
+
+function positionPanelGhost(x, y) {
+  if (!panelDragCtx) return;
+  panelDragCtx.ghost.style.left = (x + 12) + 'px';
+  panelDragCtx.ghost.style.top = (y + 12) + 'px';
+}
+
+function onPanelDragMove(e) {
+  positionPanelGhost(e.clientX, e.clientY);
+  document.querySelectorAll('.pnl-drop-row').forEach(r => r.classList.remove('pnl-drag-over'));
+  // hide the ghost for one lookup so elementFromPoint sees what's under it,
+  // not the ghost itself
+  panelDragCtx.ghost.style.display = 'none';
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  panelDragCtx.ghost.style.display = '';
+  const row = target && target.closest('.pnl-drop-row');
+  if (row) row.classList.add('pnl-drag-over');
+  panelDragCtx.overBreakerId = row ? row.dataset.breakerId : null;
+}
+
+async function onPanelDragEnd(e) {
+  const ctx = panelDragCtx;
+  document.querySelectorAll('.pnl-drop-row').forEach(r => r.classList.remove('pnl-drag-over'));
+  document.body.style.userSelect = '';
+  ctx.ghost.remove();
+  panelDragCtx = null;
+
+  const panel = findPoint(selectedId);
+  if (!ctx.overBreakerId || !panel) return; // dropped nowhere useful — no change
+
+  const brk = (panel.breakers || []).find(b => b.id === ctx.overBreakerId);
+  if (!brk) return;
+  const panel_connection = {
+    fixed_point_id: panel.id,
+    breaker_id: brk.id,
+    breaker_address: breakerAddress(panel, brk)
+  };
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', ctx.item.id),
+      { panel_connection, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not link appliance: ' + err.message, 'error');
+    return;
+  }
+  HILShell.toast(`${ctx.item.name || ctx.item.display_name} linked to ${panel_connection.breaker_address} ✓`);
+  if (ctx.isTrayItem) panelApplianceTray = panelApplianceTray.filter(t => t.id !== ctx.item.id);
+  await loadPanelAppliances(panel);
+}
+
+async function unlinkApplianceFromBreaker(itemId) {
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', itemId),
+      { panel_connection: null, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not unlink: ' + err.message, 'error');
+    return;
+  }
+  HILShell.toast('Unlinked');
+  const panel = findPoint(selectedId);
+  if (panel) await loadPanelAppliances(panel);
+}
+
+document.getElementById('pnl-search').addEventListener('input', async (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('pnl-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  // ensureAllItemsForRackSearch's name predates panel use — it's just a
+  // generic all-item_records cache, shared here to avoid a second
+  // full-collection fetch for the same session.
+  const items = await ensureAllItemsForRackSearch();
+  const linkedIds = new Set(panelAppliances.map(d => d.id));
+  const trayIds = new Set(panelApplianceTray.map(t => t.id));
+  const matches = items.filter(i =>
+    !linkedIds.has(i.id) &&
+    !trayIds.has(i.id) &&
+    i.status !== 'archived' &&
+    (i.display_name || i.name || '').toLowerCase().includes(q)
+  ).slice(0, 8);
+  resultsEl.innerHTML = matches.length
+    ? matches.map(i => `
+        <div class="ri-result" data-id="${i.id}"
+             style="padding:5px 6px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--hil-border)">
+          ${escapeHtml(i.display_name || i.name || 'Unnamed')}
+        </div>
+      `).join('')
+    : `<div style="font-size:11px;opacity:.5;padding:4px 0">No matches.</div>`;
+  resultsEl.querySelectorAll('.ri-result').forEach(row => {
+    row.addEventListener('click', () => {
+      const item = items.find(i => i.id === row.dataset.id);
+      panelApplianceTray.push({ id: item.id, name: item.display_name || item.name || item.id });
+      renderPanelApplianceTray();
+      e.target.value = '';
+      resultsEl.innerHTML = '';
+    });
+  });
+});
+
+function buildRackRuSelect(sizeRu) {
+  const sel = document.getElementById('rk-ru');
+  const opts = [];
+  for (let i = sizeRu; i >= 1; i--) {
+    opts.push(`<option value="${i}">RU${i}${i === 1 ? ' (bottom)' : (i === sizeRu ? ' (top)' : '')}</option>`);
+  }
+  sel.innerHTML = opts.join('');
+}
+
+function onRackSizeChange() {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const sizeVal = parseInt(document.getElementById('edit-rack-size').value, 10) || 12;
+  buildRackRuSelect(sizeVal);
+  renderRackGrid({ ...p, rack_size_ru: sizeVal });
+  renderRackElevation({ ...p, rack_size_ru: sizeVal });
+}
+
+function rackPortAddress(rack, port) {
+  if (!rack || !port) return null;
+  const code = rack.rack_code || 'RK1';
+  return `${code}-RU${port.ru}-${port.col}`;
+}
+
+function renderRackGrid(rack) {
+  const svg = document.getElementById('rack-grid-svg');
+  const ports = rack.rack_ports || [];
+  const sizeRu = rack.rack_size_ru || 12;
+  const rows = [];
+  for (let i = sizeRu; i >= 1; i--) rows.push(String(i));
+  const cellW = 60, cellH = 22, gap = 4, labelW = 26;
+  const hasCol3 = ports.some(pt => pt.col === '3');
+  const cols = hasCol3 ? ['1','2','3'] : ['1','2'];
+
+  let svgRows = '';
+  rows.forEach((ru, ri) => {
+    const y = ri * (cellH + gap);
+    svgRows += `<text x="13" y="${y + cellH/2 + 4}" text-anchor="middle" font-size="8" fill="#4cd9ff" font-family="monospace">RU${ru}</text>`;
+    cols.forEach((col, ci) => {
+      const x = labelW + ci * (cellW + gap);
+      const port = ports.find(pt => pt.ru === ru && pt.col === col);
+      const fill = port ? 'rgba(76,217,255,.16)' : '#1a1a1a';
+      const stroke = port ? '#4cd9ff' : '#333';
+      const text = port ? (port.label ? port.label.slice(0, 10) : (port.port_type || `RU${ru}-${col}`)) : `${col}`;
+      const textColor = port ? '#4cd9ff' : '#555';
+      svgRows += `
+        <rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+        <text x="${x + cellW/2}" y="${y + cellH/2 + 3}" text-anchor="middle" font-size="8" fill="${textColor}" font-family="monospace">${escapeHtml(text)}</text>
+      `;
+    });
+  });
+  const totalW = labelW + cols.length * (cellW + gap);
+  const totalH = rows.length * (cellH + gap);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+  svg.innerHTML = svgRows;
+}
+
+function renderRackPortList(rack) {
+  const el = document.getElementById('fp-rack-port-list');
+  const ports = rack.rack_ports || [];
+  if (!ports.length) { el.innerHTML = `<div class="rd-hint" style="margin-left:0">No ports added yet.</div>`; return; }
+  el.innerHTML = ports.map(pt => `
+    <div class="fp-breaker-list-row">
+      <span>${rackPortAddress(rack, pt)}${pt.port_type ? ' · ' + escapeHtml(pt.port_type) : ''}${pt.label ? ' — ' + escapeHtml(pt.label) : ''}</span>
+      <span class="del" onclick="deleteRackPort('${pt.id}')">🗑</span>
+    </div>
+  `).join('');
+}
+
+async function addRackPort() {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const ru = document.getElementById('rk-ru').value;
+  const col = document.getElementById('rk-col').value;
+  const port_type = document.getElementById('rk-porttype').value.trim();
+  const label = document.getElementById('rk-label').value.trim();
+  const terminates_at = document.getElementById('rk-term').value.trim();
+  const id = 'port_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const rack_ports = [...(p.rack_ports || []), { id, ru, col, port_type, label, terminates_at }];
+
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+      { rack_ports, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not add port: ' + err.message, 'error');
+    return;
+  }
+  p.rack_ports = rack_ports;
+  document.getElementById('rk-porttype').value = '';
+  document.getElementById('rk-label').value = '';
+  document.getElementById('rk-term').value = '';
+  renderRackGrid(p);
+  renderRackPortList(p);
+  HILShell.toast('Port added', 'success');
+}
+
+async function deleteRackPort(portId) {
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const rack_ports = (p.rack_ports || []).filter(pt => pt.id !== portId);
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id),
+      { rack_ports, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not delete port: ' + err.message, 'error');
+    return;
+  }
+  p.rack_ports = rack_ports;
+  renderRackGrid(p);
+  renderRackPortList(p);
+}
+
+// ══════════════════════════════════════
+// RACK-MOUNTED DEVICES (rack_position) — real item_records, distinct from
+// rack_ports above. rack_position is the narrow frontend-writable field-
+// level exception on item_records (same write class as room_position),
+// so these functions write directly via _updateDoc — no hil-admin-action
+// round trip. See firestore.rules item_records update-exception block.
+//
+// rack_position shape (all sub-fields live under this ONE exception key,
+// so adding role/capacity/connections here required no rules redeploy):
+//   { fixed_point_id, ru, bay, hl_display, height_ru,
+//     role: null|'pdu'|'switch'|'kvm', outlets, kvm_ports,
+//     connections: { power:{item_id,outlet}|null, network:{item_id}|null,
+//                     kvm:{item_id,port}|null } }
+// ══════════════════════════════════════
+
+let rackDevices = [];             // items currently placed in the selected rack
+let rackTray = [];                // items picked via search, awaiting drag-in (not yet written)
+let allItemsForRackSearch = null; // lazy-loaded, cached per session
+let rackDragCtx = null;
+
+const RKDEV_ROWH = 26;
+const RKDEV_LABELW = 26;
+
+// U1 = A, U11 = K, U16 = P — same bottom-up alphabet-position rule as
+// every other shelf/level in the grammar. Racks over 26U aren't addressed
+// by this scheme; that's a known ceiling, not a bug.
+function ruToLevelLetter(ru) {
+  const n = parseInt(ru, 10);
+  if (!n || n < 1 || n > 26) return '?';
+  return String.fromCharCode(64 + n);
+}
+
+// Full address = rack's own {STRUCT}-{ZONE}-{ANCHOR}{COL} prefix (first
+// three segments of the rack's own hl_address) + the device's own
+// {LEVEL}{DEPTH} suffix, addressed off the device's bottom/starting RU.
+function computeRackDisplay(rack, ru, bay) {
+  const raw = rack._computedAddress || rack.hl_address || '';
+  const prefix = raw.split('-').slice(0, 3).join('-');
+  if (!prefix) return null;
+  return `${prefix}-${ruToLevelLetter(ru)}${bay}`;
+}
+
+// bay "0" (full-width) occupies both bays for its whole U-span. bay "1"/"2"
+// only block themselves and any "0" already there. Spans of >1U are
+// checked for overlap across the whole range, not just the starting RU.
+function rackSlotFree(ru, bay, heightRu, excludeItemId) {
+  const from = parseInt(ru, 10);
+  const to = from + (heightRu || 1) - 1;
+  return !rackDevices.some(it => {
+    if (it.id === excludeItemId) return false;
+    const rp = it.rack_position;
+    if (!rp) return false;
+    const oFrom = parseInt(rp.ru, 10);
+    const oTo = oFrom + (rp.height_ru || 1) - 1;
+    if (to < oFrom || from > oTo) return false; // no RU-range overlap at all
+    return rp.bay === '0' || bay === '0' || rp.bay === bay;
+  });
+}
+
+async function loadRackDevices(rack) {
+  try {
+    const snap = await _getDocs(_query(
+      _collection(db, 'users', currentUser.uid, 'item_records'),
+      _where('rack_position.fixed_point_id', '==', rack.id)
+    ));
+    rackDevices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    HILShell.toast('Could not load rack devices: ' + err.message, 'error');
+    rackDevices = [];
+  }
+  rackDevices.sort((a, b) => (b.rack_position?.ru || 0) - (a.rack_position?.ru || 0));
+  renderRackElevation(rack);
+}
+
+function renderRackElevation(rack) {
+  const body = document.getElementById('rkdev-body');
+  if (!body) return;
+  const sizeRu = rack.rack_size_ru || 12;
+  body.innerHTML = '';
+  for (let u = sizeRu; u >= 1; u--) {
+    const row = document.createElement('div');
+    row.className = 'rkdev-u-row';
+    row.style.height = RKDEV_ROWH + 'px';
+    row.innerHTML = `
+      <div class="rkdev-u-label">U${u}</div>
+      <div class="rkdev-slot" data-slot="${u}">
+        <div class="rkdev-guide" data-guide="full-${u}" style="left:0;right:0"></div>
+        <div class="rkdev-guide" data-guide="1-${u}" style="left:0;right:calc(50% + 1px)"></div>
+        <div class="rkdev-guide" data-guide="2-${u}" style="left:calc(50% + 1px);right:0"></div>
+      </div>
+    `;
+    body.appendChild(row);
+  }
+
+  const bodyRect = body.getBoundingClientRect();
+  const contentWidth = Math.max(0, bodyRect.width - RKDEV_LABELW);
+  const gap = 3;
+  const halfW = (contentWidth - gap) / 2;
+
+  rackDevices.forEach(it => {
+    const rp = it.rack_position;
+    if (!rp) return;
+    const h = rp.height_ru || 1;
+    const topU = rp.ru + h - 1;
+    const rowIndexFromTop = sizeRu - topU;
+    const face = document.createElement('div');
+    face.className = 'rkdev-face' + (rp.role ? ' role-' + rp.role : '');
+    face.style.top = (rowIndexFromTop * RKDEV_ROWH + 1) + 'px';
+    face.style.height = (h * RKDEV_ROWH - 2) + 'px';
+    if (rp.bay === '0') {
+      face.style.left = RKDEV_LABELW + 'px';
+      face.style.width = contentWidth + 'px';
+    } else if (rp.bay === '1') {
+      face.style.left = RKDEV_LABELW + 'px';
+      face.style.width = halfW + 'px';
+    } else {
+      face.style.left = (RKDEV_LABELW + halfW + gap) + 'px';
+      face.style.width = halfW + 'px';
+    }
+    const conn = rp.connections || {};
+    face.dataset.id = it.id;
+    face.innerHTML = `
+      <span class="rkdev-fname">${escapeHtml(it.display_name || it.name || it.id)}</span>
+      <span class="rkdev-fmeta">
+        <span class="rkdev-conn-dot ${conn.power ? 'on-power' : ''}" title="Power"></span>
+        <span class="rkdev-conn-dot ${conn.network ? 'on-net' : ''}" title="Network"></span>
+        <span class="rkdev-conn-dot ${conn.kvm ? 'on-kvm' : ''}" title="KVM"></span>
+      </span>
+    `;
+    body.appendChild(face);
+    attachRackDrag(face, it, false);
+  });
+
+  const stat = document.getElementById('rkdev-fillstat');
+  if (stat) stat.textContent = rackDevices.length
+    ? `${rackDevices.length} device${rackDevices.length === 1 ? '' : 's'} placed`
+    : 'Nothing placed yet';
+
+  renderRackTray();
+}
+
+function renderRackTray() {
+  const tray = document.getElementById('rkdev-tray');
+  if (!tray) return;
+  if (!rackTray.length) {
+    tray.innerHTML = '<div class="rkdev-tray-hint">Search below, then drag a card up into the rack</div>';
+    return;
+  }
+  tray.innerHTML = '';
+  rackTray.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'rkdev-tray-card';
+    card.dataset.id = it.id;
+    card.innerHTML = `
+      <span>${escapeHtml(it.name)}</span>
+      <span style="display:flex;gap:4px;align-items:center">
+        <span class="rkdev-toggle-btn ${it.width === 'full' ? 'active' : ''}" data-w="full" style="padding:3px 6px;font-size:8px;flex:none">Full</span>
+        <span class="rkdev-toggle-btn ${it.width === 'half' ? 'active' : ''}" data-w="half" style="padding:3px 6px;font-size:8px;flex:none">Half</span>
+      </span>
+    `;
+    card.querySelectorAll('[data-w]').forEach(btn => {
+      btn.addEventListener('pointerdown', e => e.stopPropagation());
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        it.width = btn.dataset.w;
+        renderRackTray();
+      });
+    });
+    tray.appendChild(card);
+    attachRackDrag(card, it, true);
+  });
+}
+
+// Tap vs. drag disambiguation via pointer-move distance threshold — a
+// short tap on a placed device opens its config/connections modal; moving
+// past ~6px starts a real drag. Tray cards only support drag (nothing to
+// tap-configure until they're actually placed).
+function attachRackDrag(el, refItem, isTrayItem) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false;
+    function move(ev) {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) > 6 || Math.abs(ev.clientY - startY) > 6) {
+          dragging = true;
+          beginRackDrag(refItem, isTrayItem, ev);
+        } else return;
+      }
+      onRackDragMove(ev);
+    }
+    function up(ev) {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (dragging) onRackDragEnd(ev);
+      else if (!isTrayItem) openDeviceModal(refItem);
+    }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  });
+}
+
+function beginRackDrag(item, isTrayItem, e) {
+  const rack = findPoint(selectedId);
+  const body = document.getElementById('rkdev-body');
+  const bodyRect = body.getBoundingClientRect();
+  const contentWidth = Math.max(0, bodyRect.width - RKDEV_LABELW);
+  const gap = 3;
+  const halfW = (contentWidth - gap) / 2;
+  const height_ru = isTrayItem ? 1 : (item.rack_position?.height_ru || 1);
+  const isHalf = isTrayItem ? (item.width === 'half') : (item.rack_position?.bay !== '0');
+  const width = isHalf ? halfW : contentWidth;
+
+  const ghost = document.createElement('div');
+  ghost.className = 'rkdev-drag-ghost';
+  ghost.style.width = width + 'px';
+  ghost.style.height = (height_ru * RKDEV_ROWH - 2) + 'px';
+  ghost.textContent = item.name || item.display_name || item.id;
+  document.body.appendChild(ghost);
+
+  rackDragCtx = {
+    item, isTrayItem, isHalf, ghost, rack, bodyRect, height_ru,
+    offsetY: height_ru * RKDEV_ROWH / 2, contentWidth, halfW, gap
+  };
+  positionRackGhost(e.clientX, e.clientY);
+  document.body.style.userSelect = 'none';
+}
+
+function positionRackGhost(x, y) {
+  if (!rackDragCtx) return;
+  rackDragCtx.ghost.style.left = (x - rackDragCtx.ghost.offsetWidth / 2) + 'px';
+  rackDragCtx.ghost.style.top = (y - rackDragCtx.offsetY) + 'px';
+}
+
+function rackSlotFromClientY(ctx, y) {
+  const sizeRu = ctx.rack.rack_size_ru || 12;
+  const topRowIndex = Math.round((y - ctx.offsetY - ctx.bodyRect.top) / RKDEV_ROWH);
+  const topU = sizeRu - topRowIndex;
+  return topU - ctx.height_ru + 1;
+}
+
+function rackBayFromClientX(ctx, x) {
+  const midpoint = ctx.bodyRect.left + RKDEV_LABELW + ctx.contentWidth / 2;
+  return x < midpoint ? '1' : '2';
+}
+
+function canPlaceRack(ctx, ru, bay, excludeItemId) {
+  const sizeRu = ctx.rack.rack_size_ru || 12;
+  if (ru < 1 || ru + ctx.height_ru - 1 > sizeRu) return false;
+  return rackSlotFree(ru, bay, ctx.height_ru, excludeItemId);
+}
+
+function clearRackGuides() {
+  document.querySelectorAll('.rkdev-guide').forEach(g => g.classList.remove('show', 'blocked'));
+}
+
+function onRackDragMove(e) {
+  positionRackGhost(e.clientX, e.clientY);
+  clearRackGuides();
+  const ctx = rackDragCtx;
+  const bodyRect = ctx.bodyRect;
+  if (e.clientX >= bodyRect.left && e.clientX <= bodyRect.right && e.clientY >= bodyRect.top && e.clientY <= bodyRect.bottom) {
+    const ru = rackSlotFromClientY(ctx, e.clientY);
+    const bay = ctx.isHalf ? rackBayFromClientX(ctx, e.clientX) : '0';
+    const excludeId = ctx.isTrayItem ? null : ctx.item.id;
+    const ok = canPlaceRack(ctx, ru, bay, excludeId);
+    for (let s = ru; s < ru + ctx.height_ru; s++) {
+      const sel = bay === '0' ? `[data-guide="full-${s}"]` : `[data-guide="${bay}-${s}"]`;
+      const g = document.querySelector(sel);
+      if (g) g.classList.add('show', ok ? '' : 'blocked');
+    }
+  }
+}
+
+async function onRackDragEnd(e) {
+  const ctx = rackDragCtx;
+  clearRackGuides();
+  document.body.style.userSelect = '';
+  const bodyRect = ctx.bodyRect;
+  const overBody = e.clientX >= bodyRect.left && e.clientX <= bodyRect.right && e.clientY >= bodyRect.top && e.clientY <= bodyRect.bottom;
+
+  if (!overBody) {
+    ctx.ghost.remove();
+    rackDragCtx = null;
+    return; // dropped outside the elevation — no change, nothing to save
+  }
+
+  const ru = rackSlotFromClientY(ctx, e.clientY);
+  const bay = ctx.isHalf ? rackBayFromClientX(ctx, e.clientX) : '0';
+  const excludeId = ctx.isTrayItem ? null : ctx.item.id;
+  const ok = canPlaceRack(ctx, ru, bay, excludeId);
+
+  if (!ok) {
+    ctx.ghost.classList.add('rkdev-shake');
+    setTimeout(() => { if (ctx.ghost) ctx.ghost.remove(); }, 260);
+    rackDragCtx = null;
+    return;
+  }
+
+  ctx.ghost.remove();
+  rackDragCtx = null;
+  const hl_display = computeRackDisplay(ctx.rack, ru, bay);
+
+  if (ctx.isTrayItem) {
+    const rack_position = {
+      fixed_point_id: ctx.rack.id, ru: parseInt(ru, 10), bay, hl_display,
+      height_ru: ctx.height_ru, role: null, outlets: null, kvm_ports: null,
+      connections: { power: null, network: null, kvm: null }
+    };
+    try {
+      await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', ctx.item.id),
+        { rack_position, updated_at: _serverTimestamp() });
+    } catch (err) {
+      HILShell.toast('Could not place device: ' + err.message, 'error');
+      return;
+    }
+    HILShell.toast(`${ctx.item.name} placed at ${hl_display} ✓`);
+    rackTray = rackTray.filter(t => t.id !== ctx.item.id);
+    await loadRackDevices(ctx.rack);
+  } else {
+    const prev = ctx.item.rack_position || {};
+    const rack_position = { ...prev, ru: parseInt(ru, 10), bay, hl_display };
+    try {
+      await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', ctx.item.id),
+        { rack_position, updated_at: _serverTimestamp() });
+    } catch (err) {
+      HILShell.toast('Could not move device: ' + err.message, 'error');
+      await loadRackDevices(ctx.rack);
+      return;
+    }
+    HILShell.toast(`Moved to ${hl_display} ✓`);
+    await loadRackDevices(ctx.rack);
+  }
+}
+
+async function removeDeviceFromRack(itemId) {
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', itemId),
+      { rack_position: null, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not remove device: ' + err.message, 'error');
+    return;
+  }
+  HILShell.toast('Removed from rack');
+  const rack = findPoint(selectedId);
+  if (rack) await loadRackDevices(rack);
+}
+
+// Connections/config modal — opened by tapping a placed device. Handles
+// RU height, this-device's-own role (is it itself a PDU/switch/KVM other
+// devices can wire into), and this device's own power/network/kvm links.
+// Outlet/port dropdowns show which other device already claims that slot,
+// same collision-awareness pattern as the rack-builder prototype.
+function openDeviceModal(item) {
+  const rack = findPoint(selectedId);
+  if (!rack || !item.rack_position) return;
+  const rp = item.rack_position;
+  const pdus = rackDevices.filter(d => d.id !== item.id && d.rack_position?.role === 'pdu');
+  const switches = rackDevices.filter(d => d.id !== item.id && d.rack_position?.role === 'switch');
+  const kvms = rackDevices.filter(d => d.id !== item.id && d.rack_position?.role === 'kvm');
+  const c = rp.connections || {};
+
+  function outletOptions(pdu, selected) {
+    if (!pdu) return '<option value="">— pick a PDU first —</option>';
+    let out = '<option value="">None</option>';
+    const n = pdu.rack_position.outlets || 8;
+    for (let i = 1; i <= n; i++) {
+      const user = rackDevices.find(d => d.id !== item.id
+        && d.rack_position?.connections?.power?.item_id === pdu.id
+        && d.rack_position?.connections?.power?.outlet === i);
+      out += `<option value="${i}" ${selected === i ? 'selected' : ''}>Outlet ${i}${user ? ' — used by ' + escapeHtml(user.display_name || user.name || user.id) : ''}</option>`;
+    }
+    return out;
+  }
+  function kvmPortOptions(kvm, selected) {
+    if (!kvm) return '<option value="">— pick a KVM first —</option>';
+    let out = '<option value="">None</option>';
+    const n = kvm.rack_position.kvm_ports || 4;
+    for (let i = 1; i <= n; i++) {
+      const user = rackDevices.find(d => d.id !== item.id
+        && d.rack_position?.connections?.kvm?.item_id === kvm.id
+        && d.rack_position?.connections?.kvm?.port === i);
+      out += `<option value="${i}" ${selected === i ? 'selected' : ''}>Port ${i}${user ? ' — used by ' + escapeHtml(user.display_name || user.name || user.id) : ''}</option>`;
+    }
+    return out;
+  }
+
+  const curPduId = c.power ? c.power.item_id : '';
+  const curOutlet = c.power ? c.power.outlet : null;
+  const curSwitchId = c.network ? c.network.item_id : '';
+  const curKvmId = c.kvm ? c.kvm.item_id : '';
+  const curKvmPort = c.kvm ? c.kvm.port : null;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'rkdev-modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="rkdev-modal">
+      <h3>${escapeHtml(item.display_name || item.name || item.id)}</h3>
+      <div class="rkdev-modal-sub">${escapeHtml(rp.hl_display || '')}</div>
+
+      <label>Height (RU)</label>
+      <input type="number" id="rkm-height" min="1" max="20" value="${rp.height_ru || 1}">
+
+      <label>This device is a:</label>
+      <div class="rkdev-toggle-row">
+        <div class="rkdev-toggle-btn ${!rp.role ? 'active' : ''}" data-role="">Device</div>
+        <div class="rkdev-toggle-btn ${rp.role === 'pdu' ? 'active' : ''}" data-role="pdu">PDU</div>
+        <div class="rkdev-toggle-btn ${rp.role === 'switch' ? 'active' : ''}" data-role="switch">Switch</div>
+        <div class="rkdev-toggle-btn ${rp.role === 'kvm' ? 'active' : ''}" data-role="kvm">KVM</div>
+      </div>
+      <div id="rkm-capacity-wrap" style="display:${(rp.role === 'pdu' || rp.role === 'kvm') ? 'block' : 'none'}">
+        <label id="rkm-capacity-label">${rp.role === 'kvm' ? 'KVM Ports' : 'Outlets'}</label>
+        <input type="number" id="rkm-capacity" min="1" max="48" value="${rp.role === 'kvm' ? (rp.kvm_ports || 4) : (rp.outlets || 8)}">
+      </div>
+
+      <label>Power — PDU</label>
+      <select id="rkm-pdu">
+        <option value="">Not connected</option>
+        ${pdus.map(p => `<option value="${p.id}" ${curPduId === p.id ? 'selected' : ''}>${escapeHtml(p.display_name || p.name || p.id)}</option>`).join('')}
+      </select>
+      <div id="rkm-outlet-wrap" style="display:${curPduId ? 'block' : 'none'}">
+        <label>Outlet</label>
+        <select id="rkm-outlet">${outletOptions(pdus.find(p => p.id === curPduId), curOutlet)}</select>
+      </div>
+
+      <label>Network — Switch</label>
+      <select id="rkm-switch">
+        <option value="">Not connected</option>
+        ${switches.map(s => `<option value="${s.id}" ${curSwitchId === s.id ? 'selected' : ''}>${escapeHtml(s.display_name || s.name || s.id)}</option>`).join('')}
+      </select>
+      <div class="rkdev-modal-warn">Port not tracked — unmanaged switch</div>
+
+      <label>KVM — Switch</label>
+      <select id="rkm-kvm">
+        <option value="">Not connected</option>
+        ${kvms.map(k => `<option value="${k.id}" ${curKvmId === k.id ? 'selected' : ''}>${escapeHtml(k.display_name || k.name || k.id)}</option>`).join('')}
+      </select>
+      <div id="rkm-kvmport-wrap" style="display:${curKvmId ? 'block' : 'none'}">
+        <label>KVM Port</label>
+        <select id="rkm-kvmport">${kvmPortOptions(kvms.find(k => k.id === curKvmId), curKvmPort)}</select>
+      </div>
+
+      <div class="rkdev-modal-actions">
+        <button class="rkdev-modal-cancel" id="rkm-cancel">Cancel</button>
+        <button class="rkdev-modal-save" id="rkm-save">Save</button>
+      </div>
+      <div class="rkdev-modal-remove" id="rkm-remove">Remove from rack</div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  let selectedRole = rp.role || '';
+  backdrop.querySelectorAll('[data-role]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedRole = btn.dataset.role;
+      backdrop.querySelectorAll('[data-role]').forEach(b => b.classList.toggle('active', b === btn));
+      const capWrap = backdrop.querySelector('#rkm-capacity-wrap');
+      const capLabel = backdrop.querySelector('#rkm-capacity-label');
+      const capInput = backdrop.querySelector('#rkm-capacity');
+      if (selectedRole === 'pdu') { capWrap.style.display = 'block'; capLabel.textContent = 'Outlets'; capInput.value = rp.outlets || 8; }
+      else if (selectedRole === 'kvm') { capWrap.style.display = 'block'; capLabel.textContent = 'KVM Ports'; capInput.value = rp.kvm_ports || 4; }
+      else { capWrap.style.display = 'none'; }
+    });
+  });
+
+  const pduSel = backdrop.querySelector('#rkm-pdu');
+  const outletWrap = backdrop.querySelector('#rkm-outlet-wrap');
+  const outletSel = backdrop.querySelector('#rkm-outlet');
+  pduSel.addEventListener('change', () => {
+    const pdu = pdus.find(p => p.id === pduSel.value);
+    outletWrap.style.display = pdu ? 'block' : 'none';
+    outletSel.innerHTML = outletOptions(pdu, null);
+  });
+
+  const kvmSel = backdrop.querySelector('#rkm-kvm');
+  const kvmPortWrap = backdrop.querySelector('#rkm-kvmport-wrap');
+  const kvmPortSel = backdrop.querySelector('#rkm-kvmport');
+  kvmSel.addEventListener('change', () => {
+    const kvm = kvms.find(k => k.id === kvmSel.value);
+    kvmPortWrap.style.display = kvm ? 'block' : 'none';
+    kvmPortSel.innerHTML = kvmPortOptions(kvm, null);
+  });
+
+  function closeModal() { backdrop.remove(); }
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
+  backdrop.querySelector('#rkm-cancel').addEventListener('click', closeModal);
+
+  backdrop.querySelector('#rkm-remove').addEventListener('click', async () => {
+    closeModal();
+    await removeDeviceFromRack(item.id);
+  });
+
+  backdrop.querySelector('#rkm-save').addEventListener('click', async () => {
+    const newHeight = Math.max(1, Math.min(20, parseInt(backdrop.querySelector('#rkm-height').value, 10) || 1));
+    if (!rackSlotFree(rp.ru, rp.bay, newHeight, item.id)) {
+      HILShell.toast('That height would overlap another device — shrink it or move the device first', 'error');
+      return;
+    }
+    const newConnections = {};
+    newConnections.power = (pduSel.value && outletSel.value)
+      ? { item_id: pduSel.value, outlet: parseInt(outletSel.value, 10) } : null;
+    newConnections.kvm = kvmSel.value
+      ? { item_id: kvmSel.value, port: kvmPortSel.value ? parseInt(kvmPortSel.value, 10) : null } : null;
+    const switchSel = backdrop.querySelector('#rkm-switch');
+    newConnections.network = switchSel.value ? { item_id: switchSel.value } : null;
+
+    const capInput = backdrop.querySelector('#rkm-capacity');
+    const capVal = capInput ? Math.max(1, Math.min(48, parseInt(capInput.value, 10) || 1)) : null;
+
+    const rack_position = {
+      ...rp,
+      height_ru: newHeight,
+      role: selectedRole || null,
+      outlets: selectedRole === 'pdu' ? capVal : null,
+      kvm_ports: selectedRole === 'kvm' ? capVal : null,
+      connections: newConnections
+    };
+
+    try {
+      await _updateDoc(_doc(db, 'users', currentUser.uid, 'item_records', item.id),
+        { rack_position, updated_at: _serverTimestamp() });
+    } catch (err) {
+      HILShell.toast('Could not save device config: ' + err.message, 'error');
+      return;
+    }
+    HILShell.toast('Device config saved ✓');
+    closeModal();
+    await loadRackDevices(rack);
+  });
+}
+
+// Lazy full-collection load, same simple pattern used elsewhere in HIL for
+// in-memory client-side search (see hl-vault-cloud.html related-items
+// picker). Loaded once per session, on first rack device search.
+async function ensureAllItemsForRackSearch() {
+  if (allItemsForRackSearch) return allItemsForRackSearch;
+  const snap = await _getDocs(_collection(db, 'users', currentUser.uid, 'item_records'));
+  allItemsForRackSearch = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return allItemsForRackSearch;
+}
+
+document.getElementById('rk-dev-search').addEventListener('input', async (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('rk-dev-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const items = await ensureAllItemsForRackSearch();
+  const placedIds = new Set(rackDevices.map(d => d.id));
+  const trayIds = new Set(rackTray.map(t => t.id));
+  const matches = items.filter(i =>
+    !placedIds.has(i.id) &&
+    !trayIds.has(i.id) &&
+    i.status !== 'archived' &&
+    (i.display_name || i.name || '').toLowerCase().includes(q)
+  ).slice(0, 8);
+  resultsEl.innerHTML = matches.length
+    ? matches.map(i => `
+        <div class="ri-result" data-id="${i.id}"
+             style="padding:5px 6px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--hil-border)">
+          ${escapeHtml(i.display_name || i.name || 'Unnamed')}
+        </div>
+      `).join('')
+    : `<div style="font-size:11px;opacity:.5;padding:4px 0">No matches.</div>`;
+  resultsEl.querySelectorAll('.ri-result').forEach(row => {
+    row.addEventListener('click', () => {
+      const item = items.find(i => i.id === row.dataset.id);
+      rackTray.push({ id: item.id, name: item.display_name || item.name || item.id, width: 'full' });
+      renderRackTray();
+      e.target.value = '';
+      resultsEl.innerHTML = '';
+    });
+  });
+});
+
+window.addEventListener('resize', () => {
+  const p = findPoint(selectedId);
+  if (p && TYPE_DEFS[p.type]?.isRack) renderRackElevation(p);
+});
+
+async function savePointDetail() {
+  if (!selectedId) return;
+  const p = findPoint(selectedId);
+  if (!p) return;
+  const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+
+  const update = {
+    name: document.getElementById('edit-name').value.trim(),
+    level: document.getElementById('edit-level').value,
+    color: document.getElementById('edit-color').dataset.selected || p.color,
+    ha_entity: document.getElementById('edit-ha-entity').value.trim() || null,
+    installed_item_id: document.getElementById('edit-installed-item').value.trim() || null,
+    notes: document.getElementById('edit-notes').value.trim(),
+    updated_at: _serverTimestamp(),
+  };
+
+  if (def.hasCircuit) {
+    const panelId = document.getElementById('edit-panel-ref').value || null;
+    const breakerId = document.getElementById('edit-breaker-id').value || null;
+    const panel = allPoints.find(x => x.id === panelId);
+    const brk = panel && (panel.breakers || []).find(b => b.id === breakerId);
+    update.panel_ref = panelId;
+    update.breaker_id = breakerId;
+    update.circuit = brk ? breakerAddress(panel, brk) : null;
+    const v = document.getElementById('edit-voltage').value;
+    update.voltage = v === '' ? null : Number(v);
+    if (p.type !== 'switch' && !def.isLoad) {
+      const a = document.getElementById('edit-amperage').value;
+      update.amperage = a === '' ? null : Number(a);
+    }
+  }
+  if (def.isDuplex) {
+    update.sub_points = {
+      A: document.getElementById('edit-sub-a').value.trim() || null,
+      B: document.getElementById('edit-sub-b').value.trim() || null,
+    };
+  }
+  if (p.type === 'data_port') {
+    update.patch_panel_port = document.getElementById('edit-patch-port').value.trim() || null;
+    update.cable_run_to = document.getElementById('edit-cable-run').value.trim() || null;
+  }
+  if (def.isLoad) {
+    update.controlled_by = document.getElementById('edit-controlled-by').value || null;
+  }
+  if (def.isPanel) {
+    update.panel_code = document.getElementById('edit-panel-code').value.trim().toUpperCase() || 'P1';
+  }
+  if (def.isRack) {
+    update.rack_code = document.getElementById('edit-rack-code').value.trim().toUpperCase() || 'RK1';
+    const sizeVal = parseInt(document.getElementById('edit-rack-size').value, 10);
+    update.rack_size_ru = (sizeVal && sizeVal > 0) ? sizeVal : 12;
+  }
+
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', p.id), update);
+  } catch (err) {
+    HILShell.toast('Could not save: ' + err.message, 'error');
+    return;
+  }
+  Object.assign(p, update);
+  recomputeAddresses();
+  HILShell.toast('Saved', 'success');
+}
+
+async function deletePoint() {
+  if (!selectedId) return;
+  if (!confirm('Delete this fixed point? This cannot be undone.')) return;
+  try {
+    await _deleteDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', selectedId));
+  } catch (err) {
+    HILShell.toast('Could not delete: ' + err.message, 'error');
+    return;
+  }
+  selectedId = null;
+  hideEditBlock();
+  HILShell.toast('Deleted', 'success');
+}
+
+function startDrag(evt, id) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  if (mode === 'place') return;
+  draggingId = id;
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', onDragEnd);
+}
+
+function onDragMove(evt) {
+  if (!draggingId) return;
+  evt.preventDefault();
+  const p = svgPointFromEvent(evt);
+  const c = findPoint(draggingId);
+  if (c) { c.room_position = p; renderPoints(); }
+}
+
+async function onDragEnd() {
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend', onDragEnd);
+  if (!draggingId) return;
+  const c = findPoint(draggingId);
+  draggingId = null;
+  if (!c) return;
+
+  try {
+    await _updateDoc(_doc(db, 'users', currentUser.uid, 'properties', propertyId, 'fixed_points', c.id),
+      { room_position: c.room_position, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not save position: ' + err.message, 'error');
+    return;
+  }
+  recomputeAddresses();
+}
+
+function renderList() {
+  const list = visiblePoints();
+  document.getElementById('c-count').textContent = `(${list.length})`;
+  const el = document.getElementById('c-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="rd-empty-panel">Nothing placed yet.<br>Tap Add Point to start.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(p => {
+    const sel = selectedId === p.id;
+    const def = TYPE_DEFS[p.type] || TYPE_DEFS.outlet;
+    const dot = p.color || def.defaultColor;
+    const name = p.name ? p.name : def.label;
+    const sub = def.code + (p.circuit ? ' · ' + p.circuit : '');
+    const addr = p._computedAddress ? `<div class="rd-item-sub" style="color:var(--hil-green)">${p._computedAddress}</div>` : '';
+    return `
+      <div class="rd-item-row ${sel ? 'selected' : ''}" onclick="selectPoint('${p.id}')">
+        <div class="rd-item-dot" style="background:${dot}"></div>
+        <div class="rd-item-info">
+          <div class="rd-item-name">${escapeHtml(name)}</div>
+          <div class="rd-item-sub">${sub}</div>
+          ${addr}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+</script>
+
+</body>
+</html>
