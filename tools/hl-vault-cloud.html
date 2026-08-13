@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HL Vault — HIL System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="./hil-shell.js"></script>
+
+  <style>
+    /* ── LAYOUT UTILITIES (Shell doesn't provide these) ── */
+    .hil-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+
+    .hil-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .hil-grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .hil-grid-2, .hil-grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .hil-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .hil-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--hil-text-muted);
+    }
+
+    .hil-input, .hil-select, .hil-textarea {
+      background: var(--hil-bg);
+      border: 1px solid var(--hil-border);
+      color: var(--hil-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 9px 11px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+    .hil-input:focus, .hil-select:focus, .hil-textarea:focus {
+      border-color: var(--hil-green);
+    }
+    .hil-select { cursor: pointer; }
+    .hil-textarea { resize: vertical; min-height: 72px; }
+
+    /* Buttons */
+    .hil-btn {
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 2px;
+      padding: 9px 18px;
+      border: 1px solid var(--hil-border);
+      background: var(--hil-surface-2);
+      color: var(--hil-text);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .hil-btn:hover { border-color: var(--hil-text-muted); }
+    .hil-btn.primary {
+      background: var(--hil-green);
+      color: #000;
+      border-color: var(--hil-green);
+    }
+    .hil-btn.primary:hover { background: var(--hil-green-dim); }
+    .hil-btn.danger {
+      border-color: var(--hil-danger);
+      color: var(--hil-danger);
+    }
+    .hil-btn.danger:hover { background: rgba(204,51,51,0.1); }
+    .hil-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Badges */
+    .hil-badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+    .hil-badge.green  { background: rgba(0,204,102,0.15); color: var(--hil-green); border: 1px solid var(--hil-green); }
+    .hil-badge.amber  { background: rgba(204,136,0,0.15); color: var(--hil-warning); border: 1px solid var(--hil-warning); }
+    .hil-badge.red    { background: rgba(204,51,51,0.15); color: var(--hil-danger); border: 1px solid var(--hil-danger); }
+    .hil-badge.gray   { background: var(--hil-surface-2); color: var(--hil-text-muted); border: 1px solid var(--hil-border); }
+    .hil-badge.blue   { background: rgba(80,140,255,0.15); color: #5c8cff; border: 1px solid #5c8cff; }
+
+    /* Tag Store autocomplete dropdown */
+    .tag-autocomplete-dropdown {
+      position: relative;
+      border: 1px solid var(--hil-border);
+      border-top: none;
+      background: var(--hil-surface);
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+    .tag-ac-row {
+      padding: 7px 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      border-bottom: 1px solid var(--hil-border);
+    }
+    .tag-ac-row:last-child { border-bottom: none; }
+    .tag-ac-row:hover { background: var(--hil-surface-2); }
+    .tag-ac-row.create { color: var(--hil-green); }
+
+    /* Section label */
+    .hil-section-label {
+      font-family: var(--font-display);
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--hil-text-muted);
+      border-bottom: 1px solid var(--hil-border);
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+
+    /* Empty state */
+    .hil-empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--hil-text-muted);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+    .hil-empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+    /* ── MODAL ── */
+    .hil-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 1500;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      backdrop-filter: blur(2px);
+    }
+    .hil-modal-overlay.open { display: flex; }
+
+    .hil-modal {
+      background: var(--hil-surface);
+      border: 1px solid var(--hil-border);
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hil-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--hil-border);
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--hil-text-muted);
+      flex-shrink: 0;
+    }
+
+    .hil-modal-close {
+      background: none;
+      border: none;
+      color: var(--hil-text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .hil-modal-close:hover { color: var(--hil-danger); }
+
+    .hil-modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .hil-modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--hil-border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+
+    /* Address chip */
+    .hil-address-chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--hil-green);
+      letter-spacing: 2px;
+    }
+
+    /* ── VAULT-SPECIFIC ── */
+    .vault-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--hil-border);
+      margin-bottom: 20px;
+    }
+    .vault-tab {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 10px 18px;
+      color: var(--hil-text-muted);
+      cursor: pointer;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .vault-tab:hover { color: var(--hil-text); }
+    .vault-tab.active { color: var(--hil-green); border-bottom-color: var(--hil-green); }
+
+    .vault-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .vault-toolbar .hil-input { flex: 1; min-width: 180px; max-width: 300px; }
+    .vault-toolbar-right { margin-left: auto; display: flex; gap: 8px; }
+
+    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-chip {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      padding: 4px 10px;
+      border: 1px solid var(--hil-border);
+      color: var(--hil-text-muted);
+      cursor: pointer;
+      background: none;
+      border-radius: 2px;
+      transition: all 0.1s;
+    }
+    .filter-chip:hover { border-color: var(--hil-text-muted); color: var(--hil-text); }
+    .filter-chip.active { border-color: var(--hil-green); color: var(--hil-green); background: rgba(0,204,102,0.08); }
+
+    /* Stats */
+    .vault-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) { .vault-stats { grid-template-columns: 1fr 1fr; } }
+    .stat-card {
+      background: var(--hil-surface);
+      border: 1px solid var(--hil-border);
+      padding: 14px 16px;
+    }
+    .stat-val {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--hil-green);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--hil-text-muted);
+    }
+
+    /* Item rows */
+    .item-list { display: flex; flex-direction: column; gap: 6px; }
+    .item-row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      background: var(--hil-surface);
+      border: 1px solid var(--hil-border);
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: border-color 0.1s, background 0.1s;
+    }
+    .item-row:hover { border-color: var(--hil-green-dim, #009944); background: var(--hil-surface-2); }
+
+    .item-thumb {
+      width: 48px; height: 48px;
+      background: var(--hil-surface-2);
+      border: 1px solid var(--hil-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .item-info { min-width: 0; }
+    .item-name {
+      font-size: 14px;
+      color: var(--hil-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+      font-family: var(--font-ui);
+    }
+    .item-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .item-address { font-family: var(--font-mono); font-size: 10px; color: var(--hil-green); letter-spacing: 0.06em; }
+    .item-category { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 0.06em; }
+
+    .item-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--hil-text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 4px 6px;
+      transition: color 0.1s;
+    }
+    .icon-btn:hover { color: var(--hil-green); }
+
+    /* Kit grid */
+    .kit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .kit-card {
+      background: var(--hil-surface);
+      border: 1px solid var(--hil-border);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.1s;
+    }
+    .kit-card:hover { border-color: var(--hil-green-dim, #009944); }
+    .kit-id { font-family: var(--font-mono); font-size: 10px; color: var(--hil-green); letter-spacing: 0.08em; margin-bottom: 4px; }
+    .kit-name { font-size: 15px; color: var(--hil-text); margin-bottom: 8px; font-family: var(--font-ui); }
+    .kit-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 0.06em; }
+    .kit-status-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .kit-thumb {
+      width: 100%; height: 96px; object-fit: cover;
+      border: 1px solid var(--hil-border);
+      margin: -16px -16px 10px; width: calc(100% + 32px);
+      display: block; background: var(--hil-surface-2);
+    }
+
+    /* Detail modal */
+    .detail-hero {
+      width: 100%; height: 180px;
+      background: var(--hil-surface-2);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      overflow: hidden;
+    }
+    .detail-hero img { width: 100%; height: 100%; object-fit: cover; }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--hil-border);
+      font-size: 13px;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--hil-text-muted); flex-shrink: 0; padding-right: 16px; padding-top: 1px; }
+    .detail-val { color: var(--hil-text); text-align: right; }
+
+    /* ---------- SLOTTED VESSEL CANVAS (item-level slots, drag-to-place) ---------- */
+    .vs-tray { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; min-height: 20px; }
+    .vs-tray-hint { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); text-align: center; padding: 6px; border: 1px dashed var(--hil-border); }
+    .vs-tray-card {
+      background: #1a3a42; color: #cdeef5; border-radius: 2px; padding: 6px 8px; cursor: grab; user-select: none;
+      font-family: var(--font-mono); font-size: 10px; touch-action: none; border: 1px solid rgba(0,0,0,.5);
+    }
+    .vs-tray-card:active { cursor: grabbing; }
+    .vs-drag-ghost {
+      position: fixed; pointer-events: none; z-index: 2000; opacity: .9; border-radius: 2px;
+      display: flex; align-items: center; padding: 0 8px; font-size: 10px; font-weight: 600;
+      font-family: var(--font-mono); border: 1px solid rgba(0,0,0,.5); box-shadow: 0 6px 20px rgba(0,0,0,.6);
+      background: #1a3a42; color: #cdeef5; width: 140px; height: 44px;
+    }
+    .vs-shake { animation: vs-shake .3s; }
+    @keyframes vs-shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
+    .vs-canvas { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-top: 10px; }
+    .vs-slot {
+      border: 1px dashed var(--hil-border); min-height: 56px; padding: 6px 8px; display: flex;
+      flex-direction: column; justify-content: center; gap: 2px; font-family: var(--font-mono);
+      transition: border-color .1s, background .1s;
+    }
+    .vs-slot.filled { border-style: solid; border-color: var(--hil-green); background: var(--hil-green-dim); cursor: pointer; }
+    .vs-slot.drag-over { border-color: var(--hil-amber); background: rgba(204,136,0,.12); }
+    .vs-slot.drag-over.blocked { border-color: var(--hil-danger); background: rgba(200,60,60,.12); }
+    .vs-slot-addr { font-size: 8px; color: var(--hil-text-muted); letter-spacing: .5px; }
+    .vs-slot-name { font-size: 11px; color: var(--hil-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .vs-slot-empty-hint { font-size: 9px; color: var(--hil-text-muted); opacity: .55; }
+  </style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <!-- Stats -->
+  <div class="vault-stats">
+    <div class="stat-card"><div class="stat-val" id="stat-total">—</div><div class="stat-label">TOTAL ITEMS</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-active">—</div><div class="stat-label">ACTIVE</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-kits">—</div><div class="stat-label">KITS</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-value">—</div><div class="stat-label">EST. VALUE</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="vault-tabs">
+    <button class="vault-tab active" data-tab="items">ITEMS</button>
+    <button class="vault-tab" data-tab="kits">KITS</button>
+    <button class="vault-tab" data-tab="vessels">VESSELS</button>
+  </div>
+
+  <!-- ITEMS TAB -->
+  <div id="tab-items">
+    <div class="vault-toolbar">
+      <input class="hil-input" type="search" id="search-input" placeholder="Search name, address, category…">
+      <div class="vault-toolbar-right">
+        <button class="hil-btn" id="toggle-archived-btn">🗄 VIEW ARCHIVED</button>
+        <button class="hil-btn primary" id="add-item-btn">+ ADD ITEM</button>
+      </div>
+    </div>
+    <div class="filter-chips" id="category-filters">
+      <button class="filter-chip active" data-cat="">ALL</button>
+      <button class="filter-chip" data-cat="tool">TOOL</button>
+      <button class="filter-chip" data-cat="fixture">FIXTURE</button>
+      <button class="filter-chip" data-cat="furniture">FURNITURE</button>
+      <button class="filter-chip" data-cat="appliance">APPLIANCE</button>
+      <button class="filter-chip" data-cat="hardware">HARDWARE</button>
+      <button class="filter-chip" data-cat="equipment">EQUIPMENT</button>
+      <button class="filter-chip" data-cat="electronics">ELECTRONICS</button>
+      <button class="filter-chip" data-cat="consumable">CONSUMABLE</button>
+      <button class="filter-chip" data-cat="vessel">VESSEL</button>
+      <button class="filter-chip" data-cat="collectible">COLLECTIBLE</button>
+      <button class="filter-chip" data-cat="heirloom">HEIRLOOM</button>
+      <button class="filter-chip" data-cat="ephemera">EPHEMERA</button>
+      <button class="filter-chip" data-cat="other">OTHER</button>
+    </div>
+    <div class="item-list" id="item-list">
+      <div class="hil-empty"><div class="hil-empty-icon">🗄</div>Loading inventory…</div>
+    </div>
+  </div>
+
+  <!-- KITS TAB -->
+  <div id="tab-kits" style="display:none">
+    <div class="vault-toolbar">
+      <input class="hil-input" type="search" id="kit-search" placeholder="Search kits…">
+      <div class="vault-toolbar-right">
+        <button class="hil-btn primary" id="add-kit-btn">+ ADD KIT</button>
+      </div>
+    </div>
+    <div class="kit-grid" id="kit-grid">
+      <div class="hil-empty"><div class="hil-empty-icon">🧰</div>No kits yet.</div>
+    </div>
+  </div>
+
+  <!-- VESSELS TAB -->
+  <div id="tab-vessels" style="display:none">
+    <div class="vault-toolbar">
+      <input class="hil-input" type="search" id="vessel-search" placeholder="Search vessels…">
+      <div class="vault-toolbar-right">
+        <a class="hil-btn" href="./hil-vessel-builder.html" style="text-decoration:none;display:inline-flex;align-items:center;">🧩 VESSEL TYPES &amp; SLOTS</a>
+        <button class="hil-btn primary" id="add-vessel-btn">+ ADD VESSEL</button>
+      </div>
+    </div>
+    <div class="item-list" id="vessel-list">
+      <div class="hil-empty"><div class="hil-empty-icon">📦</div>No vessels yet.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ITEM DETAIL MODAL ── -->
+<div class="hil-modal-overlay" id="detail-modal">
+  <div class="hil-modal" style="max-width:580px">
+    <div class="hil-modal-header">
+      <span id="detail-modal-title">ITEM DETAIL</span>
+      <button class="hil-modal-close" data-close="detail-modal">✕</button>
+    </div>
+    <div class="hil-modal-body" id="detail-modal-body"></div>
+    <div class="hil-modal-footer">
+      <button class="hil-btn danger" id="detail-delete-btn">DELETE</button>
+      <button class="hil-btn" id="detail-duplicate-btn">DUPLICATE</button>
+      <button class="hil-btn" id="detail-edit-btn">EDIT</button>
+      <button class="hil-btn" data-close="detail-modal">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD / EDIT ITEM MODAL ── -->
+<div class="hil-modal-overlay" id="item-modal">
+  <div class="hil-modal" style="max-width:680px">
+    <div class="hil-modal-header">
+      <span id="item-modal-title">ADD ITEM</span>
+      <button class="hil-modal-close" data-close="item-modal">✕</button>
+    </div>
+    <div class="hil-modal-body">
+      <input type="hidden" id="edit-item-id">
+
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">DISPLAY NAME *</label>
+          <input class="hil-input" id="f-display-name" placeholder="Champion Hand Crank Grinder">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">HL ADDRESS</label>
+          <input class="hil-input" id="f-hl-address" placeholder="SH-MM-S3-A1">
+        </div>
+      </div>
+
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">CATEGORY</label>
+          <select class="hil-select" id="f-category">
+            <option value="tool">Tool</option>
+            <option value="collectible">Collectible</option>
+            <option value="heirloom">Heirloom</option>
+            <option value="ephemera">Ephemera</option>
+            <option value="media">Media</option>
+            <option value="artwork">Artwork</option>
+            <option value="document">Document</option>
+            <option value="specimen">Specimen</option>
+            <option value="fixture">Fixture</option>
+            <option value="furniture">Furniture</option>
+            <option value="appliance">Appliance</option>
+            <option value="hardware">Hardware</option>
+            <option value="equipment">Equipment</option>
+            <option value="electronics">Electronics</option>
+            <option value="consumable">Consumable</option>
+            <option value="vehicle_part">Vehicle Part</option>
+            <option value="vessel">Vessel</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">STATUS</label>
+          <select class="hil-select" id="f-status">
+            <option value="active">Active</option>
+            <option value="transferred">Transferred</option>
+            <option value="donated">Donated</option>
+            <option value="passed_on">Passed On</option>
+            <option value="lost">Lost</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">SUBCATEGORY TAGS</label>
+        <div id="subcat-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
+        <input class="hil-input" id="f-subcategory-input" autocomplete="off" placeholder="type a tag, hit Enter or comma — e.g. server, hand tool, SBC, vinyl">
+        <div id="subcat-autocomplete" class="tag-autocomplete-dropdown" style="display:none"></div>
+      </div>
+
+      <div class="hil-grid-3">
+        <div class="hil-field">
+          <label class="hil-label">DEVICE ID</label>
+          <input class="hil-input" id="f-device-id" placeholder="hostname, MAC, internal tag">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">MANUFACTURER</label>
+          <input class="hil-input" id="f-manufacturer" placeholder="Champion">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">YEAR MADE</label>
+          <input class="hil-input" id="f-year-made" placeholder="c.1920s">
+        </div>
+      </div>
+
+      <div class="hil-grid-3">
+        <div class="hil-field">
+          <label class="hil-label">MODEL / PART NUMBER</label>
+          <input class="hil-input" id="f-model-number" placeholder="e.g. DWMT73810">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">SERIAL NUMBER</label>
+          <input class="hil-input" id="f-serial-number" placeholder="for warranty / insurance">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">CONDITION</label>
+          <select class="hil-select" id="f-condition">
+            <option value="unknown">Unknown</option>
+            <option value="mint">Mint</option>
+            <option value="excellent">Excellent</option>
+            <option value="good">Good</option>
+            <option value="fair">Fair</option>
+            <option value="poor">Poor</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">ASSIGNED VESSEL <span style="opacity:.6">(now searchable — includes nested drawers)</span></label>
+          <input class="hil-input" id="f-assigned-vessel" autocomplete="off" placeholder="e.g. MR-001 — search by name or type an ID">
+          <div id="assigned-vessel-autocomplete" class="tag-autocomplete-dropdown" style="display:none"></div>
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">DOCUMENTATION / MANUAL LINK</label>
+          <input class="hil-input" type="url" id="f-doc-link" placeholder="https://... URL, wiki page, or PDF link">
+        </div>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">DESCRIPTION</label>
+        <textarea class="hil-textarea" id="f-description" rows="2" placeholder="Short — one or two sentences."></textarea>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">PROVENANCE</label>
+        <textarea class="hil-textarea" id="f-provenance" rows="2" placeholder="Origin, previous owners, how it arrived."></textarea>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">NARRATIVE</label>
+        <textarea class="hil-textarea" id="f-narrative" rows="3" placeholder="The full story. No limit."></textarea>
+      </div>
+
+      <div class="hil-section-label">FINANCIAL</div>
+      <div class="hil-grid-3">
+        <div class="hil-field">
+          <label class="hil-label">PURCHASE PRICE ($)</label>
+          <input class="hil-input" type="number" id="f-purchase-price" placeholder="0.00">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">CURRENT VALUE ($)</label>
+          <input class="hil-input" type="number" id="f-current-value" placeholder="0.00">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">PURCHASE SOURCE</label>
+          <input class="hil-input" id="f-purchase-source" placeholder="Estate sale">
+        </div>
+      </div>
+
+      <div class="hil-section-label">KIT MEMBERSHIPS</div>
+      <div class="hil-field">
+        <label class="hil-label">KIT IDs (comma-separated)</label>
+        <input class="hil-input" id="f-kit-memberships" placeholder="TK-REPAIR-SCREEN, TK-WORKSHOP-BASIC">
+      </div>
+
+      <div class="hil-section-label">RELATED ITEMS</div>
+      <div class="hil-field">
+        <label class="hil-label">DIRECT PAIRWISE LINKS (distinct from Kit Memberships)</label>
+        <div id="related-items-list" style="margin-bottom:8px"></div>
+        <input class="hil-input" id="ri-search" placeholder="search item by name to link…" autocomplete="off">
+        <div id="ri-search-results" style="max-height:160px;overflow-y:auto;margin-top:4px"></div>
+        <div id="ri-disabled-note" style="font-size:11px;opacity:0.6;display:none;margin-top:4px">
+          Save this item first, then reopen it to add related items.
+        </div>
+      </div>
+
+      <div class="hil-section-label">CONNECTIVITY</div>
+      <div class="hil-field">
+        <label class="hil-label">WHAT THIS ITEM PLUGS INTO <span style="opacity:.6">— any device anywhere on the property that exposes ports (a KVM switch, a mini PC's USB, a PDU outlet), not just rack-mounted gear</span></label>
+        <div id="conn-fields" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+          <div>
+            <label class="hil-label" style="font-size:10px">Power — PDU</label>
+            <select class="hil-select" id="conn-power"><option value="">Not connected</option></select>
+            <select class="hil-select" id="conn-power-port" style="display:none;margin-top:4px"></select>
+          </div>
+          <div>
+            <label class="hil-label" style="font-size:10px">Network — Switch</label>
+            <select class="hil-select" id="conn-network"><option value="">Not connected</option></select>
+            <div style="font-size:10px;color:var(--hil-amber);margin-top:2px">Port not tracked — unmanaged switch</div>
+          </div>
+          <div>
+            <label class="hil-label" style="font-size:10px">KVM — Switch</label>
+            <select class="hil-select" id="conn-kvm"><option value="">Not connected</option></select>
+            <select class="hil-select" id="conn-kvm-port" style="display:none;margin-top:4px"></select>
+          </div>
+          <div>
+            <label class="hil-label" style="font-size:10px">USB — Device</label>
+            <select class="hil-select" id="conn-usb"><option value="">Not connected</option></select>
+            <select class="hil-select" id="conn-usb-port" style="display:none;margin-top:4px"></select>
+          </div>
+          <div>
+            <label class="hil-label" style="font-size:10px">HDMI — Device</label>
+            <select class="hil-select" id="conn-hdmi"><option value="">Not connected</option></select>
+            <select class="hil-select" id="conn-hdmi-port" style="display:none;margin-top:4px"></select>
+          </div>
+        </div>
+        <div id="conn-disabled-note" style="font-size:11px;opacity:0.6;display:none;margin-top:8px">
+          Save this item first, then reopen it to set what it connects to.
+        </div>
+        <button type="button" class="hil-btn" id="conn-save-btn" style="margin-top:10px">Save Connections</button>
+      </div>
+
+      <div class="hil-section-label">MAINTENANCE</div>
+      <div class="hil-grid-3">
+        <div class="hil-field">
+          <label class="hil-label">SERVICE INTERVAL (DAYS)</label>
+          <input class="hil-input" type="number" id="f-service-interval" placeholder="90">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">LAST SERVICED</label>
+          <input class="hil-input" type="date" id="f-last-serviced">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">NEXT SERVICE DUE</label>
+          <input class="hil-input" id="f-next-service-due" readonly style="opacity:0.7">
+        </div>
+      </div>
+      <div class="hil-field">
+        <label class="hil-label">WARRANTY EXPIRY</label>
+        <input class="hil-input" type="date" id="f-warranty-expiry" style="max-width:200px">
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">SERVICE HISTORY</label>
+        <div id="service-history-list" style="margin-bottom:8px"></div>
+        <div class="hil-grid-3" style="align-items:end">
+          <div class="hil-field">
+            <input class="hil-input" type="date" id="sh-date">
+          </div>
+          <div class="hil-field">
+            <select class="hil-select" id="sh-type">
+              <option value="filter_change">Filter Change</option>
+              <option value="inspection">Inspection</option>
+              <option value="repair">Repair</option>
+              <option value="replacement">Replacement</option>
+              <option value="cleaning">Cleaning</option>
+              <option value="calibration">Calibration</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="hil-field">
+            <input class="hil-input" type="number" id="sh-cost" placeholder="cost $ (optional)">
+          </div>
+        </div>
+        <input class="hil-input" id="sh-notes" placeholder="notes — what was done" style="margin-top:6px">
+        <button type="button" class="hil-btn" id="sh-add-btn" style="margin-top:6px">+ ADD SERVICE ENTRY</button>
+      </div>
+
+      <div class="hil-section-label">HERO PHOTO</div>
+      <div class="hil-field">
+        <div id="photo-preview" style="display:none;margin-bottom:10px">
+          <img id="photo-preview-img" src="" alt=""
+               style="width:100%;max-height:180px;object-fit:cover;border:1px solid var(--hil-border)">
+          <button type="button" id="photo-remove-btn"
+                  style="font-family:var(--font-mono);font-size:10px;color:var(--hil-danger);
+                         background:none;border:none;cursor:pointer;margin-top:4px;padding:0">
+            ✕ REMOVE PHOTO
+          </button>
+        </div>
+        <label class="hil-btn" for="photo-file-input"
+               style="display:inline-block;cursor:pointer;text-align:center;width:100%;box-sizing:border-box">
+          📷 CHOOSE PHOTO
+        </label>
+        <input type="file" id="photo-file-input" accept="image/*"
+               style="display:none">
+        <div id="photo-upload-status"
+             style="font-family:var(--font-mono);font-size:10px;
+                    color:var(--hil-text-muted);margin-top:6px;min-height:16px"></div>
+        <input type="hidden" id="f-hero-photo">
+      </div>
+
+      <div class="hil-section-label">DISPLAY FLAGS</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">
+          <input type="checkbox" id="f-flag-vault" checked> VAULT
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">
+          <input type="checkbox" id="f-flag-wunderkammer"> MUSEUM
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">
+          <input type="checkbox" id="f-flag-history-wall"> HISTORY WALL
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">
+          <input type="checkbox" id="f-flag-exchange"> EXCHANGE
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--hil-text-muted)">
+          <input type="checkbox" id="f-flag-family-ledger"> FAMILY LEDGER
+        </label>
+      </div>
+    </div>
+    <div class="hil-modal-footer">
+      <button class="hil-btn" data-close="item-modal">CANCEL</button>
+      <button class="hil-btn primary" id="save-item-btn">SAVE ITEM</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD / EDIT KIT MODAL ── -->
+<div class="hil-modal-overlay" id="kit-modal">
+  <div class="hil-modal">
+    <div class="hil-modal-header">
+      <span id="kit-modal-title">ADD KIT</span>
+      <button class="hil-modal-close" data-close="kit-modal">✕</button>
+    </div>
+    <div class="hil-modal-body">
+      <input type="hidden" id="edit-kit-id">
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">KIT ID *</label>
+          <input class="hil-input" id="k-kit-id" placeholder="TK-REPAIR-SCREEN">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">PREFIX</label>
+          <select class="hil-select" id="k-prefix">
+            <option value="TK">TK — Tool Kit</option>
+            <option value="SK">SK — Supply Kit</option>
+            <option value="MK">MK — Material Kit</option>
+            <option value="CK">CK — Care Kit</option>
+            <option value="FC">FC — Family Kit</option>
+          </select>
+        </div>
+      </div>
+      <div class="hil-field">
+        <label class="hil-label">KIT NAME *</label>
+        <input class="hil-input" id="k-name" placeholder="Screen Repair Kit">
+      </div>
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">DOMAIN</label>
+          <select class="hil-select" id="k-domain">
+            <option value="domestic_culinary">Domestic / Culinary</option>
+            <option value="machining_metalwork">Machining / Metalwork</option>
+            <option value="woodcraft_restoration">Woodcraft / Restoration</option>
+            <option value="fine_arts_musical">Fine Arts / Musical</option>
+            <option value="materia_medica_lab">Materia Medica / Lab</option>
+            <option value="outdoor_homestead">Outdoor / Homestead</option>
+          </select>
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">TIER</label>
+          <select class="hil-select" id="k-tier">
+            <option value="1">Tier 1 — Domestic Base</option>
+            <option value="2" selected>Tier 2 — Project</option>
+            <option value="3">Tier 3 — Capability</option>
+          </select>
+        </div>
+      </div>
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">HL ADDRESS <span style="opacity:.6">(only if not using a vessel below)</span></label>
+          <input class="hil-input" id="k-hl-address" placeholder="SH-MM-S3-A1">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">STATUS</label>
+          <select class="hil-select" id="k-status">
+            <option value="assembly">Assembly</option>
+            <option value="active" selected>Active</option>
+            <option value="shared">Shared</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">VESSEL <span style="opacity:.6">(optional — where this kit lives. Single_blob vessels only; slotted vessels assign kits per-slot instead.)</span></label>
+        <select class="hil-select" id="k-vessel-id"><option value="">— not assigned to a vessel —</option></select>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">ASSUMED CONTENTS <span style="opacity:.6">(optional, one per line — standard items this kit implies. Not linked to real Vault items — the kit name and this list ARE the record.)</span></label>
+        <textarea class="hil-textarea" id="k-assumed-contents" rows="4" placeholder="lye&#10;shea butter&#10;jojoba oil&#10;silicone soap molds"></textarea>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">CAPABILITIES (one per line)</label>
+        <textarea class="hil-textarea" id="k-capabilities" rows="3" placeholder="repair window screen&#10;patch mesh fabric"></textarea>
+      </div>
+      <div class="hil-field">
+        <label class="hil-label">TAGS</label>
+        <div id="k-tags-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
+        <input class="hil-input" id="k-tags-input" autocomplete="off" placeholder="type a tag, hit Enter or comma">
+        <div id="k-tags-autocomplete" class="tag-autocomplete-dropdown" style="display:none"></div>
+      </div>
+
+      <div class="hil-section-label">KIT PHOTO</div>
+      <div class="hil-field">
+        <div id="kit-photo-preview" style="display:none;margin-bottom:10px">
+          <img id="kit-photo-preview-img" src="" alt=""
+               style="width:100%;max-height:180px;object-fit:cover;border:1px solid var(--hil-border)">
+          <button type="button" id="kit-photo-remove-btn"
+                  style="font-family:var(--font-mono);font-size:10px;color:var(--hil-danger);
+                         background:none;border:none;cursor:pointer;margin-top:4px;padding:0">
+            ✕ REMOVE PHOTO
+          </button>
+        </div>
+        <label class="hil-btn" for="kit-photo-file-input"
+               style="display:inline-block;cursor:pointer;text-align:center;width:100%;box-sizing:border-box">
+          📷 CHOOSE PHOTO
+        </label>
+        <input type="file" id="kit-photo-file-input" accept="image/*" style="display:none">
+        <div id="kit-photo-upload-status"
+             style="font-family:var(--font-mono);font-size:10px;
+                    color:var(--hil-text-muted);margin-top:6px;min-height:16px"></div>
+        <input type="hidden" id="k-hero-photo">
+      </div>
+    </div>
+    <div class="hil-modal-footer">
+      <button class="hil-btn" data-close="kit-modal">CANCEL</button>
+      <button class="hil-btn primary" id="save-kit-btn">SAVE KIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADD / EDIT VESSEL MODAL ── -->
+<div class="hil-modal-overlay" id="vessel-modal">
+  <div class="hil-modal">
+    <div class="hil-modal-header">
+      <span id="vessel-modal-title">ADD VESSEL</span>
+      <button class="hil-modal-close" data-close="vessel-modal">✕</button>
+    </div>
+    <div class="hil-modal-body">
+      <input type="hidden" id="edit-vessel-id">
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">VESSEL ID *</label>
+          <input class="hil-input" id="v-vessel-id" placeholder="MS-013">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">PREFIX</label>
+          <select class="hil-select" id="v-prefix">
+            <option value="MS">MS — Metal Shop Cart</option>
+            <option value="SP">SP — Supply Container</option>
+            <option value="BX">BX — Box</option>
+            <option value="TB">TB — Tote Bin</option>
+            <option value="BG">BG — Bag</option>
+          </select>
+        </div>
+      </div>
+      <div class="hil-field">
+        <label class="hil-label">VESSEL NAME *</label>
+        <input class="hil-input" id="v-name" placeholder="Metal Shop Cart 013">
+      </div>
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">CURRENT HL ADDRESS</label>
+          <input class="hil-input" id="v-hl-address" placeholder="SH-MM-S1-A0">
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">HOME ADDRESS</label>
+          <input class="hil-input" id="v-home-address" placeholder="SH-MM-S1-A0">
+        </div>
+      </div>
+      <div class="hil-grid-2">
+        <div class="hil-field">
+          <label class="hil-label">FILL LEVEL</label>
+          <select class="hil-select" id="v-fill-level">
+            <option value="full">Full</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+            <option value="empty">Empty</option>
+          </select>
+        </div>
+        <div class="hil-field">
+          <label class="hil-label">ACTIVE KIT ID</label>
+          <input class="hil-input" id="v-kit-id" placeholder="TK-REPAIR-SCREEN">
+        </div>
+      </div>
+
+      <div class="hil-field">
+        <label class="hil-label">TAGS</label>
+        <div id="v-tags-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
+        <input class="hil-input" id="v-tags-input" autocomplete="off" placeholder="type a tag, hit Enter or comma">
+        <div id="v-tags-autocomplete" class="tag-autocomplete-dropdown" style="display:none"></div>
+      </div>
+
+      <div class="hil-section-label">CONTENTS MODE <span style="opacity:.6">— how this vessel's contents are tracked</span></div>
+      <div class="hil-field">
+        <select class="hil-select" id="v-slot-mode">
+          <option value="">Plain — no contents tracking</option>
+          <option value="freeform">Freeform — quick text list</option>
+          <option value="slotted">Slotted — drag items into individual slots</option>
+        </select>
+        <div id="v-freeform-field" style="display:none;margin-top:8px">
+          <label class="hil-label">CONTENTS</label>
+          <textarea class="hil-input" id="v-freeform-contents" rows="3" placeholder="books, books, more books" style="resize:vertical"></textarea>
+        </div>
+        <div id="v-slotcount-field" style="display:none;margin-top:8px">
+          <label class="hil-label">SLOT COUNT</label>
+          <input class="hil-input" type="number" id="v-slot-count" min="1" placeholder="12">
+          <div class="rd-hint">Raising this adds empty slots at the end. Lowering it is only allowed if the slots being removed are empty. Manage placements from the vessel list's 🎯 SLOTS button after saving.</div>
+        </div>
+      </div>
+
+      <div class="hil-section-label">GRID TYPE <span style="opacity:.6">— reusable template, e.g. "Husky 2-Column Tool Chest"</span></div>
+      <div class="hil-field">
+        <select class="hil-select" id="v-vessel-type">
+          <option value="">No grid — plain vessel</option>
+          <option value="__new__">+ Define a new grid type…</option>
+        </select>
+        <div id="v-newtype-fields" style="display:none;margin-top:8px" class="hil-grid-2">
+          <div class="hil-field">
+            <label class="hil-label">NEW TYPE NAME</label>
+            <input class="hil-input" id="v-newtype-name" placeholder="Husky 2-Column Tool Chest">
+          </div>
+          <div class="hil-field">
+            <label class="hil-label">COLUMNS</label>
+            <select class="hil-select" id="v-newtype-columns">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="hil-section-label">NESTS INSIDE <span style="opacity:.6">— "a vessel in the vessel," e.g. this drawer lives in that chest</span></div>
+      <div class="hil-field">
+        <div id="v-parent-current" style="display:none;margin-bottom:6px;font-size:12px;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid var(--hil-border)">
+          <span id="v-parent-current-name"></span>
+          <button type="button" id="v-parent-clear-btn" style="background:none;border:none;color:var(--hil-danger);cursor:pointer;font-family:var(--font-mono);font-size:11px">✕</button>
+        </div>
+        <input class="hil-input" id="v-parent-search" placeholder="search vessels to nest inside…" autocomplete="off">
+        <div id="v-parent-search-results" style="max-height:160px;overflow-y:auto;margin-top:4px"></div>
+      </div>
+
+      <div id="v-slot-fields" style="display:none">
+        <div class="hil-section-label">PLACEMENT IN PARENT</div>
+        <div class="hil-grid-2">
+          <div class="hil-field">
+            <label class="hil-label">TIER <span style="opacity:.6">(1 = bottom)</span></label>
+            <input class="hil-input" type="number" id="v-slot-tier" min="1" value="1">
+          </div>
+          <div class="hil-field">
+            <label class="hil-label">HEIGHT</label>
+            <select class="hil-select" id="v-slot-height">
+              <option value="1">1 — Shallow</option>
+              <option value="2">2 — Medium</option>
+              <option value="3">3 — Deep</option>
+            </select>
+          </div>
+        </div>
+        <div class="hil-grid-2">
+          <div class="hil-field">
+            <label class="hil-label">WIDTH</label>
+            <select class="hil-select" id="v-slot-width">
+              <option value="full">Full width</option>
+              <option value="half">Half width</option>
+            </select>
+          </div>
+          <div class="hil-field" id="v-slot-bay-wrap" style="display:none">
+            <label class="hil-label">BAY</label>
+            <select class="hil-select" id="v-slot-bay">
+              <option value="1">1 — Left</option>
+              <option value="2">2 — Right</option>
+            </select>
+          </div>
+        </div>
+        <div class="rd-hint" id="v-slot-preview" style="margin-left:0;display:block"></div>
+      </div>
+    </div>
+    <div class="hil-modal-footer">
+      <button class="hil-btn" data-close="vessel-modal">CANCEL</button>
+      <button class="hil-btn primary" id="save-vessel-btn">SAVE VESSEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── VESSEL SLOTS CANVAS — drag found items into a tier's slots ── -->
+<div class="hil-modal-overlay" id="vessel-slots-modal">
+  <div class="hil-modal" style="max-width:640px">
+    <div class="hil-modal-header">
+      <span id="vs-modal-title">SLOTS</span>
+      <button class="hil-modal-close" data-close="vessel-slots-modal">✕</button>
+    </div>
+    <div class="hil-modal-body">
+      <div class="hil-field">
+        <label class="hil-label">FIND ITEM <span style="opacity:.6">(search Vault, adds to tray below)</span></label>
+        <input class="hil-input" id="vs-search" placeholder="search…" autocomplete="off">
+        <div id="vs-search-results" style="max-height:140px;overflow-y:auto;margin-top:4px"></div>
+      </div>
+      <div class="vs-tray" id="vs-tray">
+        <div class="vs-tray-hint">Search above, then drag a card into an empty slot below</div>
+      </div>
+      <div class="hil-section-label" style="margin-top:16px">SLOTS <span style="opacity:.6" id="vs-slot-count-label"></span></div>
+      <div class="vs-canvas" id="vs-canvas"></div>
+    </div>
+    <div class="hil-modal-footer">
+      <button class="hil-btn" data-close="vessel-slots-modal">DONE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── VAULT SCRIPT — modular SDK v10 via dynamic import ── -->
+<script>
+// Pre-register globals to prevent setMode-class errors
+window.openModal  = () => {};
+window.closeModal = () => {};
+
+// State
+let allItems = [], allKits = [], allVessels = [], allTags = [], allVesselTypes = [];
+let currentVesselParent = null; // {id, vessel_id, name} | null — editing state for vessel-in-vessel nesting
+let activeTab = 'items', activeCat = '', searchQuery = '', showArchived = false;
+
+// ── Slotted vessel canvas state ── (item-level slots on a single vessel,
+// distinct from vessel-in-vessel nesting above — see v-slot-mode fields)
+let currentSlotVessel = null; // full vessel doc while the slots modal is open
+let slotTray = [];            // items picked via search, awaiting drag-in (not yet written)
+let slotDragCtx = null;
+let currentServiceHistory = [];
+let currentSubcategories = [];   // subcategory tags array, editing state
+let currentRelatedItems = [];    // [{id, name}] related-item links, editing state
+let editingItemId = null, editingKitId = null, editingVesselId = null;
+let detailItem = null;
+
+// Kit photo editing state — mirrors window._pendingPhotoFile for items
+let currentKitPhotoUrl = null;
+window._pendingKitPhotoFile = null;
+
+// Compat helper: reads item.subcategories (new array field) if present,
+// else falls back to the legacy item.subcategory single-string field so
+// old records still surface correctly until they're next saved/migrated.
+function getSubcats(item) {
+  if (Array.isArray(item.subcategories)) return item.subcategories;
+  if (item.subcategory) return [item.subcategory];
+  return [];
+}
+
+// Firebase modular SDK functions — populated after Shell loads Firebase
+let _collection, _doc, _addDoc, _updateDoc, _deleteDoc, _setDoc,
+    _onSnapshot, _serverTimestamp, _query, _orderBy;
+
+// hil-admin-action client functions (item_records writes) — populated in handleAuth
+let vaultUpdateItem, vaultArchiveItem, vaultCommitStaged, vaultLinkRelatedItem, vaultMergeTag;
+
+// ── Shell init ──
+HILShell.init({
+  toolId:      'vault',
+  toolName:    'HL Vault',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) { clearUI(); return; }
+
+  // Import modular SDK functions now that Firebase is ready
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const [fsdk, vaultClient] = await Promise.all([
+    import(`${FB_BASE}/firebase-firestore.js`),
+    import('./vault-item-client.js'),
+  ]);
+
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _updateDoc       = fsdk.updateDoc;
+  _setDoc          = fsdk.setDoc;
+  _deleteDoc       = fsdk.deleteDoc;
+  _onSnapshot      = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp;
+  _query           = fsdk.query;
+  _orderBy         = fsdk.orderBy;
+
+  // item_records writes go through hil-admin-action (Cloud Run), never
+  // directly to Firestore — see vault-item-client.js header comment for why.
+  vaultUpdateItem  = vaultClient.vaultUpdateItem;
+  vaultArchiveItem = vaultClient.vaultArchiveItem;
+  vaultCommitStaged = vaultClient.vaultCommitStaged;
+  vaultLinkRelatedItem = vaultClient.vaultLinkRelatedItem;
+  vaultMergeTag = vaultClient.vaultMergeTag;
+
+  const db = window.db;
+
+  // Real-time listeners
+  // NOTE: orderBy('updated_at', 'desc') silently excludes any item_records doc
+  // missing that field — known platform pitfall (see HIL-Firestore-Rules notes).
+  // If older items vanish from this list, this is why; consider client-side
+  // sort instead if that turns out to matter here.
+  _onSnapshot(
+    _query(_collection(db, 'users', user.uid, 'item_records'), _orderBy('updated_at', 'desc')),
+    snap => {
+      allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      updateStats(); renderItems();
+    },
+    err => HILShell.toast('Items load error: ' + err.message, 'error')
+  );
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'kits'), snap => {
+    allKits = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderKits(); updateStats();
+  });
+
+  _onSnapshot(_collection(db, 'users', user.uid, 'vessels'), snap => {
+    allVessels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderVessels();
+    populateKitVesselSelect();
+  });
+
+  // Vessel Types — reusable grid templates ("Husky 2-Column Tool Chest")
+  // so a second identical vessel doesn't need its column count re-entered.
+  _onSnapshot(_collection(db, 'users', user.uid, 'vessel_types'), snap => {
+    allVesselTypes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    populateVesselTypeSelect();
+  });
+
+  // Tag Store registry — frontend reads/writes this collection directly
+  // (vocabulary, not inventory truth — same class as museum_items).
+  // Merges go through hil-admin-action since they fan out across item_records.
+  _onSnapshot(_collection(db, 'users', user.uid, 'tag_registry'), snap => {
+    allTags = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(t => t.status !== 'merged');
+  });
+}
+
+// ── Stats ──
+function updateStats() {
+  const active   = allItems.filter(i => i.status === 'active').length;
+  const estValue = allItems.reduce((s, i) => s + (i.financial?.current_value || 0), 0);
+  setText('stat-total',  allItems.length);
+  setText('stat-active', active);
+  setText('stat-kits',   allKits.length);
+  setText('stat-value',  estValue > 0 ? '$' + Math.round(estValue).toLocaleString() : '—');
+}
+
+// ── Render items ──
+function renderItems() {
+  const q   = searchQuery.toLowerCase();
+  const cat = activeCat;
+  const filtered = allItems.filter(i => {
+    const isArchived  = i.status === 'archived';
+    const matchArchive = showArchived ? isArchived : !isArchived;
+    const matchCat = !cat || i.category === cat;
+    const matchQ   = !q
+      || (i.display_name||'').toLowerCase().includes(q)
+      || (i.hl_address||'').toLowerCase().includes(q)
+      || (i.category||'').toLowerCase().includes(q)
+      || getSubcats(i).some(s => s.toLowerCase().includes(q))
+      || (i.device_id||'').toLowerCase().includes(q)
+      || (i.model_number||'').toLowerCase().includes(q)
+      || (i.serial_number||'').toLowerCase().includes(q)
+      || (i.assigned_vessel||'').toLowerCase().includes(q);
+    return matchArchive && matchCat && matchQ;
+  });
+
+  const list = document.getElementById('item-list');
+  if (!filtered.length) {
+    const emptyMsg = showArchived
+      ? 'No archived items.'
+      : (allItems.filter(i => i.status !== 'archived').length ? 'No items match.' : 'No items yet. Add your first.');
+    list.innerHTML = `<div class="hil-empty"><div class="hil-empty-icon">🗄</div>${emptyMsg}</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(item => `
+    <div class="item-row" data-id="${item.id}">
+      <div class="item-thumb">
+        ${item.hero_photo ? `<img src="${esc(item.hero_photo)}" alt="" loading="lazy">` : categoryIcon(item.category)}
+      </div>
+      <div class="item-info">
+        <div class="item-name">${esc(item.display_name || item.name || 'Unnamed')}</div>
+        <div class="item-meta">
+          ${item.hl_address ? `<span class="item-address">${esc(item.hl_address)}</span>` : ''}
+          <span class="item-category">${(item.category||'').toUpperCase()}${getSubcats(item).length ? ' · ' + getSubcats(item).map(esc).join(', ') : ''}</span>
+          ${item.manufacturer ? `<span class="item-category">${esc(item.manufacturer)}</span>` : ''}
+        </div>
+      </div>
+      <div><span class="hil-badge ${statusBadgeClass(item.status)}">${(item.status||'active').toUpperCase()}</span></div>
+      <div class="item-actions">
+        <button class="icon-btn" data-edit="${item.id}" title="Edit">✏</button>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.item-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('[data-edit]')) {
+        openEditItem(e.target.closest('[data-edit]').dataset.edit);
+        return;
+      }
+      const item = allItems.find(i => i.id === row.dataset.id);
+      if (item) openDetailModal(item);
+    });
+  });
+}
+
+// ── Render kits ──
+function renderKits() {
+  const q = (document.getElementById('kit-search')?.value || '').toLowerCase();
+  const filtered = allKits.filter(k =>
+    !q || (k.name||'').toLowerCase().includes(q) || (k.kit_id||'').toLowerCase().includes(q)
+  );
+  const grid = document.getElementById('kit-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="hil-empty"><div class="hil-empty-icon">🧰</div>${allKits.length ? 'No kits match.' : 'No kits yet.'}</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(k => `
+    <div class="kit-card" data-kit-id="${k.id}">
+      ${(k.photos && k.photos.hero) ? `<img class="kit-thumb" src="${esc(k.photos.hero)}" alt="">` : ''}
+      <div class="kit-id">${esc(k.kit_id||k.id)}</div>
+      <div class="kit-name">${esc(k.name||'Unnamed Kit')}</div>
+      <div class="kit-meta">${(k.domain||'').replace(/_/g,' ').toUpperCase()} · TIER ${k.tier||'—'}</div>
+      ${k.tags?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin:4px 0">${k.tags.map(t=>`<span class="hil-badge ${tagBadgeClass(getTagMeta(t).type)}">${esc(getTagMeta(t).display_name)}</span>`).join('')}</div>` : ''}
+      <div class="kit-status-row">
+        <span class="hil-badge ${statusBadgeClass(k.status)}">${(k.status||'active').toUpperCase()}</span>
+        <button class="icon-btn" data-edit-kit="${k.id}">✏</button>
+      </div>
+    </div>
+  `).join('');
+  grid.querySelectorAll('[data-edit-kit]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); openEditKit(btn.dataset.editKit); });
+  });
+}
+
+// ── Render vessels ──
+function renderVessels() {
+  const q = (document.getElementById('vessel-search')?.value || '').toLowerCase();
+  const filtered = allVessels.filter(v =>
+    !q || (v.name||'').toLowerCase().includes(q) || (v.vessel_id||'').toLowerCase().includes(q)
+  );
+  const list = document.getElementById('vessel-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="hil-empty"><div class="hil-empty-icon">📦</div>${allVessels.length ? 'No vessels match.' : 'No vessels yet.'}</div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(v => {
+    const parent = v.parent_ref ? allVessels.find(p => p.id === v.parent_ref) : null;
+    const occupied = v.slot_mode === 'slotted' ? (v.slots||[]).filter(s => s.item_id).length : 0;
+    return `
+    <div class="item-row" style="grid-template-columns:1fr auto auto auto">
+      <div class="item-info">
+        <div class="item-name">${esc(v.name||v.vessel_id||'Unnamed')}</div>
+        <div class="item-meta">
+          <span class="item-category">${esc(v.vessel_id||'')} · ${esc(v.prefix||'')}</span>
+          ${v.hl_address ? `<span class="item-address">${esc(v.hl_address)}</span>` : ''}
+          ${parent ? `<span style="opacity:.6">↳ in ${esc(parent.name||parent.vessel_id)}</span>` : ''}
+          ${v.slot_mode === 'freeform' && v.freeform_contents ? `<span style="opacity:.6">${esc(v.freeform_contents)}</span>` : ''}
+          ${v.slot_mode === 'slotted' ? `<span style="opacity:.6">${occupied}/${v.slot_count||0} slots filled</span>` : ''}
+        </div>
+        ${v.tags?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${v.tags.map(t=>`<span class="hil-badge ${tagBadgeClass(getTagMeta(t).type)}">${esc(getTagMeta(t).display_name)}</span>`).join('')}</div>` : ''}
+      </div>
+      <span class="hil-badge ${fillBadgeClass(v.fill_level)}">${(v.fill_level||'—').toUpperCase()}</span>
+      ${v.slot_mode === 'slotted' ? `<button class="icon-btn" data-slots-vessel="${v.id}" title="Manage slots">🎯</button>` : '<span></span>'}
+      <button class="icon-btn" data-edit-vessel="${v.id}">✏</button>
+    </div>
+  `;
+  }).join('');
+  list.querySelectorAll('[data-edit-vessel]').forEach(btn => {
+    btn.addEventListener('click', () => openEditVessel(btn.dataset.editVessel));
+  });
+  list.querySelectorAll('[data-slots-vessel]').forEach(btn => {
+    btn.addEventListener('click', () => openVesselSlotsModal(btn.dataset.slotsVessel));
+  });
+}
+
+// ── Detail modal ──
+function openDetailModal(item) {
+  detailItem = item;
+  setText('detail-modal-title', (item.display_name||item.name||'ITEM').toUpperCase());
+  const fin = item.financial || {};
+  document.getElementById('detail-modal-body').innerHTML = `
+    <div class="detail-hero">
+      ${item.hero_photo ? `<img src="${esc(item.hero_photo)}" alt="">` : `<span style="font-size:48px">${categoryIcon(item.category)}</span>`}
+    </div>
+    <div class="hil-section-label">IDENTITY</div>
+    ${dr('HL ADDRESS',    item.hl_address ? `<span class="hil-address-chip">${esc(item.hl_address)}</span>` : '—')}
+    ${dr('CATEGORY',      esc(item.category||'—'))}
+    ${getSubcats(item).length ? dr('SUBCATEGORIES', getSubcats(item).map(t=>`<span class="hil-badge">${esc(t)}</span>`).join(' ')) : ''}
+    ${dr('STATUS',        `<span class="hil-badge ${statusBadgeClass(item.status)}">${(item.status||'active').toUpperCase()}</span>`)}
+    ${dr('MANUFACTURER',  esc(item.manufacturer||'—'))}
+    ${dr('YEAR MADE',     esc(item.year_made||'—'))}
+    ${dr('CONDITION',     esc(item.condition||'—'))}
+    ${item.model_number ? dr('MODEL / PART #', esc(item.model_number)) : ''}
+    ${item.serial_number ? dr('SERIAL #', esc(item.serial_number)) : ''}
+    ${item.assigned_vessel ? dr('ASSIGNED VESSEL', esc(item.assigned_vessel)) : ''}
+    ${item.doc_link ? dr('DOCUMENTATION', `<a href="${esc(item.doc_link)}" target="_blank" rel="noopener" style="color:var(--hil-green)">${esc(item.doc_link)}</a>`) : ''}
+    ${item.description ? `<div style="margin:12px 0"><div class="hil-section-label">DESCRIPTION</div><p style="font-size:13px;color:var(--hil-text-muted);line-height:1.6">${esc(item.description)}</p></div>` : ''}
+    ${item.provenance  ? `<div style="margin:12px 0"><div class="hil-section-label">PROVENANCE</div><p style="font-size:13px;color:var(--hil-text-muted);line-height:1.6">${esc(item.provenance)}</p></div>` : ''}
+    <div class="hil-section-label">FINANCIAL</div>
+    ${dr('PURCHASE PRICE',  fin.purchase_price != null ? '$' + fin.purchase_price.toLocaleString() : '—')}
+    ${dr('CURRENT VALUE',   fin.current_value  != null ? '$' + fin.current_value.toLocaleString()  : '—')}
+    ${dr('SOURCE',          esc(fin.purchase_source||'—'))}
+    ${item.kit_memberships?.length ? `<div style="margin-top:12px"><div class="hil-section-label">KIT MEMBERSHIPS</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${item.kit_memberships.map(k=>`<span class="hil-badge green">${esc(k)}</span>`).join('')}</div></div>` : ''}
+    ${item.related_items?.length ? `<div style="margin-top:12px"><div class="hil-section-label">RELATED ITEMS</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px" id="detail-related-chips">${item.related_items.map(rid => {
+        const r = allItems.find(x => x.id === rid);
+        return `<span class="hil-badge amber" data-jump="${rid}" style="cursor:pointer">${esc(r ? (r.display_name||r.name||rid) : rid)}</span>`;
+      }).join('')}</div></div>` : ''}
+  `;
+  document.querySelectorAll('#detail-related-chips [data-jump]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const target = allItems.find(i => i.id === chip.dataset.jump);
+      if (target) openDetailModal(target);
+    });
+  });
+  openModal('detail-modal');
+}
+
+// ── R2 PHOTO UPLOAD ──
+const R2_WORKER = 'https://hilsystem-r2-signer.dvo77.workers.dev';
+
+async function uploadPhotoToR2(file, uid, itemId) {
+  const photoStatus = document.getElementById('photo-upload-status');
+  photoStatus.textContent = '⏳ Uploading photo…';
+
+  // Convert file to base64
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  const ext  = file.name.split('.').pop().toLowerCase() || 'jpg';
+  const slot = 'hero';
+
+  const res = await fetch(R2_WORKER, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename:    `${slot}.${ext}`,
+      contentType: file.type || 'image/jpeg',
+      data:        base64,          // ← Worker v2 expects this
+      context:     'item',
+      uid:         uid,
+      itemId:      itemId,
+      slot:        slot,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || `Upload failed ${res.status}`);
+  }
+
+  photoStatus.innerHTML = '<span style="color:var(--hil-green)">✓ Photo uploaded</span>';
+  return json.publicUrl;
+}
+
+// Generic R2 upload helper — same worker contract as uploadPhotoToR2 above,
+// but parameterized by context/slot/statusElId so it can serve item, kit, and
+// vessel photo uploads without three near-duplicate functions. uploadPhotoToR2
+// itself is left untouched (item modal already depends on its exact behavior);
+// this is what the Kit modal's photo section calls.
+async function uploadPhotoToR2Generic(file, { uid, itemId, context, slot = 'hero', statusElId }) {
+  const statusEl = statusElId ? document.getElementById(statusElId) : null;
+  if (statusEl) statusEl.textContent = '⏳ Uploading photo…';
+
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => reject(new Error('File read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+
+  const res = await fetch(R2_WORKER, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename:    `${slot}.${ext}`,
+      contentType: file.type || 'image/jpeg',
+      data:        base64,
+      context,
+      uid,
+      itemId,
+      slot,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || `Upload failed ${res.status}`);
+  }
+
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--hil-green)">✓ Photo uploaded</span>';
+  return json.publicUrl;
+}
+
+// Wire photo file input → preview
+document.getElementById('photo-file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Show local preview immediately
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('photo-preview-img').src = ev.target.result;
+    document.getElementById('photo-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  // Store file reference for upload at save time
+  window._pendingPhotoFile = file;
+  document.getElementById('photo-upload-status').textContent = 'Photo ready — will upload on save';
+});
+
+document.getElementById('photo-remove-btn').addEventListener('click', () => {
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview-img').src = '';
+  document.getElementById('f-hero-photo').value = '';
+  document.getElementById('photo-file-input').value = '';
+  document.getElementById('photo-upload-status').textContent = '';
+  window._pendingPhotoFile = null;
+});
+
+// ── Item save (modular SDK) ──
+async function saveItem() {
+  const user = window.currentUser;
+  if (!user) { HILShell.toast('Not signed in', 'error'); return; }
+
+  const displayName = gv('f-display-name');
+  if (!displayName) { HILShell.toast('Display name is required', 'error'); return; }
+
+  const kitMemberships = gv('f-kit-memberships')
+    ? gv('f-kit-memberships').split(',').map(s=>s.trim()).filter(Boolean) : [];
+
+  const now = _serverTimestamp();
+  const data = {
+    display_name:    displayName,
+    name:            displayName,
+    hl_address:      gv('f-hl-address') || null,
+    category:        gv('f-category'),
+    subcategories:   currentSubcategories,
+    status:          gv('f-status'),
+    condition:       gv('f-condition'),
+    manufacturer:    gv('f-manufacturer') || null,
+    device_id:       gv('f-device-id') || null,
+    model_number:    gv('f-model-number') || null,
+    serial_number:   gv('f-serial-number') || null,
+    assigned_vessel: gv('f-assigned-vessel') || null,
+    doc_link:        gv('f-doc-link') || null,
+    year_made:       gv('f-year-made') || null,
+    description:     gv('f-description') || null,
+    provenance:      gv('f-provenance') || null,
+    narrative:       gv('f-narrative') || null,
+    kit_memberships: kitMemberships,
+    maintenance: {
+      service_interval_days: parseInt(gv('f-service-interval')) || null,
+      last_serviced:          gv('f-last-serviced') || null,
+      next_service_due:       computeNextServiceDue(),
+      service_history:        currentServiceHistory,
+      warranty_expiry:        gv('f-warranty-expiry') || null,
+    },
+    display: {
+      vault:         gc('f-flag-vault'),
+      wunderkammer:  gc('f-flag-wunderkammer'),
+      history_wall:  gc('f-flag-history-wall'),
+      exchange:      gc('f-flag-exchange'),
+      family_ledger: gc('f-flag-family-ledger'),
+      brag_shelf:    false,
+      sign_studio:   false,
+    },
+    financial: {
+      purchase_price:  parseFloat(gv('f-purchase-price')) || null,
+      current_value:   parseFloat(gv('f-current-value'))  || null,
+      purchase_source: gv('f-purchase-source') || null,
+    },
+    // SSOT ingestion fields (schema v1.3)
+    source:     'manual_ui_trusted',
+    schema_ver: '1.3',
+    owner_uid:  user.uid,
+    updated_at: now,
+  };
+
+  const btn = document.getElementById('save-item-btn');
+  btn.disabled = true; btn.textContent = 'SAVING…';
+
+  try {
+    // Determine item ID (existing or let the backend generate one)
+    const targetId = editingItemId || null;
+
+    // Upload photo if one is pending
+    if (window._pendingPhotoFile) {
+      try {
+        const photoUrl = await uploadPhotoToR2(window._pendingPhotoFile, user.uid, targetId || 'new');
+        data.hero_photo = photoUrl;
+        window._pendingPhotoFile = null;
+      } catch (photoErr) {
+        HILShell.toast('Photo upload failed: ' + photoErr.message, 'error');
+        btn.disabled = false; btn.textContent = 'SAVE ITEM';
+        return;
+      }
+    } else {
+      // Keep existing hero_photo if editing and no new photo chosen
+      const existing = gv('f-hero-photo');
+      if (existing) data.hero_photo = existing;
+    }
+
+    if (editingItemId) {
+      await vaultUpdateItem(editingItemId, data);
+      HILShell.toast('Item updated ✓');
+    } else {
+      await vaultUpdateItem(null, data);
+      HILShell.toast('Item added ✓');
+    }
+
+    closeModal('item-modal');
+    editingItemId = null;
+  } catch (err) {
+    HILShell.toast('Save failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'SAVE ITEM';
+  }
+}
+
+// ── Item delete ──
+// Changed to archive rather than hard-delete: item_records is meant to be an
+// append-only provenance record ("Nothing is Lost. Everything is Logic.") —
+// a true permanent delete contradicts that, and hil-admin-action only
+// exposes /archive-item, not a hard delete, for exactly this reason.
+// If a genuine hard-delete is actually needed (e.g. duplicate cleanup), that
+// should be a separate, deliberately-named action — flag if you want that added.
+async function deleteItem() {
+  if (!detailItem) return;
+  if (!confirm(`Archive "${detailItem.display_name||detailItem.name}"? It will be hidden from active views but not permanently erased.`)) return;
+  try {
+    await vaultArchiveItem(detailItem.id);
+    HILShell.toast('Item archived');
+    closeModal('detail-modal');
+    detailItem = null;
+  } catch (err) {
+    HILShell.toast('Archive failed: ' + err.message, 'error');
+  }
+}
+
+// ── Item form helpers ──
+function openAddItem() {
+  editingItemId = null;
+  setText('item-modal-title', 'ADD ITEM');
+  clearItemForm();
+  openModal('item-modal');
+}
+function openEditItem(id) {
+  const item = allItems.find(i => i.id === id);
+  if (!item) return;
+  editingItemId = id;
+  setText('item-modal-title', 'EDIT ITEM');
+  fillItemForm(item);
+  openModal('item-modal');
+  closeModal('detail-modal');
+}
+
+// ── Duplicate ──
+// "One record per physical object. Never duplicate." (schema rule #1) means
+// two PDUs are two item_records, not one record with a quantity field. This
+// doesn't duplicate a record — it prefills a genuinely NEW record's form
+// from an existing one, then clears everything that has to be unique to
+// this specific physical unit before the person saves. rack_position /
+// room_position aren't part of this form at all, so they're never copied —
+// the duplicate starts unplaced, exactly like any newly-added item, and
+// gets its own placement afterward via Room Visualizer or the rack
+// elevation, same as always.
+function duplicateItem(id) {
+  const item = (id ? allItems.find(i => i.id === id) : detailItem);
+  if (!item) return;
+  editingItemId = null;
+  setText('item-modal-title', 'DUPLICATE ITEM');
+  fillItemForm(item);
+
+  // Per-unit-unique — must not carry over to the new record.
+  sv('f-hl-address', '');
+  sv('f-serial-number', '');
+  sv('f-device-id', '');
+  sv('f-assigned-vessel', '');
+  sv('f-kit-memberships', '');
+
+  // related_items is a bidirectional link written via /link-related-item —
+  // copying it verbatim would point the new record at relationships that
+  // belong to the original object, not this one. Starts empty, same as
+  // any new item; re-link deliberately if the duplicate actually needs it.
+  currentRelatedItems = [];
+  renderRelatedItems();
+  document.getElementById('ri-search').style.display = 'none';
+  document.getElementById('ri-search-results').innerHTML = '';
+  document.getElementById('ri-disabled-note').style.display = 'block';
+
+  // Same reasoning as related_items — this unit's own wiring (what plugs
+  // into what) belongs to the original physical object, not a fresh
+  // duplicate that hasn't been wired up yet.
+  disableConnectivitySection();
+
+  openModal('item-modal');
+  closeModal('detail-modal');
+}
+function clearItemForm() {
+  ['f-display-name','f-hl-address','f-manufacturer','f-year-made',
+   'f-description','f-provenance','f-narrative','f-purchase-source','f-kit-memberships',
+   'f-purchase-price','f-current-value','f-hero-photo','f-subcategory-input','f-device-id',
+   'f-model-number','f-serial-number','f-assigned-vessel','f-doc-link',
+   'f-service-interval','f-last-serviced','f-next-service-due','f-warranty-expiry'].forEach(id => sv(id, ''));
+  currentServiceHistory = [];
+  renderServiceHistory();
+  currentSubcategories = [];
+  renderSubcatChips();
+  document.getElementById('subcat-autocomplete').style.display = 'none';
+  currentRelatedItems = [];
+  renderRelatedItems();
+  document.getElementById('ri-search').style.display = 'none';
+  document.getElementById('ri-search-results').innerHTML = '';
+  document.getElementById('ri-disabled-note').style.display = 'block';
+  disableConnectivitySection();
+  ss('f-category','tool'); ss('f-status','active'); ss('f-condition','unknown');
+  sc('f-flag-vault', true);
+  ['f-flag-wunderkammer','f-flag-history-wall','f-flag-exchange','f-flag-family-ledger']
+    .forEach(id => sc(id, false));
+  // Clear photo
+  window._pendingPhotoFile = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview-img').src = '';
+  document.getElementById('photo-upload-status').textContent = '';
+  document.getElementById('photo-file-input').value = '';
+}
+function fillItemForm(item) {
+  sv('f-display-name',   item.display_name||'');
+  sv('f-hl-address',     item.hl_address||'');
+  sv('f-manufacturer',   item.manufacturer||'');
+  sv('f-device-id',      item.device_id||'');
+  sv('f-model-number',   item.model_number||'');
+  sv('f-serial-number',  item.serial_number||'');
+  sv('f-assigned-vessel',item.assigned_vessel||'');
+  sv('f-doc-link',       item.doc_link||'');
+  sv('f-year-made',      item.year_made||'');
+  sv('f-description',    item.description||'');
+  sv('f-provenance',     item.provenance||'');
+  sv('f-narrative',      item.narrative||'');
+  sv('f-purchase-price', item.financial?.purchase_price ?? '');
+  sv('f-current-value',  item.financial?.current_value  ?? '');
+  sv('f-purchase-source',item.financial?.purchase_source||'');
+  sv('f-kit-memberships',(item.kit_memberships||[]).join(', '));
+  const m = item.maintenance || {};
+  sv('f-service-interval', m.service_interval_days ?? '');
+  sv('f-last-serviced',    m.last_serviced || '');
+  sv('f-warranty-expiry',  m.warranty_expiry || '');
+  currentServiceHistory = m.service_history || [];
+  renderServiceHistory();
+  updateNextServiceDueDisplay();
+  ss('f-category',  item.category||'tool');
+  currentSubcategories = getSubcats(item);
+  renderSubcatChips();
+  currentRelatedItems = (item.related_items||[]).map(id => {
+    const ref = allItems.find(x => x.id === id);
+    return { id, name: ref ? (ref.display_name||ref.name||id) : id };
+  });
+  renderRelatedItems();
+  document.getElementById('ri-search').style.display = '';
+  document.getElementById('ri-search-results').innerHTML = '';
+  document.getElementById('ri-disabled-note').style.display = 'none';
+  loadConnectivitySection(item);
+  ss('f-status',    item.status||'active');
+  ss('f-condition', item.condition||'unknown');
+  const d = item.display || {};
+  sc('f-flag-vault',          d.vault         ?? true);
+  sc('f-flag-wunderkammer',   d.wunderkammer  ?? false);
+  sc('f-flag-history-wall',   d.history_wall  ?? false);
+  sc('f-flag-exchange',       d.exchange       ?? false);
+  sc('f-flag-family-ledger',  d.family_ledger ?? false);
+
+  // Restore hero photo preview
+  window._pendingPhotoFile = null;
+  const heroPhoto = item.hero_photo || '';
+  sv('f-hero-photo', heroPhoto);
+  if (heroPhoto) {
+    document.getElementById('photo-preview-img').src = heroPhoto;
+    document.getElementById('photo-preview').style.display = 'block';
+    document.getElementById('photo-upload-status').textContent = '';
+  } else {
+    document.getElementById('photo-preview').style.display = 'none';
+    document.getElementById('photo-preview-img').src = '';
+    document.getElementById('photo-upload-status').textContent = '';
+  }
+} // end fillItemForm
+
+// ── Kit photo state/UI helpers ──
+// Mirrors the item hero-photo pattern (preview img + remove btn + status
+// line + hidden field caching the saved URL), parameterized to the kit
+// modal's own element ids. Upload itself only fires once the kit has a
+// Firestore doc id (same "save once, then add photo" gate Kit Builder
+// uses) since the R2 path and firestore_field write both key off it.
+function renderKitPhotoState() {
+  const preview = document.getElementById('kit-photo-preview');
+  const img = document.getElementById('kit-photo-preview-img');
+  if (currentKitPhotoUrl) {
+    img.src = currentKitPhotoUrl;
+    preview.style.display = 'block';
+  } else {
+    img.src = '';
+    preview.style.display = 'none';
+  }
+  const status = document.getElementById('kit-photo-upload-status');
+  if (!editingKitId) {
+    status.textContent = 'Save this kit once before adding a photo.';
+  } else if (!window._pendingKitPhotoFile && !currentKitPhotoUrl) {
+    status.textContent = 'No photo yet.';
+  } else if (!window._pendingKitPhotoFile) {
+    status.textContent = '';
+  }
+}
+
+document.getElementById('kit-photo-file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!editingKitId) {
+    HILShell.toast('Save this kit once before adding a photo', 'error');
+    e.target.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('kit-photo-preview-img').src = ev.target.result;
+    document.getElementById('kit-photo-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+
+  window._pendingKitPhotoFile = file;
+  document.getElementById('kit-photo-upload-status').textContent = '⏳ Uploading…';
+
+  // Kits upload immediately (not deferred to save) — matches Kit Builder's
+  // own contract, since the R2 path is keyed on the existing doc id.
+  const user = window.currentUser;
+  try {
+    const url = await uploadPhotoToR2Generic(file, {
+      uid: user.uid, itemId: editingKitId, context: 'kit', slot: 'hero',
+      statusElId: 'kit-photo-upload-status',
+    });
+    await _updateDoc(_doc(window.db, 'users', user.uid, 'kits', editingKitId), {
+      'photos.hero': url,
+      updated_at: _serverTimestamp(),
+    });
+    currentKitPhotoUrl = url;
+    sv('k-hero-photo', url);
+    window._pendingKitPhotoFile = null;
+    HILShell.toast('Kit photo saved ✓');
+  } catch (err) {
+    HILShell.toast('Photo upload failed: ' + err.message, 'error');
+    window._pendingKitPhotoFile = null;
+  }
+});
+
+document.getElementById('kit-photo-remove-btn').addEventListener('click', async () => {
+  const user = window.currentUser;
+  if (!editingKitId || !user) return;
+  try {
+    await _updateDoc(_doc(window.db, 'users', user.uid, 'kits', editingKitId), {
+      'photos.hero': null,
+      updated_at: _serverTimestamp(),
+    });
+    currentKitPhotoUrl = null;
+    sv('k-hero-photo', '');
+    document.getElementById('kit-photo-file-input').value = '';
+    renderKitPhotoState();
+    HILShell.toast('Photo removed');
+  } catch (err) {
+    HILShell.toast('Remove failed: ' + err.message, 'error');
+  }
+});
+
+// Populates the Kit modal's vessel dropdown from the live allVessels cache —
+// same list Vault already keeps in sync via the vessels onSnapshot listener.
+function populateKitVesselSelect() {
+  const sel = document.getElementById('k-vessel-id');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— not assigned to a vessel —</option>' +
+    allVessels.map(v => `<option value="${v.id}">${esc(v.vessel_id || v.id)} — ${esc(v.name || '')}</option>`).join('');
+  if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+// ── Kit save ──
+async function saveKit() {
+  const user = window.currentUser;
+  if (!user) { HILShell.toast('Not signed in','error'); return; }
+  const kitId = gv('k-kit-id'), name = gv('k-name');
+  if (!kitId || !name) { HILShell.toast('Kit ID and name required','error'); return; }
+  const capabilities = gv('k-capabilities').split('\n').map(s=>s.trim()).filter(Boolean);
+  const assumedContents = gv('k-assumed-contents').split('\n').map(s=>s.trim()).filter(Boolean);
+  const vesselId = gv('k-vessel-id') || null;
+  const now  = _serverTimestamp();
+  const data = {
+    kit_id: kitId, prefix: gv('k-prefix'), name,
+    domain: gv('k-domain'), tier: parseInt(gv('k-tier')),
+    status: gv('k-status'), hl_address: gv('k-hl-address')||null,
+    capabilities, assumed_contents: assumedContents,
+    vessel_id: vesselId,
+    tags: kitTagPicker.get(), owner_uid: user.uid, updated_at: now,
+  };
+  const btn = document.getElementById('save-kit-btn');
+  btn.disabled = true; btn.textContent = 'SAVING…';
+  try {
+    const col = _collection(window.db, 'users', user.uid, 'kits');
+    let savedKitId = editingKitId;
+    if (editingKitId) {
+      await _updateDoc(_doc(window.db, 'users', user.uid, 'kits', editingKitId), data);
+      HILShell.toast('Kit updated ✓');
+    } else {
+      data.created_at = now;
+      data.photos = {};
+      const ref = await _addDoc(col, data);
+      savedKitId = ref.id;
+      HILShell.toast('Kit added ✓');
+    }
+
+    // Vessel assignment — sets this kit as the vessel's active kit_id.
+    // Single_blob only: a slotted vessel's kits are assigned per-slot via
+    // the 🎯 SLOTS canvas instead, so skip vessels that are slot_mode:'slotted'
+    // to avoid stomping on per-slot assignments with a vessel-level one.
+    if (vesselId) {
+      const vessel = allVessels.find(v => v.id === vesselId);
+      if (vessel && vessel.slot_mode !== 'slotted') {
+        try {
+          await _updateDoc(_doc(window.db, 'users', user.uid, 'vessels', vesselId), {
+            kit_id: kitId, updated_at: _serverTimestamp(),
+          });
+        } catch (vErr) {
+          HILShell.toast('Kit saved, but could not update vessel: ' + vErr.message, 'error');
+        }
+      } else if (vessel && vessel.slot_mode === 'slotted') {
+        HILShell.toast('Kit saved — note: that vessel is slotted, assign this kit to a specific slot instead', 'warning');
+      }
+    }
+
+    if (editingKitId) {
+      closeModal('kit-modal'); editingKitId = null;
+    } else {
+      // Keep editing the kit we just created so the photo section unlocks
+      // immediately, matching Kit Builder's own post-create behavior.
+      editingKitId = savedKitId;
+      setText('kit-modal-title', 'EDIT KIT');
+      currentKitPhotoUrl = null;
+      renderKitPhotoState();
+    }
+  } catch (err) { HILShell.toast('Save failed: ' + err.message, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'SAVE KIT'; }
+}
+
+function openAddKit() {
+  editingKitId = null; setText('kit-modal-title','ADD KIT');
+  ['k-kit-id','k-name','k-hl-address','k-capabilities','k-assumed-contents'].forEach(id => sv(id,''));
+  ss('k-prefix','TK'); ss('k-domain','domestic_culinary'); ss('k-tier','2'); ss('k-status','active');
+  ss('k-vessel-id','');
+  kitTagPicker.set([]);
+  currentKitPhotoUrl = null;
+  window._pendingKitPhotoFile = null;
+  sv('k-hero-photo', '');
+  document.getElementById('kit-photo-file-input').value = '';
+  renderKitPhotoState();
+  openModal('kit-modal');
+}
+function openEditKit(id) {
+  const k = allKits.find(x => x.id === id); if (!k) return;
+  editingKitId = id; setText('kit-modal-title','EDIT KIT');
+  sv('k-kit-id', k.kit_id||''); sv('k-name', k.name||'');
+  sv('k-hl-address', k.hl_address||'');
+  sv('k-capabilities', (k.capabilities||[]).join('\n'));
+  sv('k-assumed-contents', (k.assumed_contents||[]).join('\n'));
+  ss('k-prefix', k.prefix||'TK'); ss('k-domain', k.domain||'domestic_culinary');
+  ss('k-tier', String(k.tier||2)); ss('k-status', k.status||'active');
+  populateKitVesselSelect();
+  ss('k-vessel-id', k.vessel_id||'');
+  kitTagPicker.set(k.tags||[]);
+  currentKitPhotoUrl = (k.photos && k.photos.hero) || null;
+  window._pendingKitPhotoFile = null;
+  sv('k-hero-photo', currentKitPhotoUrl || '');
+  document.getElementById('kit-photo-file-input').value = '';
+  renderKitPhotoState();
+  openModal('kit-modal');
+}
+
+// ── Vessel save ──
+// ── Vessel nesting ("a vessel in the vessel") ──
+// Same address grammar as rack_position: tier -> LEVEL letter (bottom-up,
+// A=bottom), width -> DEPTH digit (0=full, 1/2=half bay). A drawer nested
+// in a chest gets its own address, computed off the chest's own hl_address,
+// the same way a rack device's address is computed off the rack's.
+function vesselTierLetter(tier) {
+  const n = parseInt(tier, 10);
+  if (!n || n < 1 || n > 26) return '?';
+  return String.fromCharCode(64 + n);
+}
+function computeVesselSlotAddress(parent, tier, width, bay) {
+  const base = parent && (parent.hl_address || parent.vessel_id);
+  if (!base) return null;
+  const depthDigit = width === 'half' ? (bay || '1') : '0';
+  return `${base}-${vesselTierLetter(tier)}${depthDigit}`;
+}
+function vesselSlotOccupied(parentId, tier, width, bay, excludeId) {
+  const tierNum = parseInt(tier, 10);
+  return allVessels.some(v => {
+    if (v.id === excludeId || v.parent_ref !== parentId) return false;
+    const sp = v.slot_position;
+    if (!sp || parseInt(sp.tier, 10) !== tierNum) return false;
+    return sp.width === 'full' || width === 'full' || sp.bay === bay;
+  });
+}
+// Prevents nesting a vessel inside its own descendant (a chest can't live
+// inside its own drawer). Guards against pre-existing bad cycles too.
+// ── Slotted vessel canvas — item-level slots on a single vessel doc ──
+// Address follows the same "computed off the parent, bottom-up" rule as
+// rack_position and vessel-in-vessel nesting above: <vessel's own hl_address
+// or vessel_id>-S<01-padded index>. Not a new scheme.
+function computeSlotHlDisplay(vessel, index) {
+  const base = vessel && (vessel.hl_address || vessel.vessel_id);
+  if (!base) return null;
+  return `${base}-S${String(index + 1).padStart(2, '0')}`;
+}
+// Builds the new slots array when slot_count changes, preserving existing
+// placements by index. Returns null (and toasts) if the requested count
+// would drop occupied slots — caller should abort the save in that case.
+function reconcileSlots(vessel, existingSlots, newCount) {
+  const out = [];
+  for (let i = 0; i < newCount; i++) {
+    const prev = existingSlots[i];
+    out.push(prev
+      ? { ...prev, index: i, hl_display: computeSlotHlDisplay(vessel, i) }
+      : { index: i, item_id: null, item_name: null, hl_display: computeSlotHlDisplay(vessel, i) });
+  }
+  for (let i = newCount; i < existingSlots.length; i++) {
+    if (existingSlots[i] && existingSlots[i].item_id) return null; // occupied slot would be dropped
+  }
+  return out;
+}
+
+// ── Slots canvas modal — open, render, search/tray, drag-to-place ──
+// Mirrors the rack elevation's tray/drag/tap-threshold pattern in
+// hil-fixed-points.html (rkdev-tray / attachRackDrag), reskinned for a
+// vessel's flat N-slot grid instead of RU rows.
+function openVesselSlotsModal(id) {
+  const v = allVessels.find(x => x.id === id);
+  if (!v || v.slot_mode !== 'slotted') return;
+  currentSlotVessel = v;
+  slotTray = [];
+  document.getElementById('vs-modal-title').textContent = (v.name || v.vessel_id || 'VESSEL').toUpperCase() + ' — SLOTS';
+  sv('vs-search', '');
+  document.getElementById('vs-search-results').innerHTML = '';
+  renderSlotTray();
+  renderSlotCanvas();
+  openModal('vessel-slots-modal');
+}
+
+function renderSlotCanvas() {
+  const v = currentSlotVessel;
+  const canvas = document.getElementById('vs-canvas');
+  const label = document.getElementById('vs-slot-count-label');
+  if (!v) { canvas.innerHTML = ''; return; }
+  const slots = v.slots || [];
+  label.textContent = `${slots.filter(s => s.item_id).length}/${slots.length} filled`;
+  canvas.innerHTML = slots.map(s => `
+    <div class="vs-slot ${s.item_id ? 'filled' : ''}" data-slot-index="${s.index}">
+      <span class="vs-slot-addr">${esc(s.hl_display || 'SLOT ' + (s.index + 1))}</span>
+      ${s.item_id
+        ? `<span class="vs-slot-name">${esc(s.item_name || s.item_id)}</span>`
+        : `<span class="vs-slot-empty-hint">empty — go find it</span>`}
+    </div>
+  `).join('');
+  canvas.querySelectorAll('.vs-slot.filled').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.slotIndex, 10);
+      const s = (currentSlotVessel.slots || [])[idx];
+      if (!s) return;
+      if (confirm(`Remove "${s.item_name || s.item_id}" from ${s.hl_display || 'this slot'}?`)) {
+        removeItemFromSlot(idx);
+      }
+    });
+  });
+}
+
+function renderSlotTray() {
+  const tray = document.getElementById('vs-tray');
+  if (!slotTray.length) {
+    tray.innerHTML = '<div class="vs-tray-hint">Search above, then drag a card into an empty slot below</div>';
+    return;
+  }
+  tray.innerHTML = '';
+  slotTray.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'vs-tray-card';
+    card.dataset.id = it.id;
+    card.textContent = it.name;
+    tray.appendChild(card);
+    attachSlotDrag(card, it);
+  });
+}
+
+document.getElementById('vs-search').addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('vs-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const placedIds = new Set((currentSlotVessel?.slots || []).filter(s => s.item_id).map(s => s.item_id));
+  const trayIds = new Set(slotTray.map(t => t.id));
+  const matches = allItems.filter(i =>
+    !placedIds.has(i.id) && !trayIds.has(i.id) && i.status !== 'archived' &&
+    (i.display_name || i.name || '').toLowerCase().includes(q)
+  ).slice(0, 8);
+  resultsEl.innerHTML = matches.length
+    ? matches.map(i => `
+        <div class="ri-result" data-id="${i.id}"
+             style="padding:5px 6px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--hil-border)">
+          ${esc(i.display_name || i.name || 'Unnamed')}
+        </div>
+      `).join('')
+    : `<div style="font-size:11px;opacity:.5;padding:4px 0">No matches.</div>`;
+  resultsEl.querySelectorAll('.ri-result').forEach(row => {
+    row.addEventListener('click', () => {
+      const item = allItems.find(i => i.id === row.dataset.id);
+      slotTray.push({ id: item.id, name: item.display_name || item.name || item.id });
+      renderSlotTray();
+      e.target.value = '';
+      resultsEl.innerHTML = '';
+    });
+  });
+});
+
+// Tap-vs-drag disambiguation via pointer-move distance threshold — matches
+// attachRackDrag in hil-fixed-points.html. Tray cards only drag (nothing to
+// tap yet); the click-to-remove handler on filled slots is bound separately
+// in renderSlotCanvas.
+function attachSlotDrag(el, item) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const startX = e.clientX, startY = e.clientY;
+    let dragging = false;
+    function move(ev) {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) > 6 || Math.abs(ev.clientY - startY) > 6) {
+          dragging = true;
+          beginSlotDrag(item, ev);
+        } else return;
+      }
+      onSlotDragMove(ev);
+    }
+    function up(ev) {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (dragging) onSlotDragEnd(ev);
+    }
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up, { once: true });
+  });
+}
+
+function beginSlotDrag(item, e) {
+  const ghost = document.createElement('div');
+  ghost.className = 'vs-drag-ghost';
+  ghost.textContent = item.name;
+  document.body.appendChild(ghost);
+  slotDragCtx = { item, ghost };
+  positionSlotGhost(e.clientX, e.clientY);
+  document.body.style.userSelect = 'none';
+}
+
+function positionSlotGhost(x, y) {
+  if (!slotDragCtx) return;
+  slotDragCtx.ghost.style.left = (x - slotDragCtx.ghost.offsetWidth / 2) + 'px';
+  slotDragCtx.ghost.style.top  = (y - slotDragCtx.ghost.offsetHeight / 2) + 'px';
+}
+
+function clearSlotGuides() {
+  document.querySelectorAll('.vs-slot.drag-over').forEach(el => el.classList.remove('drag-over', 'blocked'));
+}
+
+// Hit-tests the empty slot elements directly under the pointer — simpler
+// than the rack elevation's row/column math since slots are a flat,
+// uniform grid, not RU-addressed rows.
+function slotElAtPoint(x, y) {
+  const canvas = document.getElementById('vs-canvas');
+  if (!canvas) return null;
+  const el = document.elementFromPoint(x, y);
+  return el ? el.closest('.vs-slot') : null;
+}
+
+function onSlotDragMove(e) {
+  positionSlotGhost(e.clientX, e.clientY);
+  clearSlotGuides();
+  const slotEl = slotElAtPoint(e.clientX, e.clientY);
+  if (slotEl) slotEl.classList.add('drag-over', slotEl.classList.contains('filled') ? 'blocked' : '');
+}
+
+async function onSlotDragEnd(e) {
+  const ctx = slotDragCtx;
+  clearSlotGuides();
+  document.body.style.userSelect = '';
+  const slotEl = slotElAtPoint(e.clientX, e.clientY);
+  ctx.ghost.remove();
+  slotDragCtx = null;
+
+  if (!slotEl || slotEl.classList.contains('filled')) {
+    if (slotEl) { slotEl.classList.add('vs-shake'); setTimeout(() => slotEl.classList.remove('vs-shake'), 300); }
+    return; // dropped outside canvas, or onto an already-occupied slot — no change
+  }
+  const idx = parseInt(slotEl.dataset.slotIndex, 10);
+  await placeItemInSlot(idx, ctx.item);
+}
+
+// Writes both sides: the vessel's own slots array (canvas render source)
+// and the item's vessel_slot back-reference — same narrow field-level
+// exception class as rack_position/panel_connection, direct _updateDoc,
+// no staging round trip.
+async function placeItemInSlot(index, item) {
+  const v = currentSlotVessel;
+  const slots = [...(v.slots || [])];
+  const slot = slots[index];
+  if (!slot || slot.item_id) { HILShell.toast('Slot no longer available', 'error'); return; }
+  const hl_display = slot.hl_display || computeSlotHlDisplay(v, index);
+  slots[index] = { ...slot, index, item_id: item.id, item_name: item.name, hl_display };
+
+  try {
+    await _updateDoc(_doc(window.db, 'users', window.currentUser.uid, 'vessels', v.id),
+      { slots, updated_at: _serverTimestamp() });
+    await _updateDoc(_doc(window.db, 'users', window.currentUser.uid, 'item_records', item.id),
+      { vessel_slot: { vessel_id: v.id, index, hl_display }, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not place item: ' + err.message, 'error');
+    return;
+  }
+
+  v.slots = slots;
+  currentSlotVessel = v;
+  const vIdx = allVessels.findIndex(x => x.id === v.id);
+  if (vIdx >= 0) allVessels[vIdx] = { ...allVessels[vIdx], slots };
+  const iIdx = allItems.findIndex(x => x.id === item.id);
+  if (iIdx >= 0) allItems[iIdx] = { ...allItems[iIdx], vessel_slot: { vessel_id: v.id, index, hl_display } };
+
+  slotTray = slotTray.filter(t => t.id !== item.id);
+  renderSlotTray();
+  renderSlotCanvas();
+  renderVessels();
+  HILShell.toast(`${item.name} placed at ${hl_display || 'slot'} ✓`);
+}
+
+async function removeItemFromSlot(index) {
+  const v = currentSlotVessel;
+  const slots = [...(v.slots || [])];
+  const slot = slots[index];
+  if (!slot || !slot.item_id) return;
+  const itemId = slot.item_id;
+  const hl_display = slot.hl_display;
+  slots[index] = { index, item_id: null, item_name: null, hl_display };
+
+  try {
+    await _updateDoc(_doc(window.db, 'users', window.currentUser.uid, 'vessels', v.id),
+      { slots, updated_at: _serverTimestamp() });
+    await _updateDoc(_doc(window.db, 'users', window.currentUser.uid, 'item_records', itemId),
+      { vessel_slot: null, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not clear slot: ' + err.message, 'error');
+    return;
+  }
+
+  v.slots = slots;
+  currentSlotVessel = v;
+  const vIdx = allVessels.findIndex(x => x.id === v.id);
+  if (vIdx >= 0) allVessels[vIdx] = { ...allVessels[vIdx], slots };
+  const iIdx = allItems.findIndex(x => x.id === itemId);
+  if (iIdx >= 0) allItems[iIdx] = { ...allItems[iIdx], vessel_slot: null };
+
+  renderSlotCanvas();
+  renderVessels();
+  HILShell.toast(`Slot ${hl_display || index + 1} cleared`);
+}
+
+function vesselIsDescendantOf(candidateId, ancestorId) {
+  let cur = allVessels.find(v => v.id === candidateId);
+  const seen = new Set();
+  while (cur) {
+    if (cur.id === ancestorId) return true;
+    if (seen.has(cur.id)) return false;
+    seen.add(cur.id);
+    if (!cur.parent_ref) return false;
+    cur = allVessels.find(v => v.id === cur.parent_ref);
+  }
+  return false;
+}
+
+function populateVesselTypeSelect() {
+  const sel = document.getElementById('v-vessel-type');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">No grid — plain vessel</option>' +
+    allVesselTypes.map(t => `<option value="${t.id}">${esc(t.name)} (${t.columns} col)</option>`).join('') +
+    '<option value="__new__">+ Define a new grid type…</option>';
+  if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+function setVesselParent(v) {
+  currentVesselParent = v ? { id: v.id, vessel_id: v.vessel_id, name: v.name } : null;
+  const curEl = document.getElementById('v-parent-current');
+  const nameEl = document.getElementById('v-parent-current-name');
+  const slotFields = document.getElementById('v-slot-fields');
+  const searchEl = document.getElementById('v-parent-search');
+  const addrField = document.getElementById('v-hl-address');
+  if (currentVesselParent) {
+    curEl.style.display = 'flex';
+    nameEl.textContent = currentVesselParent.name + (currentVesselParent.vessel_id ? ' (' + currentVesselParent.vessel_id + ')' : '');
+    slotFields.style.display = 'block';
+    searchEl.style.display = 'none';
+    addrField.disabled = true;
+    updateVesselSlotPreview();
+  } else {
+    curEl.style.display = 'none';
+    slotFields.style.display = 'none';
+    searchEl.style.display = '';
+    addrField.disabled = false;
+  }
+}
+
+function updateVesselSlotPreview() {
+  const preview = document.getElementById('v-slot-preview');
+  if (!currentVesselParent) { preview.textContent = ''; return; }
+  const parent = allVessels.find(v => v.id === currentVesselParent.id);
+  const tier = gv('v-slot-tier');
+  const width = gv('v-slot-width');
+  const bay = gv('v-slot-bay');
+  const addr = computeVesselSlotAddress(parent, tier, width, bay);
+  const occupied = parent && vesselSlotOccupied(parent.id, tier, width, bay, editingVesselId);
+  preview.textContent = addr
+    ? `Will address as ${addr}${occupied ? ' — SLOT OCCUPIED, pick another tier/bay' : ''}`
+    : "Parent has no HL address yet — set one to compute this slot's address";
+  preview.style.color = occupied ? 'var(--hil-danger)' : '';
+  if (addr) document.getElementById('v-hl-address').value = addr;
+}
+
+document.getElementById('v-vessel-type').addEventListener('change', (e) => {
+  document.getElementById('v-newtype-fields').style.display = e.target.value === '__new__' ? 'block' : 'none';
+});
+document.getElementById('v-slot-mode').addEventListener('change', (e) => {
+  document.getElementById('v-freeform-field').style.display  = e.target.value === 'freeform' ? 'block' : 'none';
+  document.getElementById('v-slotcount-field').style.display = e.target.value === 'slotted'  ? 'block' : 'none';
+});
+document.getElementById('v-slot-width').addEventListener('change', (e) => {
+  document.getElementById('v-slot-bay-wrap').style.display = e.target.value === 'half' ? 'block' : 'none';
+  updateVesselSlotPreview();
+});
+['v-slot-tier', 'v-slot-height', 'v-slot-bay'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateVesselSlotPreview);
+  document.getElementById(id).addEventListener('change', updateVesselSlotPreview);
+});
+document.getElementById('v-parent-clear-btn').addEventListener('click', () => setVesselParent(null));
+document.getElementById('v-parent-search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('v-parent-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const matches = allVessels.filter(v => {
+    if (v.id === editingVesselId) return false;
+    if (editingVesselId && vesselIsDescendantOf(v.id, editingVesselId)) return false;
+    return (v.name || '').toLowerCase().includes(q) || (v.vessel_id || '').toLowerCase().includes(q);
+  }).slice(0, 8);
+  resultsEl.innerHTML = matches.length
+    ? matches.map(v => `
+        <div class="vp-result" data-id="${v.id}"
+             style="padding:5px 6px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--hil-border)">
+          ${esc(v.name || v.vessel_id || 'Unnamed')} <span style="opacity:.6">${esc(v.vessel_id || '')}</span>
+        </div>
+      `).join('')
+    : `<div style="font-size:11px;opacity:.5;padding:4px 0">No matches.</div>`;
+  resultsEl.querySelectorAll('.vp-result').forEach(row => {
+    row.addEventListener('click', () => {
+      const v = allVessels.find(x => x.id === row.dataset.id);
+      setVesselParent(v);
+      document.getElementById('v-parent-search').value = '';
+      resultsEl.innerHTML = '';
+    });
+  });
+});
+
+async function saveVessel() {
+  const user = window.currentUser;
+  if (!user) { HILShell.toast('Not signed in','error'); return; }
+  const vesselId = gv('v-vessel-id'), name = gv('v-name');
+  if (!vesselId || !name) { HILShell.toast('Vessel ID and name required','error'); return; }
+
+  // Grid Type — reuse an existing one, or create it now if "+ Define a new
+  // grid type…" was picked. Created here (not a separate flow) since in
+  // practice you're always defining the type while setting up the first
+  // vessel that uses it — a second identical chest just reuses this one.
+  let vesselTypeId = gv('v-vessel-type');
+  if (vesselTypeId === '__new__') {
+    const typeName = gv('v-newtype-name');
+    const columns = parseInt(gv('v-newtype-columns'), 10) || 2;
+    if (!typeName) { HILShell.toast('New grid type needs a name', 'error'); return; }
+    try {
+      const typeDoc = await _addDoc(_collection(window.db, 'users', user.uid, 'vessel_types'), {
+        name: typeName, columns, owner_uid: user.uid, created_at: _serverTimestamp(),
+      });
+      vesselTypeId = typeDoc.id;
+    } catch (err) {
+      HILShell.toast('Could not create grid type: ' + err.message, 'error');
+      return;
+    }
+  }
+
+  // Nesting — "a vessel in the vessel." If nested, the slot's computed
+  // address becomes this vessel's own hl_address, same as a rack device's
+  // address is computed off the rack it's placed in.
+  let parent_ref = null, slot_position = null, computedAddress = gv('v-hl-address') || null;
+  if (currentVesselParent) {
+    const parent = allVessels.find(v => v.id === currentVesselParent.id);
+    const tier = parseInt(gv('v-slot-tier'), 10) || 1;
+    const width = gv('v-slot-width');
+    const bay = width === 'half' ? gv('v-slot-bay') : null;
+    if (vesselSlotOccupied(currentVesselParent.id, tier, width, bay, editingVesselId)) {
+      HILShell.toast('That slot is already occupied — pick another tier/bay', 'error');
+      return;
+    }
+    const hl_display = computeVesselSlotAddress(parent, tier, width, bay);
+    parent_ref = currentVesselParent.id;
+    slot_position = { tier, height_tiers: parseInt(gv('v-slot-height'), 10) || 1, width, bay, hl_display };
+    computedAddress = hl_display || computedAddress;
+  }
+
+  // Contents mode — freeform text, slotted item-canvas, or neither ("plain").
+  // Slotted's `slots` array is rebuilt here on every save so slot_count edits
+  // reconcile cleanly; individual placements themselves are written directly
+  // by the slots canvas modal (placeItemInSlot / removeItemFromSlot), not here.
+  const slotMode = gv('v-slot-mode');
+  let freeform_contents = null, slot_count = null, slots = null;
+  if (slotMode === 'freeform') {
+    freeform_contents = gv('v-freeform-contents') || null;
+  } else if (slotMode === 'slotted') {
+    const requestedCount = parseInt(gv('v-slot-count'), 10);
+    if (!requestedCount || requestedCount < 1) {
+      HILShell.toast('Slot count must be at least 1', 'error'); return;
+    }
+    const existing = (editingVesselId && allVessels.find(v => v.id === editingVesselId)?.slots) || [];
+    const vesselStub = { hl_address: computedAddress, vessel_id: vesselId };
+    const reconciled = reconcileSlots(vesselStub, existing, requestedCount);
+    if (!reconciled) {
+      HILShell.toast('Cannot lower slot count — some of those slots hold items. Remove them first via 🎯 SLOTS.', 'error');
+      return;
+    }
+    slot_count = requestedCount;
+    slots = reconciled;
+  }
+
+  const now  = _serverTimestamp();
+  const data = {
+    vessel_id: vesselId, prefix: gv('v-prefix'), name,
+    hl_address: computedAddress, home_address: gv('v-home-address')||null,
+    kit_id: gv('v-kit-id')||null, fill_level: gv('v-fill-level'),
+    vessel_type_id: vesselTypeId || null,
+    parent_ref, slot_position,
+    slot_mode: slotMode || null, freeform_contents, slot_count, slots,
+    tags: vesselTagPicker.get(),
+    owner_uid: user.uid, updated_at: now,
+  };
+  const btn = document.getElementById('save-vessel-btn');
+  btn.disabled = true; btn.textContent = 'SAVING…';
+  try {
+    const col = _collection(window.db, 'users', user.uid, 'vessels');
+    if (editingVesselId) {
+      await _updateDoc(_doc(window.db, 'users', user.uid, 'vessels', editingVesselId), data);
+      HILShell.toast('Vessel updated ✓');
+    } else {
+      data.created_at = now;
+      await _addDoc(col, data);
+      HILShell.toast('Vessel added ✓');
+    }
+    closeModal('vessel-modal'); editingVesselId = null;
+  } catch (err) { HILShell.toast('Save failed: ' + err.message, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'SAVE VESSEL'; }
+}
+
+function openAddVessel() {
+  editingVesselId = null;
+  ['v-vessel-id','v-name','v-hl-address','v-home-address','v-kit-id','v-newtype-name','v-freeform-contents','v-slot-count'].forEach(id => sv(id,''));
+  ss('v-prefix','MS'); ss('v-fill-level','medium'); ss('v-vessel-type',''); ss('v-newtype-columns','2'); ss('v-slot-mode','');
+  vesselTagPicker.set([]);
+  document.getElementById('v-newtype-fields').style.display = 'none';
+  document.getElementById('v-freeform-field').style.display = 'none';
+  document.getElementById('v-slotcount-field').style.display = 'none';
+  setVesselParent(null);
+  openModal('vessel-modal');
+}
+function openEditVessel(id) {
+  const v = allVessels.find(x => x.id === id); if (!v) return;
+  editingVesselId = id;
+  sv('v-vessel-id', v.vessel_id||''); sv('v-name', v.name||'');
+  sv('v-hl-address', v.hl_address||''); sv('v-home-address', v.home_address||'');
+  sv('v-kit-id', v.kit_id||'');
+  ss('v-prefix', v.prefix||'MS'); ss('v-fill-level', v.fill_level||'medium');
+  ss('v-vessel-type', v.vessel_type_id||'');
+  document.getElementById('v-newtype-fields').style.display = 'none';
+  vesselTagPicker.set(v.tags||[]);
+
+  ss('v-slot-mode', v.slot_mode||'');
+  sv('v-freeform-contents', v.freeform_contents||'');
+  sv('v-slot-count', v.slot_count ?? '');
+  document.getElementById('v-freeform-field').style.display  = v.slot_mode === 'freeform' ? 'block' : 'none';
+  document.getElementById('v-slotcount-field').style.display = v.slot_mode === 'slotted'  ? 'block' : 'none';
+
+  if (v.parent_ref) {
+    const parent = allVessels.find(p => p.id === v.parent_ref);
+    setVesselParent(parent || { id: v.parent_ref, name: '(parent not found)', vessel_id: '' });
+    const sp = v.slot_position || {};
+    sv('v-slot-tier', sp.tier || 1);
+    ss('v-slot-height', sp.height_tiers || 1);
+    ss('v-slot-width', sp.width || 'full');
+    document.getElementById('v-slot-bay-wrap').style.display = sp.width === 'half' ? 'block' : 'none';
+    if (sp.bay) ss('v-slot-bay', sp.bay);
+    updateVesselSlotPreview();
+  } else {
+    setVesselParent(null);
+  }
+  openModal('vessel-modal');
+}
+
+// ── Tabs ──
+document.querySelectorAll('.vault-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.vault-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['items','kits','vessels'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t === activeTab ? '' : 'none';
+    });
+  });
+});
+
+// ── Search / filters ──
+document.getElementById('search-input').addEventListener('input', e => { searchQuery = e.target.value; renderItems(); });
+
+document.getElementById('toggle-archived-btn').addEventListener('click', e => {
+  showArchived = !showArchived;
+  e.target.textContent = showArchived ? '← BACK TO ACTIVE' : '🗄 VIEW ARCHIVED';
+  renderItems();
+});
+document.getElementById('kit-search').addEventListener('input', renderKits);
+document.getElementById('vessel-search').addEventListener('input', renderVessels);
+document.getElementById('category-filters').addEventListener('click', e => {
+  const chip = e.target.closest('.filter-chip'); if (!chip) return;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active'); activeCat = chip.dataset.cat; renderItems();
+});
+
+// ── Button wiring ──
+document.getElementById('add-item-btn').addEventListener('click', openAddItem);
+document.getElementById('save-item-btn').addEventListener('click', saveItem);
+document.getElementById('detail-edit-btn').addEventListener('click', () => { if (detailItem) openEditItem(detailItem.id); });
+document.getElementById('detail-duplicate-btn').addEventListener('click', () => { if (detailItem) duplicateItem(detailItem.id); });
+document.getElementById('detail-delete-btn').addEventListener('click', deleteItem);
+document.getElementById('add-kit-btn').addEventListener('click', openAddKit);
+document.getElementById('save-kit-btn').addEventListener('click', saveKit);
+document.getElementById('add-vessel-btn').addEventListener('click', openAddVessel);
+document.getElementById('save-vessel-btn').addEventListener('click', saveVessel);
+
+// ── Modals ──
+window.openModal  = id => document.getElementById(id)?.classList.add('open');
+window.closeModal = id => document.getElementById(id)?.classList.remove('open');
+
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.hil-modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay.id); });
+});
+
+// ── Clear on sign-out ──
+function clearUI() {
+  allItems = []; allKits = []; allVessels = []; allTags = [];
+  document.getElementById('item-list').innerHTML   = '<div class="hil-empty">Sign in to view your inventory.</div>';
+  document.getElementById('kit-grid').innerHTML    = '<div class="hil-empty">Sign in to view kits.</div>';
+  document.getElementById('vessel-list').innerHTML = '<div class="hil-empty">Sign in to view vessels.</div>';
+  ['stat-total','stat-active','stat-kits','stat-value'].forEach(id => setText(id,'—'));
+}
+
+// ── Micro-helpers ──
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const dr  = (k,v) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`;
+const gv  = id => (document.getElementById(id)?.value||'').trim();
+const gc  = id => !!document.getElementById(id)?.checked;
+const sv  = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
+const ss  = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
+const sc  = (id,v) => { const el=document.getElementById(id); if(el) el.checked=!!v; };
+const setText = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+
+function statusBadgeClass(s) {
+  return {active:'green',transferred:'gray',donated:'amber',passed_on:'gray',lost:'red'}[s]||'gray';
+}
+function fillBadgeClass(f) {
+  return {full:'green',medium:'',low:'amber',empty:'red'}[f]||'';
+}
+function computeNextServiceDue() {
+  const last = gv('f-last-serviced');
+  const interval = parseInt(gv('f-service-interval'));
+  if (!last || !interval) return null;
+  const d = new Date(last + 'T00:00:00');
+  d.setDate(d.getDate() + interval);
+  return d.toISOString().slice(0,10);
+}
+
+function updateNextServiceDueDisplay() {
+  const due = computeNextServiceDue();
+  sv('f-next-service-due', due || '—');
+}
+
+document.getElementById('f-last-serviced').addEventListener('input', updateNextServiceDueDisplay);
+document.getElementById('f-service-interval').addEventListener('input', updateNextServiceDueDisplay);
+
+function renderServiceHistory() {
+  const el = document.getElementById('service-history-list');
+  if (!currentServiceHistory.length) {
+    el.innerHTML = '<div style="font-size:11px;opacity:0.5">No service history yet.</div>';
+    return;
+  }
+  const sorted = [...currentServiceHistory].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  el.innerHTML = sorted.map((s, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:6px 0;border-bottom:1px solid var(--hil-border);font-size:12px">
+      <div>
+        <strong>${esc(s.date||'')}</strong> — ${esc((s.type||'').replace('_',' '))}
+        ${s.notes ? ' · ' + esc(s.notes) : ''}
+        ${s.cost ? ' · $' + esc(String(s.cost)) : ''}
+      </div>
+      <button type="button" data-idx="${currentServiceHistory.indexOf(s)}"
+              class="sh-remove-btn" style="background:none;border:none;color:var(--hil-danger);
+              cursor:pointer;font-family:var(--font-mono);font-size:11px">✕</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.sh-remove-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.target.dataset.idx);
+      currentServiceHistory.splice(idx, 1);
+      renderServiceHistory();
+    });
+  });
+}
+
+document.getElementById('sh-add-btn').addEventListener('click', () => {
+  const date = gv('sh-date');
+  const type = gv('sh-type');
+  const notes = gv('sh-notes');
+  const cost = parseFloat(gv('sh-cost')) || null;
+  if (!date) { HILShell.toast('Service date is required', 'error'); return; }
+  currentServiceHistory.push({ date, type, notes: notes || '', cost, performed_by: 'owner' });
+  sv('sh-date',''); sv('sh-notes',''); sv('sh-cost','');
+  renderServiceHistory();
+});
+
+// ── Subcategory tags (Tag Store registry-backed autocomplete) ──
+// currentSubcategories stores tag_registry IDs (slugs), not display strings.
+// getTagMeta resolves a slug to its registry doc; items saved before the
+// Tag Store existed have raw freeform strings in subcategories — those are
+// treated as an unregistered "custom" tag with the string as its own id/
+// display_name until someone re-tags them, so nothing old breaks silently.
+function getTagMeta(tagId) {
+  return allTags.find(t => t.id === tagId) || { id: tagId, display_name: tagId, type: 'custom' };
+}
+function tagBadgeClass(type) {
+  return { global: 'green', custom: 'amber', expiring: 'blue' }[type] || 'amber';
+}
+function slugifyTag(str) {
+  return str.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function renderSubcatChips() {
+  const el = document.getElementById('subcat-chips');
+  if (!currentSubcategories.length) { el.innerHTML = ''; return; }
+  el.innerHTML = currentSubcategories.map((tagId, i) => {
+    const meta = getTagMeta(tagId);
+    return `
+    <span class="hil-badge ${tagBadgeClass(meta.type)}" style="display:inline-flex;align-items:center;gap:5px">
+      ${esc(meta.display_name)}
+      <button type="button" data-idx="${i}" class="subcat-remove-btn"
+              style="background:none;border:none;color:inherit;cursor:pointer;font-size:11px;padding:0;line-height:1">✕</button>
+    </span>`;
+  }).join('');
+  el.querySelectorAll('.subcat-remove-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const idx = parseInt(e.currentTarget.dataset.idx);
+      currentSubcategories.splice(idx, 1);
+      renderSubcatChips();
+    });
+  });
+}
+
+// Commits a tag by registry ID — used by both the autocomplete-pick path
+// and the create-new-tag path below.
+function commitSubcatTag(tagId) {
+  if (!tagId || currentSubcategories.includes(tagId)) return;
+  currentSubcategories.push(tagId);
+  renderSubcatChips();
+}
+
+// Writes a brand-new tag_registry doc. Frontend writes this collection
+// directly (vocabulary, not inventory truth — see firestore rules), same
+// class of write as museum_items.
+async function createTag(rawValue) {
+  const user = window.currentUser;
+  const id = slugifyTag(rawValue);
+  if (!id || !user) return null;
+  const existing = allTags.find(t => t.id === id);
+  if (existing) return existing.id;
+  try {
+    const ref = _doc(window.db, 'users', user.uid, 'tag_registry', id);
+    await _setDoc(ref, {
+      id,
+      display_name: rawValue.trim(),
+      type: 'custom',
+      scope: ['vault'],
+      usage_count: 1,
+      external_refs: [],
+      expiration: null,
+      created_at: _serverTimestamp(),
+      updated_at: _serverTimestamp(),
+    });
+    return id;
+  } catch (err) {
+    HILShell.toast('Tag create failed: ' + err.message, 'error');
+    return null;
+  }
+}
+
+function renderTagAutocomplete(query) {
+  const dropdown = document.getElementById('subcat-autocomplete');
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+
+  const matches = allTags
+    .filter(t => !currentSubcategories.includes(t.id))
+    .filter(t => t.display_name.toLowerCase().includes(q) || t.id.includes(q))
+    .sort((a, b) => (b.usage_count || 0) - (a.usage_count || 0))
+    .slice(0, 8);
+
+  const exactMatch = matches.some(t => t.display_name.toLowerCase() === q || t.id === slugifyTag(q));
+
+  let html = matches.map(t => `
+    <div class="tag-ac-row" data-tag-id="${esc(t.id)}">
+      <span>${esc(t.display_name)}</span>
+      <span class="hil-badge ${tagBadgeClass(t.type)}" style="font-size:8px">${t.type.toUpperCase()}</span>
+    </div>
+  `).join('');
+
+  if (!exactMatch) {
+    html += `<div class="tag-ac-row create" data-create="${esc(query.trim())}">+ create tag "${esc(query.trim())}"</div>`;
+  }
+
+  dropdown.innerHTML = html;
+  dropdown.style.display = html ? 'block' : 'none';
+
+  dropdown.querySelectorAll('[data-tag-id]').forEach(row => {
+    row.addEventListener('click', () => {
+      const tagId = row.dataset.tagId;
+      commitSubcatTag(tagId);
+      // Bump usage_count on pick — direct frontend write, same class as
+      // any other tag_registry edit (vocabulary, not inventory truth).
+      const user = window.currentUser;
+      if (user) {
+        _updateDoc(_doc(window.db, 'users', user.uid, 'tag_registry', tagId), {
+          usage_count: (getTagMeta(tagId).usage_count || 0) + 1,
+          updated_at: _serverTimestamp(),
+        }).catch(() => {});
+      }
+      document.getElementById('f-subcategory-input').value = '';
+      dropdown.style.display = 'none';
+    });
+  });
+
+  dropdown.querySelectorAll('[data-create]').forEach(row => {
+    row.addEventListener('click', async () => {
+      const raw = row.dataset.create;
+      const newId = await createTag(raw);
+      if (newId) commitSubcatTag(newId);
+      document.getElementById('f-subcategory-input').value = '';
+      dropdown.style.display = 'none';
+    });
+  });
+}
+
+const subcatInput = document.getElementById('f-subcategory-input');
+subcatInput.addEventListener('input', e => renderTagAutocomplete(e.target.value));
+
+subcatInput.addEventListener('keydown', async e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim().replace(/,$/, '');
+    if (!val) return;
+    const asId = slugifyTag(val);
+    const existing = allTags.find(t => t.id === asId || t.display_name.toLowerCase() === val.toLowerCase());
+    if (existing) {
+      commitSubcatTag(existing.id);
+    } else {
+      const newId = await createTag(val);
+      if (newId) commitSubcatTag(newId);
+    }
+    e.target.value = '';
+    document.getElementById('subcat-autocomplete').style.display = 'none';
+  }
+});
+// Commit a trailing typed value on blur too, so a tag isn't silently lost
+// if the user clicks away instead of pressing Enter/comma. Small delay so
+// a click on a dropdown row registers before blur wipes the input.
+subcatInput.addEventListener('blur', () => {
+  setTimeout(async () => {
+    const val = subcatInput.value.trim();
+    if (val) {
+      const asId = slugifyTag(val);
+      const existing = allTags.find(t => t.id === asId || t.display_name.toLowerCase() === val.toLowerCase());
+      const tagId = existing ? existing.id : await createTag(val);
+      if (tagId) commitSubcatTag(tagId);
+      subcatInput.value = '';
+    }
+    document.getElementById('subcat-autocomplete').style.display = 'none';
+  }, 150);
+});
+
+// ── Generic tag picker factory — same registry-backed mechanics as the
+// item subcategory picker just above (renderTagAutocomplete/createTag/
+// slugifyTag/getTagMeta/tagBadgeClass, all reused as-is), just not tied to
+// the single global currentSubcategories array so each modal (vessel, kit)
+// keeps its own independent tag list. Item's picker is left untouched
+// above rather than refactored onto this, to avoid risking already-shipped
+// behavior.
+function makeTagPicker(inputId, dropdownId, chipsId) {
+  let tags = [];
+
+  function renderChips() {
+    const el = document.getElementById(chipsId);
+    if (!el) return;
+    if (!tags.length) { el.innerHTML = ''; return; }
+    el.innerHTML = tags.map((tagId, i) => {
+      const meta = getTagMeta(tagId);
+      return `
+      <span class="hil-badge ${tagBadgeClass(meta.type)}" style="display:inline-flex;align-items:center;gap:5px">
+        ${esc(meta.display_name)}
+        <button type="button" data-idx="${i}" class="pk-remove-btn"
+                style="background:none;border:none;color:inherit;cursor:pointer;font-size:11px;padding:0;line-height:1">✕</button>
+      </span>`;
+    }).join('');
+    el.querySelectorAll('.pk-remove-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        tags.splice(parseInt(e.currentTarget.dataset.idx, 10), 1);
+        renderChips();
+      });
+    });
+  }
+
+  function commit(tagId) {
+    if (!tagId || tags.includes(tagId)) return;
+    tags.push(tagId);
+    renderChips();
+  }
+
+  function renderDropdown(query) {
+    const dropdown = document.getElementById(dropdownId);
+    const q = query.trim().toLowerCase();
+    if (!q) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+    const matches = allTags
+      .filter(t => !tags.includes(t.id))
+      .filter(t => t.display_name.toLowerCase().includes(q) || t.id.includes(q))
+      .sort((a, b) => (b.usage_count || 0) - (a.usage_count || 0))
+      .slice(0, 8);
+    const exactMatch = matches.some(t => t.display_name.toLowerCase() === q || t.id === slugifyTag(q));
+    let html = matches.map(t => `
+      <div class="tag-ac-row" data-tag-id="${esc(t.id)}">
+        <span>${esc(t.display_name)}</span>
+        <span class="hil-badge ${tagBadgeClass(t.type)}" style="font-size:8px">${t.type.toUpperCase()}</span>
+      </div>
+    `).join('');
+    if (!exactMatch) html += `<div class="tag-ac-row create" data-create="${esc(query.trim())}">+ create tag "${esc(query.trim())}"</div>`;
+    dropdown.innerHTML = html;
+    dropdown.style.display = html ? 'block' : 'none';
+
+    dropdown.querySelectorAll('[data-tag-id]').forEach(row => {
+      row.addEventListener('click', () => {
+        const tagId = row.dataset.tagId;
+        commit(tagId);
+        const user = window.currentUser;
+        if (user) {
+          _updateDoc(_doc(window.db, 'users', user.uid, 'tag_registry', tagId), {
+            usage_count: (getTagMeta(tagId).usage_count || 0) + 1,
+            updated_at: _serverTimestamp(),
+          }).catch(() => {});
+        }
+        document.getElementById(inputId).value = '';
+        dropdown.style.display = 'none';
+      });
+    });
+    dropdown.querySelectorAll('[data-create]').forEach(row => {
+      row.addEventListener('click', async () => {
+        const newId = await createTag(row.dataset.create);
+        if (newId) commit(newId);
+        document.getElementById(inputId).value = '';
+        dropdown.style.display = 'none';
+      });
+    });
+  }
+
+  const input = document.getElementById(inputId);
+  input.addEventListener('input', e => renderDropdown(e.target.value));
+  input.addEventListener('keydown', async e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = e.target.value.trim().replace(/,$/, '');
+      if (!val) return;
+      const asId = slugifyTag(val);
+      const existing = allTags.find(t => t.id === asId || t.display_name.toLowerCase() === val.toLowerCase());
+      const tagId = existing ? existing.id : await createTag(val);
+      if (tagId) commit(tagId);
+      e.target.value = '';
+      document.getElementById(dropdownId).style.display = 'none';
+    }
+  });
+  input.addEventListener('blur', () => {
+    setTimeout(async () => {
+      const val = input.value.trim();
+      if (val) {
+        const asId = slugifyTag(val);
+        const existing = allTags.find(t => t.id === asId || t.display_name.toLowerCase() === val.toLowerCase());
+        const tagId = existing ? existing.id : await createTag(val);
+        if (tagId) commit(tagId);
+        input.value = '';
+      }
+      document.getElementById(dropdownId).style.display = 'none';
+    }, 150);
+  });
+
+  return {
+    get: () => tags,
+    set: (arr) => { tags = Array.isArray(arr) ? [...arr] : []; renderChips(); },
+  };
+}
+const vesselTagPicker = makeTagPicker('v-tags-input', 'v-tags-autocomplete', 'v-tags-chips');
+const kitTagPicker     = makeTagPicker('k-tags-input', 'k-tags-autocomplete', 'k-tags-chips');
+
+// ── Related Items (search/pick, bidirectional via hil-admin-action) ──
+function renderRelatedItems() {
+  const el = document.getElementById('related-items-list');
+  if (!currentRelatedItems.length) {
+    el.innerHTML = '<div style="font-size:11px;opacity:0.5">No related items linked.</div>';
+    return;
+  }
+  el.innerHTML = currentRelatedItems.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;
+                padding:6px 0;border-bottom:1px solid var(--hil-border);font-size:12px">
+      <span>${esc(r.name)}</span>
+      <button type="button" data-id="${r.id}" class="ri-remove-btn"
+              style="background:none;border:none;color:var(--hil-danger);
+              cursor:pointer;font-family:var(--font-mono);font-size:11px">✕</button>
+    </div>
+  `).join('');
+  el.querySelectorAll('.ri-remove-btn').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      const relId = e.currentTarget.dataset.id;
+      e.currentTarget.disabled = true;
+      try {
+        await vaultLinkRelatedItem(editingItemId, relId, 'unlink');
+        currentRelatedItems = currentRelatedItems.filter(r => r.id !== relId);
+        renderRelatedItems();
+        HILShell.toast('Link removed');
+      } catch (err) {
+        HILShell.toast('Unlink failed: ' + err.message, 'error');
+        e.currentTarget.disabled = false;
+      }
+    });
+  });
+}
+
+document.getElementById('ri-search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  const resultsEl = document.getElementById('ri-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const linkedIds = new Set(currentRelatedItems.map(r => r.id));
+  const matches = allItems.filter(i =>
+    i.id !== editingItemId &&
+    !linkedIds.has(i.id) &&
+    i.status !== 'archived' &&
+    (i.display_name||i.name||'').toLowerCase().includes(q)
+  ).slice(0, 8);
+  if (!matches.length) {
+    resultsEl.innerHTML = '<div style="font-size:11px;opacity:0.5;padding:4px 0">No matches.</div>';
+    return;
+  }
+  resultsEl.innerHTML = matches.map(i => `
+    <div class="ri-result" data-id="${i.id}"
+         style="padding:5px 6px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--hil-border)">
+      ${esc(i.display_name||i.name||'Unnamed')}
+    </div>
+  `).join('');
+  resultsEl.querySelectorAll('.ri-result').forEach(row => {
+    row.addEventListener('click', async () => {
+      const relId = row.dataset.id;
+      const relItem = allItems.find(i => i.id === relId);
+      try {
+        await vaultLinkRelatedItem(editingItemId, relId, 'link');
+        currentRelatedItems.push({ id: relId, name: relItem?.display_name || relItem?.name || relId });
+        renderRelatedItems();
+        document.getElementById('ri-search').value = '';
+        resultsEl.innerHTML = '';
+        HILShell.toast('Item linked ✓');
+      } catch (err) {
+        HILShell.toast('Link failed: ' + err.message, 'error');
+      }
+    });
+  });
+});
+
+// ══════════════════════════════════════
+// CONNECTIVITY (peripheral_connections) — lets ANY item declare what it
+// physically plugs into, whether or not either side is rack-mounted.
+// Complements rack_position.connections, which only exists on rack-mounted
+// items and only lets them wire to OTHER rack-mounted items in the same
+// rack. A desk monitor, a Zigbee dongle, a mouse — none of those have
+// rack_position, so this is their only way to say "I connect to X."
+//
+// Same write class/pattern as rack_position and panel_connection: narrow
+// frontend field-level Firestore exception, direct client _updateDoc, no
+// hil-admin-action round trip. Requires 'peripheral_connections' added to
+// the item_records update-exception hasOnly() list in firestore.rules.
+//
+// Target eligibility is property-wide (uses the already-loaded allItems
+// cache, not scoped to one rack) — a desk peripheral connecting to a KVM
+// switch physically sitting in a rack across the room is exactly the case
+// this exists for. Eligible targets are anything with capacity already
+// declared via rack_position (role for power/network/kvm; usb_ports/
+// hdmi_ports for usb/hdmi) — the capacity side doesn't move, only the
+// "what plugs into it" side gets a new home for non-rack-mounted items.
+// ══════════════════════════════════════
+
+function disableConnectivitySection() {
+  ['power','network','kvm','usb','hdmi'].forEach(type => {
+    const sel = document.getElementById('conn-' + type);
+    if (sel) sel.innerHTML = '<option value="">Not connected</option>';
+    const portSel = document.getElementById('conn-' + type + '-port');
+    if (portSel) { portSel.innerHTML = ''; portSel.style.display = 'none'; }
+  });
+  document.getElementById('conn-fields').style.opacity = '0.4';
+  document.getElementById('conn-fields').style.pointerEvents = 'none';
+  document.getElementById('conn-save-btn').style.display = 'none';
+  document.getElementById('conn-disabled-note').style.display = 'block';
+}
+
+function connectivityTargets(type, excludeId) {
+  return allItems.filter(i => {
+    if (i.id === excludeId) return false;
+    const rp = i.rack_position;
+    if (!rp) return false;
+    if (type === 'power') return rp.role === 'pdu';
+    if (type === 'network') return rp.role === 'switch';
+    if (type === 'kvm') return rp.role === 'kvm';
+    if (type === 'usb') return (rp.usb_ports || 0) > 0;
+    if (type === 'hdmi') return (rp.hdmi_ports || 0) > 0;
+    return false;
+  });
+}
+
+// Scans BOTH connection sources — other rack-mounted devices'
+// rack_position.connections AND other peripherals' peripheral_connections
+// — since a target's ports are one shared resource regardless of which
+// kind of consumer claims them.
+function connectivityPortUser(type, targetId, portNum, excludeId) {
+  const portKey = type === 'power' ? 'outlet' : 'port';
+  return allItems.find(i => {
+    if (i.id === excludeId) return false;
+    const rpc = i.rack_position?.connections?.[type];
+    const pc = i.peripheral_connections?.[type];
+    if (rpc && rpc.item_id === targetId && rpc[portKey] === portNum) return true;
+    if (pc && pc.item_id === targetId && pc[portKey] === portNum) return true;
+    return false;
+  });
+}
+
+function connectivityPortOptions(type, target, selected, excludeId) {
+  if (!target) return '<option value="">— pick a device first —</option>';
+  const capField = type === 'power' ? 'outlets' : type === 'kvm' ? 'kvm_ports' : type === 'usb' ? 'usb_ports' : 'hdmi_ports';
+  const n = target.rack_position?.[capField] || (type === 'power' ? 8 : 4);
+  const label = type === 'power' ? 'Outlet' : type === 'kvm' ? 'Port' : type.toUpperCase();
+  let out = '<option value="">None</option>';
+  for (let i = 1; i <= n; i++) {
+    const user = connectivityPortUser(type, target.id, i, excludeId);
+    out += `<option value="${i}" ${selected === i ? 'selected' : ''}>${label} ${i}${user ? ' — used by ' + esc(user.display_name || user.name || user.id) : ''}</option>`;
+  }
+  return out;
+}
+
+function connTargetOptions(type, selected, excludeId) {
+  const targets = connectivityTargets(type, excludeId);
+  return '<option value="">Not connected</option>' +
+    targets.map(t => `<option value="${t.id}" ${selected === t.id ? 'selected' : ''}>${esc(t.display_name || t.name || t.id)}</option>`).join('');
+}
+
+function loadConnectivitySection(item) {
+  if (!editingItemId) { disableConnectivitySection(); return; }
+  document.getElementById('conn-fields').style.opacity = '';
+  document.getElementById('conn-fields').style.pointerEvents = '';
+  document.getElementById('conn-save-btn').style.display = '';
+  document.getElementById('conn-disabled-note').style.display = 'none';
+
+  const pc = item.peripheral_connections || {};
+  ['power','network','kvm','usb','hdmi'].forEach(type => {
+    const cur = pc[type];
+    const curId = cur ? cur.item_id : '';
+    const curPort = cur ? (type === 'power' ? cur.outlet : cur.port) : null;
+    const sel = document.getElementById('conn-' + type);
+    sel.innerHTML = connTargetOptions(type, curId, item.id);
+    const portSel = document.getElementById('conn-' + type + '-port');
+    if (portSel && type !== 'network') {
+      const target = connectivityTargets(type, item.id).find(t => t.id === curId);
+      portSel.innerHTML = connectivityPortOptions(type, target, curPort, item.id);
+      portSel.style.display = curId ? '' : 'none';
+    }
+  });
+}
+
+['power','kvm','usb','hdmi'].forEach(type => {
+  document.getElementById('conn-' + type).addEventListener('change', (e) => {
+    const target = connectivityTargets(type, editingItemId).find(t => t.id === e.target.value);
+    const portSel = document.getElementById('conn-' + type + '-port');
+    portSel.innerHTML = connectivityPortOptions(type, target, null, editingItemId);
+    portSel.style.display = target ? '' : 'none';
+  });
+});
+
+document.getElementById('conn-save-btn').addEventListener('click', async () => {
+  if (!editingItemId) return;
+  const user = window.currentUser;
+  if (!user) return;
+  const btn = document.getElementById('conn-save-btn');
+  btn.disabled = true;
+
+  const peripheral_connections = {};
+  ['power','network','kvm','usb','hdmi'].forEach(type => {
+    const sel = document.getElementById('conn-' + type);
+    const targetId = sel.value;
+    if (!targetId) { peripheral_connections[type] = null; return; }
+    if (type === 'network') { peripheral_connections[type] = { item_id: targetId }; return; }
+    const portSel = document.getElementById('conn-' + type + '-port');
+    const portVal = portSel && portSel.value ? parseInt(portSel.value, 10) : null;
+    if (!portVal) { peripheral_connections[type] = null; return; }
+    const portKey = type === 'power' ? 'outlet' : 'port';
+    peripheral_connections[type] = { item_id: targetId, [portKey]: portVal };
+  });
+
+  try {
+    await _updateDoc(_doc(window.db, 'users', user.uid, 'item_records', editingItemId),
+      { peripheral_connections, updated_at: _serverTimestamp() });
+  } catch (err) {
+    HILShell.toast('Could not save connections: ' + err.message, 'error');
+    btn.disabled = false;
+    return;
+  }
+  HILShell.toast('Connections saved ✓');
+  const idx = allItems.findIndex(i => i.id === editingItemId);
+  if (idx >= 0) allItems[idx] = { ...allItems[idx], peripheral_connections };
+  btn.disabled = false;
+});
+
+// ── Assigned Vessel autocomplete — searchable now that vessels can be
+// real nested drawers, not just top-level containers you'd remember the
+// ID of. Keeps the exact same save format (the vessel_id string) as
+// before, just makes finding it a search instead of a memory test.
+function renderVesselAutocomplete(query) {
+  const dropdown = document.getElementById('assigned-vessel-autocomplete');
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+  const matches = allVessels
+    .filter(v => (v.name || '').toLowerCase().includes(q) || (v.vessel_id || '').toLowerCase().includes(q))
+    .slice(0, 8);
+  dropdown.innerHTML = matches.map(v => `
+    <div class="tag-ac-row" data-vessel-id="${esc(v.vessel_id || '')}">
+      <span>${esc(v.name || v.vessel_id || 'Unnamed')}</span>
+      <span style="opacity:.6;font-size:10px">${esc(v.vessel_id || '')}${v.parent_ref ? ' · nested' : ''}</span>
+    </div>
+  `).join('');
+  dropdown.style.display = matches.length ? 'block' : 'none';
+}
+const assignedVesselInput = document.getElementById('f-assigned-vessel');
+assignedVesselInput.addEventListener('input', e => renderVesselAutocomplete(e.target.value));
+assignedVesselInput.addEventListener('focus', e => { if (e.target.value) renderVesselAutocomplete(e.target.value); });
+document.getElementById('assigned-vessel-autocomplete').addEventListener('mousedown', e => {
+  const row = e.target.closest('.tag-ac-row');
+  if (!row) return;
+  e.preventDefault();
+  assignedVesselInput.value = row.dataset.vesselId;
+  document.getElementById('assigned-vessel-autocomplete').style.display = 'none';
+});
+assignedVesselInput.addEventListener('blur', () => {
+  setTimeout(() => { document.getElementById('assigned-vessel-autocomplete').style.display = 'none'; }, 150);
+});
+
+function categoryIcon(cat) {
+  return {tool:'🔧',collectible:'🏺',heirloom:'🪆',ephemera:'📄',
+          media:'📼',artwork:'🖼',document:'📋',specimen:'🔬',
+          fixture:'💡',furniture:'🪑',appliance:'🔲',hardware:'🔩',equipment:'⚙️',electronics:'🔌',
+          consumable:'🧴',vehicle_part:'🛞',vessel:'🪣',other:'📦'}[cat]||'📦';
+}
+</script>
+</body>
+</html>
