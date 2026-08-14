@@ -17,15 +17,12 @@
  * `firebase` namespace on these pages — this uses the modular SDK, not
  * the old compat SDK, so we can't call firebase.auth().currentUser).
  */
-
 const HIL_ADMIN_ACTION_BASE = "https://hil-admin-action-937314472168.us-central1.run.app";
-
 async function getIdToken() {
   const user = window.currentUser;
   if (!user) throw new Error("Not signed in");
   return user.getIdToken();
 }
-
 async function callAdminAction(path, body) {
   const token = await getIdToken();
   const resp = await fetch(`${HIL_ADMIN_ACTION_BASE}${path}`, {
@@ -42,27 +39,23 @@ async function callAdminAction(path, body) {
   }
   return data;
 }
-
 export async function vaultUpdateItem(itemId, fields) {
   return callAdminAction("/update-item", {
     item_id: itemId || null,
     fields,
   });
 }
-
 export async function vaultArchiveItem(itemId, reason) {
   return callAdminAction("/archive-item", {
     item_id: itemId,
     reason: reason || null,
   });
 }
-
 export async function vaultCommitStaged(stagedItemId) {
   return callAdminAction("/commit-staged", {
     staged_item_id: stagedItemId,
   });
 }
-
 // Related Items are a bidirectional pairwise link (distinct from Kit
 // Memberships). Because linking/unlinking touches TWO item_records docs
 // atomically, it can't go through /update-item (which only ever writes the
@@ -76,7 +69,6 @@ export async function vaultLinkRelatedItem(itemId, relatedItemId, action) {
     action,
   });
 }
-
 // Tag Store merge: folds loserTagId into winnerTagId across every
 // item_record that uses it, plus marks the loser tag_registry doc as
 // merged. Fan-out write across many item_records — same reasoning as
@@ -87,11 +79,28 @@ export async function vaultMergeTag(loserTagId, winnerTagId) {
     winner_tag_id: winnerTagId,
   });
 }
-
+// Maintenance Calendar → item_records sync. Only touches the item's
+// `maintenance` block (service_history append + next_service_due
+// recalc) on hil-admin-action's side — never any other field. Called by
+// hil-maintenance-calendar.html once per item-linked task when a
+// calendar event is marked complete, so the item's own service history
+// (House Brain schema) stays authoritative instead of drifting from
+// what the calendar shows as done.
+export async function vaultLogMaintenanceService(itemId, { type, notes, cost, receiptUrl, sourceEventId } = {}) {
+  return callAdminAction("/log-maintenance-service", {
+    item_id: itemId,
+    type,
+    notes: notes || null,
+    cost: (typeof cost === 'number') ? cost : null,
+    receipt_url: receiptUrl || null,
+    source_event_id: sourceEventId || null,
+  });
+}
 window.HILVaultClient = {
   vaultUpdateItem,
   vaultArchiveItem,
   vaultCommitStaged,
   vaultLinkRelatedItem,
   vaultMergeTag,
+  vaultLogMaintenanceService,
 };
