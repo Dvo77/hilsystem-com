@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL System — Maintenance Calendar</title>
+<script src="./hil-shell.js"></script>
+<style>
+  :root{
+    --bg:#0a0c0b;
+    --panel:#12140f;
+    --panel-2:#181b15;
+    --line:#242820;
+    --green:#00cc66;
+    --green-dim:#0a4a2a;
+    --amber:#cc8800;
+    --amber-dim:#4a3300;
+    --zone:#8a5cff;
+    --text:#d9e0d5;
+    --text-dim:#7c8a76;
+    --danger:#cc3333;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:16px;
+    padding-top:calc(var(--hil-offset, 0px) + 20px);
+  }
+  .shell{max-width:1100px;margin:0 auto;padding:0 16px 80px;}
+  .toolhead{
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:16px;margin-bottom:20px;flex-wrap:wrap;gap:12px;
+  }
+  .subtitle{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--text-dim);margin-top:2px;}
+  .month-nav{display:flex;align-items:center;gap:12px;}
+  .month-nav button{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    font-family:'Space Mono',monospace;padding:6px 10px;cursor:pointer;border-radius:3px;
+  }
+  .month-nav button:hover{border-color:var(--green);color:var(--green);}
+  .month-label{font-family:'Orbitron',sans-serif;font-size:.9rem;letter-spacing:.05em;min-width:150px;text-align:center;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+  .btn-primary{
+    background:var(--green-dim);border:1px solid var(--green);color:var(--green);
+    font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.03em;
+    padding:8px 16px;border-radius:3px;cursor:pointer;font-size:.95rem;text-transform:uppercase;
+  }
+  .btn-primary:hover{background:var(--green);color:#04140b;}
+  .btn-primary:disabled{opacity:.4;cursor:default;}
+  .legend{display:flex;gap:14px;font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text-dim);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .dot.item{background:var(--green);}
+  .dot.free{background:var(--amber);}
+  .dot.linked{background:#3aa0ff;}
+  .dot.zone{background:var(--zone);}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    border:1px solid var(--line);border-radius:4px;overflow:hidden;
+  }
+  .dow{
+    background:var(--panel-2);font-family:'Space Mono',monospace;font-size:.65rem;
+    color:var(--text-dim);text-align:center;padding:6px 0;text-transform:uppercase;letter-spacing:.05em;
+  }
+  .cell{
+    background:var(--panel);min-height:96px;border-top:1px solid var(--line);border-left:1px solid var(--line);
+    padding:6px;position:relative;
+  }
+  .cell.out{opacity:.35;}
+  .cell.today{box-shadow:inset 0 0 0 1px var(--green);}
+  .daynum{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--text-dim);}
+  .chip{
+    margin-top:4px;font-size:.72rem;line-height:1.15;padding:3px 5px;border-radius:3px;
+    cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:500;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    border-left:3px solid var(--green);background:rgba(0,204,102,.08);color:var(--text);
+  }
+  .chip.free{border-left-color:var(--amber);background:rgba(204,136,0,.08);}
+  .chip.linked{border-left-color:#3aa0ff;background:rgba(58,160,255,.08);}
+  .chip.zone{border-left-color:var(--zone);background:rgba(138,92,255,.08);}
+  .chip.done{opacity:.4;text-decoration:line-through;}
+  .chip.overdue{border-left-color:var(--danger);background:rgba(204,51,51,.12);color:#ffb3b3;font-weight:600;}
+  .chip:hover{background:rgba(255,255,255,.06);}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;
+    align-items:center;justify-content:center;z-index:50;padding:16px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:20px;
+  }
+  .modal h2{
+    font-family:'Orbitron',sans-serif;font-size:.95rem;letter-spacing:.05em;
+    color:var(--green);margin:0 0 14px;text-transform:uppercase;
+  }
+  .modal h3{
+    font-family:'Space Mono',monospace;font-size:.68rem;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.05em;margin:16px 0 6px;
+  }
+  input[type=text],input[type=date],input[type=number],select,textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+    padding:8px;border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-size:.95rem;
+  }
+  textarea{resize:vertical;min-height:50px;}
+  .item-picker{
+    border:1px solid var(--line);border-radius:3px;max-height:150px;overflow-y:auto;background:var(--panel-2);
+  }
+  .item-row{
+    display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--line);font-size:.8rem;flex-wrap:wrap;
+  }
+  .item-row:last-child{border-bottom:none;}
+  .item-row .pick-task{flex:1 1 120px;min-width:100px;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    padding:4px 6px;border-radius:3px;font-size:.78rem;}
+  .item-row .pick-type{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--text-dim);
+    padding:4px 4px;border-radius:3px;font-size:.68rem;}
+  .item-row .row-label{min-width:100px;}
+  .item-row .row-sub{font-size:.65rem;color:var(--text-dim);font-family:'Space Mono',monospace;}
+  .freeform-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .freeform-chip{
+    background:var(--amber-dim);border:1px solid var(--amber);color:var(--amber);
+    font-size:.75rem;padding:3px 8px;border-radius:12px;display:flex;align-items:center;gap:6px;
+  }
+  .freeform-chip button{background:none;border:none;color:var(--amber);cursor:pointer;font-size:.9rem;line-height:1;padding:0;}
+  .freeform-add{display:flex;gap:6px;margin-top:6px;}
+  .freeform-add input{flex:1;}
+  .freeform-add button{flex:0 0 auto;}
+  .recur-row{display:flex;gap:8px;}
+  .recur-row select{flex:1;}
+  .modal-actions{display:flex;justify-content:space-between;margin-top:18px;gap:8px;}
+  .btn-ghost{
+    background:transparent;border:1px solid var(--line);color:var(--text-dim);
+    padding:8px 14px;border-radius:3px;cursor:pointer;font-size:.85rem;font-family:'Barlow Condensed',sans-serif;
+  }
+  .btn-ghost:hover{border-color:var(--text);color:var(--text);}
+  .btn-danger{border-color:var(--danger);color:var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-complete{border-color:var(--green);color:var(--green);}
+  .btn-complete:hover{background:var(--green);color:#04140b;}
+  .empty-hint{font-family:'Space Mono',monospace;font-size:.63rem;color:var(--text-dim);margin-top:4px;}
+  .sync-status{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--text-dim);margin-top:10px;min-height:14px;}
+  .sync-status.err{color:#ffb3b3;}
+  .loading-note{font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text-dim);padding:20px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="toolhead">
+    <div>
+      <div class="subtitle">calendar module — schedules against Vault items, zones, or freeform tasks</div>
+    </div>
+    <div class="month-nav">
+      <button id="prevMonth">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button id="nextMonth">›</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn-primary" id="newEventBtn" disabled>+ New Event</button>
+    <div class="legend">
+      <span><span class="dot item"></span>from Vault item</span>
+      <span><span class="dot linked"></span>linked (multi-task)</span>
+      <span><span class="dot zone"></span>zone-linked</span>
+      <span><span class="dot free"></span>freeform</span>
+      <span><span class="dot" style="background:var(--danger);"></span>overdue</span>
+    </div>
+  </div>
+
+  <div id="calendarWrap">
+    <div class="loading-note">Sign in to load your maintenance calendar…</div>
+  </div>
+</div>
+
+<!-- Event modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">New Maintenance Event</h2>
+    <input type="hidden" id="editId">
+
+    <label>Title</label>
+    <input type="text" id="fTitle" placeholder="e.g. Oil change round — tractor, Kubota, van">
+
+    <label>Date</label>
+    <input type="date" id="fDate">
+
+    <label>Repeats</label>
+    <div class="recur-row">
+      <select id="fRecur">
+        <option value="none">Does not repeat</option>
+        <option value="weekly">Weekly</option>
+        <option value="biweekly">Every 2 weeks</option>
+        <option value="monthly">Monthly</option>
+        <option value="seasonal">Seasonal (every 3 months)</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+
+    <h3>Vault Items</h3>
+    <div class="item-picker" id="itemPicker"></div>
+    <div class="empty-hint">Check an item, set the task, and pick a service type — completing the event logs that history entry back to the item itself.</div>
+
+    <h3>Zones / Property</h3>
+    <div class="item-picker" id="zonePicker"></div>
+    <div class="empty-hint">For work tied to a place, not a cataloged item (fence line, gutters, driveway).</div>
+
+    <h3>Freeform Tasks</h3>
+    <div class="freeform-list" id="freeformList"></div>
+    <div class="freeform-add">
+      <input type="text" id="freeformInput" placeholder="e.g. Honey-do: fix porch step">
+      <button class="btn-ghost" id="freeformAddBtn">Add</button>
+    </div>
+
+    <label>Notes</label>
+    <textarea id="fNotes" placeholder="Anything worth remembering next time — torque specs, part numbers, who's doing it"></textarea>
+
+    <div class="modal-actions">
+      <div>
+        <button class="btn-ghost btn-danger" id="deleteBtn" style="display:none;">Delete</button>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-ghost" id="cancelBtn">Cancel</button>
+        <button class="btn-ghost btn-complete" id="completeBtn" style="display:none;">Mark Complete</button>
+        <button class="btn-primary" id="saveBtn">Save</button>
+      </div>
+    </div>
+    <div class="sync-status" id="syncStatus"></div>
+  </div>
+</div>
+
+<script type="module">
+/* ---------------------------------------------------------------------
+   HIL Maintenance Calendar — real Firestore build.
+
+   Reads:  users/{uid}/item_records            (item picker, item-linked
+                                                 occurrences from
+                                                 maintenance.next_service_due)
+           users/{uid}/properties               (to find zones)
+           users/{uid}/properties/{p}/zones     (zone picker)
+   Writes: users/{uid}/maintenance_events/{id}  (frontend-writable —
+                                                 planning layer, same
+                                                 doctrine tier as
+                                                 museum_items/tag_registry)
+
+   Item-linked completion additionally calls hil-admin-action's
+   /log-maintenance-service via vaultLogMaintenanceService() from
+   vault-item-client.js — that's the only path that touches item_records
+   (maintenance.service_history + next_service_due), per Authority Layer.
+------------------------------------------------------------------------ */
+
+const VALID_SERVICE_TYPES = ['filter_change','inspection','repair','replacement','cleaning','calibration','other'];
+
+let db, currentUser;
+let _collection,_doc,_addDoc,_updateDoc,_deleteDoc,_onSnapshot,_serverTimestamp,_getDocs,_orderBy,_query;
+let vaultLogMaintenanceService = null; // populated from vault-item-client.js
+
+let vaultItems = [];      // item_records for this user
+let zoneOptions = [];     // [{id, propertyId, propertyName, label, hl_address}]
+let events = [];          // maintenance_events docs, live from Firestore
+let viewDate = new Date();
+let editingId = null;
+let freeformDraft = [];   // [{task}] — held in modal state before save
+
+const $ = sel => document.querySelector(sel);
+let grid, monthLabel;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function isoDate(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function todayIso(){ return isoDate(new Date()); }
+function tsToIso(ts){
+  if(!ts) return null;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return isoDate(d);
+}
+
+// ── SHELL INIT ─────────────────────────────────────────────────────────
+HILShell.init({
+  toolId:      'maintenance',
+  toolName:    'Maintenance',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user){
+  if(!user){ return; }
+  currentUser = user;
+
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection = fsdk.collection; _doc = fsdk.doc; _addDoc = fsdk.addDoc;
+  _updateDoc = fsdk.updateDoc; _deleteDoc = fsdk.deleteDoc; _onSnapshot = fsdk.onSnapshot;
+  _serverTimestamp = fsdk.serverTimestamp; _getDocs = fsdk.getDocs;
+  _orderBy = fsdk.orderBy; _query = fsdk.query;
+
+  db = window.db;
+
+  // vault-item-client.js exports vaultLogMaintenanceService (added per
+  // the maintenance-sync build) — same dynamic-import pattern Vault uses.
+  try{
+    const vic = await import('./vault-item-client.js');
+    vaultLogMaintenanceService = vic.vaultLogMaintenanceService;
+  }catch(e){
+    console.warn('vault-item-client.js not loaded — item history sync disabled', e);
+  }
+
+  document.getElementById('newEventBtn').disabled = false;
+
+  await Promise.all([loadVaultItems(), loadZones()]);
+  listenEvents();
+  renderCalendar();
+}
+
+// ── DATA LOADING ─────────────────────────────────────────────────────
+async function loadVaultItems(){
+  const snap = await _getDocs(_query(_collection(db,'users',currentUser.uid,'item_records'), _orderBy('display_name')));
+  vaultItems = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+}
+
+async function loadZones(){
+  zoneOptions = [];
+  const propSnap = await _getDocs(_collection(db,'users',currentUser.uid,'properties'));
+  for(const propDoc of propSnap.docs){
+    const propData = propDoc.data();
+    const zoneSnap = await _getDocs(_collection(db,'users',currentUser.uid,'properties',propDoc.id,'zones'));
+    zoneSnap.docs.forEach(z=>{
+      const zd = z.data();
+      zoneOptions.push({
+        id: z.id,
+        propertyId: propDoc.id,
+        propertyName: propData.name || propData.property_name || propDoc.id,
+        label: zd.zone_label || zd.name || z.id,
+        hl_address: zd.hl_address || null,
+      });
+    });
+  }
+}
+
+function listenEvents(){
+  const col = _collection(db,'users',currentUser.uid,'maintenance_events');
+  _onSnapshot(col, snap => {
+    events = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderCalendar();
+  }, err => {
+    console.error('maintenance_events listener error', err);
+  });
+}
+
+// ── OCCURRENCE MATH (unchanged logic from prototype) ─────────────────
+function occurrencesInRange(evt, rangeStart, rangeEnd){
+  const out = [];
+  let cur = new Date(evt.date + 'T00:00:00');
+  const stepDays = { weekly:7, biweekly:14, monthly:null, seasonal:null, yearly:null }[evt.recur];
+  const maxIter = 400;
+  let i = 0;
+  while(cur <= rangeEnd && i < maxIter){
+    if(cur >= rangeStart) out.push(isoDate(cur));
+    if(evt.recur === 'none') break;
+    if(stepDays){
+      cur = new Date(cur.getTime() + stepDays*86400000);
+    } else if(evt.recur === 'monthly'){
+      cur = new Date(cur.getFullYear(), cur.getMonth()+1, cur.getDate());
+    } else if(evt.recur === 'seasonal'){
+      cur = new Date(cur.getFullYear(), cur.getMonth()+3, cur.getDate());
+    } else if(evt.recur === 'yearly'){
+      cur = new Date(cur.getFullYear()+1, cur.getMonth(), cur.getDate());
+    } else break;
+    i++;
+  }
+  return out;
+}
+
+function daysBetween(isoA, isoB){
+  const a = new Date(isoA + 'T00:00:00');
+  const b = new Date(isoB + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+
+function buildEventOccurrences(rangeStart, rangeEnd){
+  const today = todayIso();
+  const todayInRange = new Date(today+'T00:00:00') >= rangeStart && new Date(today+'T00:00:00') <= rangeEnd;
+  const out = [];
+
+  events.forEach(evt => {
+    const completed = evt.completedDates || [];
+    const raw = occurrencesInRange(evt, rangeStart, rangeEnd);
+    const future = raw.filter(d => d >= today);
+    const missed = raw.filter(d => d < today && !completed.includes(d));
+
+    future.forEach(d => out.push({ date:d, evt, overdue:false }));
+
+    if(missed.length){
+      const mostRecent = missed.sort().at(-1);
+      const daysOverdue = daysBetween(mostRecent, today);
+      const pinDate = todayInRange ? today : mostRecent;
+      out.push({ date: pinDate, occDate: mostRecent, evt, overdue:true, daysOverdue });
+    }
+  });
+
+  return out;
+}
+
+// Read-only chips sourced straight off item_records.maintenance.next_service_due
+// (House Brain schedule) — editing these means editing the item itself, not
+// this calendar.
+function vaultOccurrencesInRange(rangeStart, rangeEnd){
+  return vaultItems
+    .filter(it => it.maintenance && it.maintenance.next_service_due)
+    .map(it => ({ date: tsToIso(it.maintenance.next_service_due), item: it }))
+    .filter(v => {
+      if(!v.date) return false;
+      const d = new Date(v.date + 'T00:00:00');
+      return d >= rangeStart && d <= rangeEnd;
+    });
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────
+function ensureGridBuilt(){
+  const wrap = document.getElementById('calendarWrap');
+  if(document.getElementById('calendarGrid')) return;
+  wrap.innerHTML = '<div class="grid" id="calendarGrid"></div>';
+  grid = document.getElementById('calendarGrid');
+  monthLabel = document.getElementById('monthLabel');
+}
+
+function renderCalendar(){
+  ensureGridBuilt();
+  const y = viewDate.getFullYear(), m = viewDate.getMonth();
+  monthLabel.textContent = viewDate.toLocaleDateString('en-US',{month:'long', year:'numeric'});
+
+  const firstOfMonth = new Date(y, m, 1);
+  const startDow = firstOfMonth.getDay();
+  const gridStart = new Date(y, m, 1 - startDow);
+  const gridEnd = new Date(y, m, 1 - startDow + 41);
+
+  grid.innerHTML = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const vaultOcc = vaultOccurrencesInRange(gridStart, gridEnd);
+  const eventOcc = buildEventOccurrences(gridStart, gridEnd);
+
+  for(let i=0;i<42;i++){
+    const d = new Date(gridStart.getTime() + i*86400000);
+    const iso = isoDate(d);
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    if(d.getMonth() !== m) cell.classList.add('out');
+    if(iso === todayIso()) cell.classList.add('today');
+
+    const num = document.createElement('div');
+    num.className = 'daynum';
+    num.textContent = d.getDate();
+    cell.appendChild(num);
+
+    vaultOcc.filter(v=>v.date===iso).forEach(v=>{
+      const chip = document.createElement('div');
+      chip.className = 'chip item';
+      const taskLabel = v.item.maintenance.service_history && v.item.maintenance.service_history.length
+        ? 'Service due' : 'Service due';
+      chip.textContent = `${v.item.display_name || v.item.name || v.item.id} — ${taskLabel}`;
+      chip.title = 'From item_records.maintenance (House Brain schedule, read-only here)';
+      cell.appendChild(chip);
+    });
+
+    eventOcc.filter(e=>e.date===iso).forEach(({evt, occDate, overdue, daysOverdue})=>{
+      const chip = document.createElement('div');
+      const tasks = evt.linkedTasks || [];
+      const hasZone = tasks.some(t=>t.targetType==='zone');
+      const hasItem = tasks.some(t=>t.targetType==='item');
+      let cls = 'free';
+      if(tasks.length > 1) cls = 'linked';
+      else if(hasZone) cls = 'zone';
+      else if(hasItem) cls = 'item';
+      chip.className = 'chip ' + cls;
+      if(overdue) chip.classList.add('overdue');
+      if(!overdue && (evt.completedDates||[]).includes(iso)) chip.classList.add('done');
+      let label = evt.title + (tasks.length > 1 ? ` (${tasks.length} tasks)` : '');
+      if(overdue) label += ` — ${daysOverdue}d overdue`;
+      chip.textContent = label;
+      chip.addEventListener('click', ()=> openModal(evt.id, overdue ? occDate : iso));
+      cell.appendChild(chip);
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+// ── MODAL: pickers ────────────────────────────────────────────────
+function buildItemPicker(selectedTasks){
+  const picker = $('#itemPicker');
+  picker.innerHTML = '';
+  if(!vaultItems.length){
+    picker.innerHTML = '<div class="item-row"><span class="row-sub">No Vault items found.</span></div>';
+    return;
+  }
+  vaultItems.forEach(it=>{
+    const existing = selectedTasks.find(t=>t.targetType==='item' && t.itemId===it.id);
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input type="checkbox" class="pick-cb" value="${it.id}" ${existing?'checked':''}>
+      <span class="row-label">${it.display_name || it.name || it.id}</span>
+      <input type="text" class="pick-task" data-item="${it.id}"
+        placeholder="task" value="${existing ? existing.task : ''}">
+      <select class="pick-type" data-item="${it.id}">
+        ${VALID_SERVICE_TYPES.map(t=>`<option value="${t}" ${existing && existing.serviceType===t ? 'selected':''}>${t}</option>`).join('')}
+      </select>
+    `;
+    picker.appendChild(row);
+  });
+}
+
+function buildZonePicker(selectedTasks){
+  const picker = $('#zonePicker');
+  picker.innerHTML = '';
+  if(!zoneOptions.length){
+    picker.innerHTML = '<div class="item-row"><span class="row-sub">No zones found — draw one in Room Visualizer first.</span></div>';
+    return;
+  }
+  zoneOptions.forEach(z=>{
+    const existing = selectedTasks.find(t=>t.targetType==='zone' && t.zoneId===z.id);
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `
+      <input type="checkbox" class="pick-zone-cb" value="${z.id}" data-property="${z.propertyId}">
+      <span class="row-label">${z.propertyName} — ${z.label}${z.hl_address ? ` <span class="row-sub">(${z.hl_address})</span>` : ''}</span>
+      <input type="text" class="pick-zone-task" data-zone="${z.id}"
+        placeholder="task" value="${existing ? existing.task : ''}">
+    `;
+    if(existing) row.querySelector('.pick-zone-cb').checked = true;
+    picker.appendChild(row);
+  });
+}
+
+function renderFreeformList(){
+  const list = $('#freeformList');
+  list.innerHTML = '';
+  freeformDraft.forEach((f, idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'freeform-chip';
+    chip.innerHTML = `<span>${f.task}</span><button data-idx="${idx}">×</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      freeformDraft.splice(idx,1);
+      renderFreeformList();
+    });
+    list.appendChild(chip);
+  });
+}
+
+$('#freeformAddBtn').addEventListener('click', ()=>{
+  const input = $('#freeformInput');
+  const val = input.value.trim();
+  if(!val) return;
+  freeformDraft.push({ targetType:'freeform', itemId:null, zoneId:null, hl_address:null, task: val });
+  input.value = '';
+  renderFreeformList();
+});
+
+function readLinkedTasksFromPickers(){
+  const itemTasks = Array.from($('#itemPicker').querySelectorAll('.item-row'))
+    .filter(row => row.querySelector('.pick-cb') && row.querySelector('.pick-cb').checked)
+    .map(row => ({
+      targetType: 'item',
+      itemId: row.querySelector('.pick-cb').value,
+      zoneId: null, hl_address: null,
+      task: row.querySelector('.pick-task').value.trim() || '(task not set)',
+      serviceType: row.querySelector('.pick-type').value,
+    }));
+
+  const zoneTasks = Array.from($('#zonePicker').querySelectorAll('.item-row'))
+    .filter(row => row.querySelector('.pick-zone-cb') && row.querySelector('.pick-zone-cb').checked)
+    .map(row => {
+      const zid = row.querySelector('.pick-zone-cb').value;
+      const z = zoneOptions.find(x=>x.id===zid);
+      return {
+        targetType: 'zone',
+        itemId: null,
+        zoneId: zid,
+        hl_address: z ? z.hl_address : null,
+        task: row.querySelector('.pick-zone-task').value.trim() || '(task not set)',
+      };
+    });
+
+  return [...itemTasks, ...zoneTasks, ...freeformDraft];
+}
+
+// ── MODAL: open/close ─────────────────────────────────────────────
+function openModal(id, occurrenceDate){
+  editingId = id || null;
+  $('#syncStatus').textContent = '';
+  $('#syncStatus').className = 'sync-status';
+  const overlay = $('#overlay');
+  overlay.classList.add('open');
+
+  if(id){
+    const evt = events.find(e=>e.id===id);
+    const tasks = evt.linkedTasks || [];
+    freeformDraft = tasks.filter(t=>t.targetType==='freeform').map(t=>({...t}));
+    $('#modalTitle').textContent = 'Edit Maintenance Event';
+    $('#fTitle').value = evt.title;
+    $('#fDate').value = evt.date;
+    $('#fRecur').value = evt.recur;
+    $('#fNotes').value = evt.notes || '';
+    buildItemPicker(tasks);
+    buildZonePicker(tasks);
+    renderFreeformList();
+    $('#deleteBtn').style.display = 'inline-block';
+    $('#completeBtn').style.display = 'inline-block';
+    $('#completeBtn').dataset.occ = occurrenceDate;
+    $('#completeBtn').textContent = (evt.completedDates||[]).includes(occurrenceDate) ? 'Unmark Complete' : 'Mark Complete';
+  } else {
+    freeformDraft = [];
+    $('#modalTitle').textContent = 'New Maintenance Event';
+    $('#fTitle').value = '';
+    $('#fDate').value = occurrenceDate || todayIso();
+    $('#fRecur').value = 'none';
+    $('#fNotes').value = '';
+    buildItemPicker([]);
+    buildZonePicker([]);
+    renderFreeformList();
+    $('#deleteBtn').style.display = 'none';
+    $('#completeBtn').style.display = 'none';
+  }
+}
+function closeModal(){
+  $('#overlay').classList.remove('open');
+  editingId = null;
+}
+
+$('#newEventBtn').addEventListener('click', ()=> openModal(null, todayIso()));
+$('#cancelBtn').addEventListener('click', closeModal);
+$('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+// ── SAVE / DELETE (frontend-writable — maintenance_events is a
+//    planning-layer collection, not item_records) ──────────────────
+$('#saveBtn').addEventListener('click', async ()=>{
+  const title = $('#fTitle').value.trim();
+  const date = $('#fDate').value;
+  if(!title || !date){ alert('Title and date are required.'); return; }
+  const linkedTasks = readLinkedTasksFromPickers();
+  const payload = {
+    title, date,
+    recur: $('#fRecur').value,
+    linkedTasks,
+    notes: $('#fNotes').value.trim(),
+    owner_uid: currentUser.uid,
+    updated_at: _serverTimestamp(),
+  };
+  try{
+    if(editingId){
+      await _updateDoc(_doc(db,'users',currentUser.uid,'maintenance_events',editingId), payload);
+    } else {
+      await _addDoc(_collection(db,'users',currentUser.uid,'maintenance_events'), {
+        ...payload, completedDates:[], created_at:_serverTimestamp(),
+      });
+    }
+    closeModal();
+  }catch(e){
+    alert('Save failed: ' + e.message);
+  }
+});
+
+$('#deleteBtn').addEventListener('click', async ()=>{
+  if(!editingId) return;
+  if(!confirm('Delete this maintenance event? This does not undo any completed history already logged to linked items.')) return;
+  try{
+    await _deleteDoc(_doc(db,'users',currentUser.uid,'maintenance_events',editingId));
+    closeModal();
+  }catch(e){
+    alert('Delete failed: ' + e.message);
+  }
+});
+
+// Completing an occurrence:
+//  1. Toggle completedDates on the maintenance_events doc (frontend-writable).
+//  2. For every linked task with targetType 'item', call hil-admin-action's
+//     /log-maintenance-service so the item's own service_history stays
+//     authoritative — the one piece of this flow that touches item_records.
+$('#completeBtn').addEventListener('click', async ()=>{
+  const evt = events.find(e=>e.id===editingId);
+  const occ = $('#completeBtn').dataset.occ;
+  const completedDates = evt.completedDates || [];
+  const idx = completedDates.indexOf(occ);
+  const nowCompleting = idx < 0;
+  const newCompleted = nowCompleting
+    ? [...completedDates, occ]
+    : completedDates.filter(d=>d!==occ);
+
+  const statusEl = $('#syncStatus');
+  statusEl.className = 'sync-status';
+  statusEl.textContent = '';
+
+  try{
+    await _updateDoc(_doc(db,'users',currentUser.uid,'maintenance_events',editingId), {
+      completedDates: newCompleted, updated_at: _serverTimestamp(),
+    });
+  }catch(e){
+    statusEl.className = 'sync-status err';
+    statusEl.textContent = 'Failed to save completion: ' + e.message;
+    return;
+  }
+
+  if(nowCompleting){
+    const itemTasks = (evt.linkedTasks || []).filter(t=>t.targetType==='item');
+    if(itemTasks.length){
+      if(!vaultLogMaintenanceService){
+        statusEl.className = 'sync-status err';
+        statusEl.textContent = 'Marked complete, but vault-item-client.js is not loaded — item history NOT synced.';
+      } else {
+        statusEl.textContent = `Syncing history to ${itemTasks.length} item(s)…`;
+        const failures = [];
+        for(const t of itemTasks){
+          try{
+            await vaultLogMaintenanceService(t.itemId, {
+              type: t.serviceType || 'other',
+              notes: evt.notes || t.task,
+              sourceEventId: evt.id,
+            });
+          }catch(e){
+            failures.push(`${t.task}: ${e.message}`);
+          }
+        }
+        if(failures.length){
+          statusEl.className = 'sync-status err';
+          statusEl.textContent = `Completed, but ${failures.length} item history sync(s) failed — ${failures.join('; ')}`;
+        } else {
+          statusEl.textContent = `Done — synced to ${itemTasks.length} item(s).`;
+          await loadVaultItems(); // refresh next_service_due chips
+        }
+      }
+    }
+  }
+
+  closeModal();
+});
+
+$('#prevMonth').addEventListener('click', ()=>{
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
+  renderCalendar();
+});
+$('#nextMonth').addEventListener('click', ()=>{
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
+  renderCalendar();
+});
+</script>
+</body>
+</html>
