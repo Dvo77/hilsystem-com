@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hardware ID — HIL System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0c0b;
+    --panel:#12161a;
+    --panel-2:#171c21;
+    --border:#242b2f;
+    --border-2:#33393d;
+    --text:#e7ece9;
+    --text-dim:#8b978f;
+    --green:#00cc66;
+    --green-ink:#05130c;
+    --amber:#cc8800;
+    --amber-ink:#160f00;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Barlow Condensed',sans-serif;
+    min-height:100vh; padding:18px 14px 44px; display:flex; justify-content:center;
+  }
+  .app{width:100%;max-width:540px;}
+  /* ---- Header ---- */
+  .hdr{display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--green);padding-bottom:14px;margin-bottom:16px;}
+  .hdr .logo{flex-shrink:0;}
+  .hdr .titles{flex:1;}
+  .hdr h1{
+    margin:0;font-family:'Orbitron',sans-serif;font-weight:800;font-size:22px;
+    letter-spacing:0.06em;text-transform:uppercase;color:var(--text);
+  }
+  .hdr .tag{font-size:12px;letter-spacing:0.12em;color:var(--text-dim);text-transform:uppercase;margin-top:2px;font-weight:500;}
+  /* ---- Mode tabs ---- */
+  .mode-tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:16px;}
+  .mode-tab{
+    background:var(--panel);border:1.5px solid var(--border-2);color:var(--text-dim);
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.06em;
+    text-transform:uppercase;padding:10px 4px;border-radius:4px;cursor:pointer;
+  }
+  .mode-tab.active{background:var(--green);border-color:var(--green);color:var(--green-ink);}
+  /* ---- Readout ---- */
+  .readout{background:#000;border:1px solid var(--border-2);border-radius:6px;padding:14px 16px 10px;margin-bottom:18px;position:relative;overflow:hidden;}
+  .readout::before,.readout::after{content:"";position:absolute;left:0;right:0;height:5px;background-image:repeating-linear-gradient(90deg,var(--border-2) 0 1px, transparent 1px 8px);opacity:0.5;}
+  .readout::before{top:0;} .readout::after{bottom:0;}
+  .readout .label{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:0.18em;color:var(--text-dim);text-transform:uppercase;margin-bottom:5px;font-weight:600;}
+  .readout .screen{
+    background:#050706;border:1px solid var(--border-2);border-radius:3px;padding:12px 10px;min-height:34px;
+    display:flex;align-items:center;font-family:'Space Mono',monospace;font-size:16px;letter-spacing:0.02em;
+    color:var(--green);text-shadow:0 0 8px rgba(0,204,102,0.35);overflow-x:auto;white-space:nowrap;
+  }
+  .readout .screen .ph{color:#1c3d2c;}
+  /* ---- Cards ---- */
+  .card{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:18px 16px;margin-bottom:14px;}
+  .step-meta{font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:0.16em;color:var(--amber);text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+  .question{font-size:19px;font-weight:600;margin:0 0 4px;line-height:1.25;}
+  .hint{font-size:14px;color:var(--text-dim);margin:0 0 14px;line-height:1.4;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-dim);}
+  .field label .opt{font-weight:400;text-transform:none;letter-spacing:0;color:#5c655f;}
+  .field input[type=number],.field input[type=text]{
+    width:100%;padding:11px;font-size:17px;border:1.5px solid var(--border-2);border-radius:5px;
+    background:#05070a;color:var(--green);font-family:'Space Mono',monospace;
+  }
+  .field input[type=number]:focus,.field input[type=text]:focus{outline:none;border-color:var(--green);}
+  .unit-toggle{display:flex;gap:8px;margin-bottom:16px;}
+  .unit-btn{flex:1;background:var(--panel-2);border:1.5px solid var(--border-2);border-radius:4px;padding:9px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text);}
+  .unit-btn.selected{background:var(--amber);color:var(--amber-ink);border-color:var(--amber);}
+  .opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .opt-grid.wide{grid-template-columns:1fr;}
+  .opt-grid.three{grid-template-columns:1fr 1fr 1fr;}
+  .opt-grid.four{grid-template-columns:1fr 1fr 1fr 1fr;}
+  .opt-btn{
+    background:var(--panel-2);border:1.5px solid var(--border-2);border-radius:5px;padding:11px 10px;
+    font-size:15px;font-weight:500;color:var(--text);cursor:pointer;text-align:left;line-height:1.25;
+    font-family:'Barlow Condensed',sans-serif;
+  }
+  .opt-btn small{display:block;font-weight:400;color:var(--text-dim);font-size:12px;margin-top:2px;}
+  .opt-btn.selected{background:var(--green);border-color:var(--green);color:var(--green-ink);}
+  .opt-btn.selected small{color:#0a2e1c;}
+  .toggle-link{background:none;border:none;color:var(--amber);font-size:13px;font-weight:600;text-decoration:underline;cursor:pointer;padding:0;margin-bottom:12px;display:inline-block;font-family:'Barlow Condensed',sans-serif;}
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:10px;}
+  .btn{border:none;border-radius:5px;padding:12px 18px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:'Barlow Condensed',sans-serif;}
+  .btn-back{background:transparent;color:var(--text-dim);border:1.5px solid var(--border-2);}
+  .btn-next{background:var(--green);color:var(--green-ink);}
+  .btn-next:disabled{background:#2b3530;color:#5c655f;cursor:not-allowed;}
+  .btn-restart{background:var(--amber);color:var(--amber-ink);}
+  .progress{display:flex;gap:4px;margin-bottom:14px;}
+  .progress i{flex:1;height:4px;border-radius:2px;background:var(--border-2);}
+  .progress i.done{background:var(--amber);}
+  .progress i.now{background:var(--green);}
+  /* ---- Result / matches ---- */
+  .result-designation{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;line-height:1.35;margin:4px 0 10px;color:var(--green);}
+  .result-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+  .stub-label{background:#05070a;border:2px solid var(--green);border-radius:2px;padding:6px 10px;font-family:'Space Mono',monospace;font-size:12.5px;font-weight:700;color:var(--green);}
+  .stub-label span{display:block;font-size:9.5px;font-weight:400;color:var(--text-dim);letter-spacing:0.06em;font-family:'Barlow Condensed',sans-serif;}
+  .confidence{font-size:13px;color:var(--text-dim);background:var(--panel-2);border-radius:4px;padding:9px 11px;line-height:1.4;margin-bottom:14px;}
+  .match-item{border:1.5px solid var(--border-2);border-radius:5px;padding:12px;margin-bottom:10px;background:var(--panel-2);}
+  .match-item.best{border-color:var(--green);border-width:2px;}
+  .match-title{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;margin-bottom:3px;color:var(--text);}
+  .match-meta{font-size:13px;color:var(--text-dim);}
+  .match-badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;background:var(--green);color:var(--green-ink);padding:2px 7px;border-radius:3px;margin-bottom:6px;font-family:'Barlow Condensed',sans-serif;}
+  .empty-state{font-size:14px;color:var(--text-dim);text-align:center;padding:10px 0;}
+  .label-export{border-top:1px dashed var(--border-2);padding-top:14px;margin-top:4px;}
+  .size-btn{font-size:14px;padding:11px 6px;text-align:center;}
+  .footer-note{font-size:11.5px;color:var(--text-dim);text-align:center;margin-top:12px;line-height:1.5;}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--panel-2);border-radius:5px;overflow:hidden;}
+  th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--border);}
+  th{color:var(--amber);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;font-family:'Barlow Condensed',sans-serif;}
+  td{font-family:'Space Mono',monospace;color:var(--text);font-size:12px;}
+  tr:last-child td{border-bottom:none;}
+  .ref-section{margin-bottom:22px;}
+  .ref-section h2{font-family:'Orbitron',sans-serif;font-weight:700;text-transform:uppercase;font-size:14px;letter-spacing:0.04em;margin:0 0 10px;color:var(--green);border-bottom:1px solid var(--border);padding-bottom:6px;}
+  /* ---- Bin Log block (Find/Create Bin — Vault fill_level logging) ---- */
+  .bin-log{border-top:1px dashed var(--border-2);padding-top:14px;margin-top:4px;}
+  .bin-signin-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .bin-match-row{border:1.5px solid var(--border-2);border-radius:5px;padding:10px 12px;margin-bottom:8px;background:var(--panel-2);}
+  .bin-match-name{font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:var(--text);}
+  .bin-match-meta{font-size:12px;color:var(--text-dim);margin-top:1px;margin-bottom:8px;}
+  .fill-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;}
+  .fill-btn{
+    border:1.5px solid var(--border-2);border-radius:4px;padding:8px 4px;font-size:12px;font-weight:700;
+    text-transform:uppercase;letter-spacing:0.03em;cursor:pointer;background:var(--panel);color:var(--text);
+    font-family:'Barlow Condensed',sans-serif;
+  }
+  .fill-btn.is-full{color:var(--green);} .fill-btn.is-full.current{background:var(--green);color:var(--green-ink);border-color:var(--green);}
+  .fill-btn.is-medium{color:var(--text);} .fill-btn.is-medium.current{background:var(--text-dim);color:var(--bg);border-color:var(--text-dim);}
+  .fill-btn.is-low{color:var(--amber);} .fill-btn.is-low.current{background:var(--amber);color:var(--amber-ink);border-color:var(--amber);}
+  .fill-btn.is-empty{color:#e05d5d;} .fill-btn.is-empty.current{background:#e05d5d;color:#160303;border-color:#e05d5d;}
+  .bin-create{border-top:1px solid var(--border);padding-top:12px;margin-top:4px;}
+</style>
+</head>
+<body>
+<!-- HIL SHELL — canonical source of truth: Firebase init, auth, header/nav, design tokens, toast system -->
+<script src="hil-shell.js"></script>
+<div class="app">
+  <div class="hdr">
+    <div class="logo">
+      <svg viewBox="0 0 100 100" width="42" height="42">
+        <polygon points="50,4 92,27 92,73 50,96 8,73 8,27" fill="none" stroke="#00cc66" stroke-width="4"/>
+        <circle cx="50" cy="50" r="27" fill="none" stroke="#cc8800" stroke-width="2"/>
+        <line x1="50" y1="16" x2="50" y2="29" stroke="#00cc66" stroke-width="3"/>
+        <line x1="50" y1="71" x2="50" y2="84" stroke="#00cc66" stroke-width="3" opacity="0.45"/>
+        <line x1="16" y1="50" x2="29" y2="50" stroke="#00cc66" stroke-width="3" opacity="0.45"/>
+        <line x1="71" y1="50" x2="84" y2="50" stroke="#00cc66" stroke-width="3" opacity="0.45"/>
+        <polygon points="50,36 58,50 50,64 42,50" fill="#cc8800"/>
+      </svg>
+    </div>
+    <div class="titles">
+      <h1>Hardware ID</h1>
+      <div class="tag">Efficiency Engine — Reverse Lookup</div>
+    </div>
+  </div>
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabScrew" onclick="setMode('screw')">Screw</button>
+    <button class="mode-tab" id="tabWasher" onclick="setMode('washer')">Washer</button>
+    <button class="mode-tab" id="tabNut" onclick="setMode('nut')">Nut</button>
+    <button class="mode-tab" id="tabRef" onclick="setMode('reference')">Reference</button>
+  </div>
+  <div id="screenWrap">
+    <div class="readout">
+      <div class="label" id="readoutLabel">Building designation</div>
+      <div class="screen" id="screen"><span class="ph">— — — — — —</span></div>
+    </div>
+  </div>
+  <div class="progress" id="progress"></div>
+  <div id="content"></div>
+  <div class="footer-note" id="footerNote">Matches are nearest-standard estimates from observed dimensions — verify with a thread gauge or drill index when precision matters.</div>
+</div>
+<script>
+/* =================================================================
+   SHARED: material list + label PNG export (single source, per spec)
+   ================================================================= */
+const MATERIALS = ["Zinc-Plated Steel","Stainless Steel","Brass","Black Oxide","Coated / Exterior","Nylon","Unknown"];
+let material = null;
+function generateLabelPNG(widthMM, heightMM, mainText, subText, extraText){
+  const dpi = 300;
+  const w = Math.round(widthMM/25.4*dpi), h = Math.round(heightMM/25.4*dpi);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+  const border = Math.max(2, Math.round(w*0.012));
+  ctx.strokeStyle = '#000'; ctx.lineWidth = border;
+  ctx.strokeRect(border/2, border/2, w-border, h-border);
+  ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let fontSize = Math.round(h*0.30);
+  ctx.font = `700 ${fontSize}px "Courier New", monospace`;
+  while(ctx.measureText(mainText).width > w*0.88 && fontSize > 10){ fontSize -= 2; ctx.font = `700 ${fontSize}px "Courier New", monospace`; }
+  ctx.fillText(mainText, w/2, h*0.36);
+  const sub = subText + (material ? ' · ' + material.toUpperCase() : '');
+  let subSize = Math.round(h*0.12);
+  ctx.font = `600 ${subSize}px Arial, sans-serif`;
+  while(ctx.measureText(sub).width > w*0.9 && subSize > 8){ subSize -= 1; ctx.font = `600 ${subSize}px Arial, sans-serif`; }
+  ctx.fillText(sub, w/2, h*0.60);
+  if(extraText){
+    ctx.font = `600 ${Math.round(subSize*0.85)}px Arial, sans-serif`;
+    ctx.fillText(extraText, w/2, h*0.78);
+  }
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'label-' + mainText.replace(/[^a-z0-9]/gi,'_') + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function renderMaterialPicker(container, onChange){
+  const grid = document.createElement('div');
+  grid.className = 'opt-grid';
+  MATERIALS.forEach(m=>{
+    const b = document.createElement('button');
+    b.className = 'opt-btn' + (material===m ? ' selected' : '');
+    b.textContent = m;
+    b.onclick = ()=>{
+      material = (material===m ? null : m);
+      onChange();
+    };
+    grid.appendChild(b);
+  });
+  container.appendChild(grid);
+}
+function labelExportBlock(container, getBest){
+  const box = el('div','label-export');
+  box.appendChild(el('div','step-meta','Print Label'));
+  box.appendChild(el('p','hint','Downloads a PNG for RLabel / Katasymbol — import as an image, then print.'));
+  const grid = el('div','opt-grid three');
+  [[30,14],[40,20],[50,30]].forEach(([w,h])=>{
+    const b = el('button','opt-btn size-btn', `${w} × ${h}mm`);
+    b.onclick = ()=>{ const best = getBest(); generateLabelPNG(w,h,best.main,best.sub,best.extra); };
+    grid.appendChild(b);
+  });
+  box.appendChild(grid);
+  container.appendChild(box);
+}
+/* small DOM helper — build with appendChild only, never re-stringify
+   a container after interactive children are attached */
+function el(tag, className, html){
+  const e = document.createElement(tag);
+  if(className) e.className = className;
+  if(html!=null) e.innerHTML = html;
+  return e;
+}
+function addQuestion(card,text){ card.appendChild(el('p','question',text)); }
+function addHint(card,text){ card.appendChild(el('p','hint',text)); }
+/* =================================================================
+   BIN LOG — Find/Create Bin (Vault vessel fill_level logging)
+   Reuses the same in-memory allVessels filter pattern hl-vault-cloud.html
+   uses for Related Items / vessel parent search. No per-fastener records —
+   this only ever touches a vessel's name/hl_address/fill_level fields.
+
+   EFFICIENCY PASS (same day as the prefix fix below):
+   - renderBinLogBlock() used to be torn down and fully rebuilt by the
+     SAME renderAll() the rest of the mode uses, on every keystroke in its
+     own search/name/address fields. Since those fields live inside the
+     rebuilt subtree, every character typed destroyed and recreated the
+     input element itself — which drops keyboard focus, so typing more
+     than one character required clicking back into the field each time.
+     Fixed below: the search/name/address inputs are now built once and
+     never torn down by typing in them. The search field's own oninput
+     only repaints the match list in a dedicated sub-container (matchesEl)
+     instead of the whole card; the name/address fields don't need to
+     repaint anything at all on input — they just record state, since
+     nothing else on screen depends on their value until a fill button
+     is actually tapped.
+   ================================================================= */
+let vaultUser = null;           // set once Shell auth resolves; null = signed out
+let allVessels = [];            // live mirror of users/{uid}/vessels — scoped, see handleAuth
+let _collection, _doc, _addDoc, _updateDoc, _serverTimestamp, _query, _where; // Firestore modular SDK fns
+const FILL_LEVELS = [["full","Full"],["medium","Medium"],["low","Low"],["empty","Empty"]];
+let binDraft = { name:'', vesselId:'', hlAddr:'' };
+let binDraftAutoName = '';   // tracks the last auto-suggested name so typed edits aren't clobbered
+let binSearch = '';
+function resetBinDraft(){
+  binDraft = { name:'', vesselId:'', hlAddr:'' };
+  binDraftAutoName = '';
+  binSearch = '';
+}
+function suggestVesselId(name){
+  const slug = (name||'BIN').toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,18);
+  const suffix = Date.now().toString(36).toUpperCase().slice(-4);
+  return (slug||'BIN') + '-' + suffix;
+}
+function binMatches(query){
+  const q = (query||'').trim().toLowerCase();
+  const pool = q
+    ? allVessels.filter(v => (v.name||'').toLowerCase().includes(q) || (v.vessel_id||'').toLowerCase().includes(q))
+    : allVessels.slice();
+  return pool.slice(0, 8);
+}
+async function setVesselFillLevel(vesselId, level){
+  try{
+    await _updateDoc(_doc(window.db, 'users', vaultUser.uid, 'vessels', vesselId),
+      { fill_level: level, updated_at: _serverTimestamp() });
+    HILShell.toast('Bin updated — ' + level.toUpperCase());
+  }catch(err){ HILShell.toast('Update failed: ' + err.message, 'error'); }
+}
+async function createVesselAndLog(level){
+  const name = (binDraft.name||'').trim();
+  if(!name){ HILShell.toast('Bin name required', 'error'); return; }
+  const vesselId = (binDraft.vesselId||'').trim() || suggestVesselId(name);
+  const hlAddr = (binDraft.hlAddr||'').trim() || null;
+  const now = _serverTimestamp();
+  const data = {
+    vessel_id: vesselId,
+    // PREFIX FIX (same day): this was hardcoded to 'MS' ("Metal Shop Cart"
+    // in the Vessel Registry — see HIL PLATFORM FIRESTORE SCHEMA v1.5 §8),
+    // which is the wrong prefix for a fastener/hardware bin regardless of
+    // what the bin actually holds. 'SP' (Supply Container) is the correct
+    // semantic fit for small-parts storage. Existing bins created before
+    // this fix still carry 'MS' — see the scoped query note in handleAuth()
+    // below for how both are still found by search.
+    prefix: 'SP', name,
+    hl_address: hlAddr, home_address: null,
+    kit_id: null, fill_level: level,
+    vessel_type_id: null, parent_ref: null, slot_position: null,
+    slot_mode: null, freeform_contents: null, slot_count: null, slots: null,
+    tags: [],
+    owner_uid: vaultUser.uid, created_at: now, updated_at: now,
+  };
+  try{
+    await _addDoc(_collection(window.db, 'users', vaultUser.uid, 'vessels'), data);
+    HILShell.toast('Bin created ✓ — ' + level.toUpperCase());
+    resetBinDraft();
+    renderAll();
+  }catch(err){ HILShell.toast('Create failed: ' + err.message, 'error'); }
+}
+function triggerShellAuth(){
+  // hil-shell.js always builds #hil-auth-gate (v2.5+) — this opens the real
+  // Google/GitHub/Email sign-in modal, same one Vault and Exchange use.
+  const gate = document.getElementById('hil-auth-gate');
+  if(gate){ gate.classList.remove('hidden'); return; }
+  HILShell.toast('Sign-in isn\'t ready yet — try again in a moment', 'error');
+}
+function fillButtonRow(onPick, currentLevel){
+  const row = el('div','fill-row');
+  FILL_LEVELS.forEach(([key,label])=>{
+    const b = el('button','fill-btn is-'+key+(currentLevel===key?' current':''), label);
+    b.onclick = ()=> onPick(key);
+    row.appendChild(b);
+  });
+  return row;
+}
+// designation: the computed bin label/search seed for the current result
+// (e.g. "#8-32" screw bin label, "WASHER 1/4\"", "NUT 3/8-16")
+function renderBinLogBlock(container, designation){
+  const box = el('div','card bin-log');
+  box.appendChild(el('div','step-meta','Log To Vault Bin'));
+  box.appendChild(el('p','hint','Find the bin this lives in and set its fill level — no per-fastener records, just the bin.'));
+  if(!vaultUser){
+    const row = el('div','bin-signin-row');
+    row.appendChild(el('span','hint','Sign in to search or create a Vault bin.'));
+    const btn = el('button','btn btn-next','Sign In →');
+    btn.onclick = triggerShellAuth;
+    row.appendChild(btn);
+    row.querySelector('.hint').style.margin = '0';
+    box.appendChild(row);
+    container.appendChild(box);
+    return;
+  }
+  // Keep the search field's auto-fill in sync with the current designation
+  // unless the person has already typed something of their own.
+  if(designation && (binSearch === '' || binSearch === binDraftAutoName)){
+    binSearch = designation;
+  }
+  if(designation && (binDraft.name === '' || binDraft.name === binDraftAutoName)){
+    binDraft.name = designation;
+  }
+  binDraftAutoName = designation || binDraftAutoName;
+  const searchField = el('div','field', `<label>Search bins</label><input type="text" id="bin-search-input" placeholder="Bin name or ID" value="${binSearch.replace(/"/g,'&quot;')}">`);
+  box.appendChild(searchField);
+  // Dedicated container for the match list — this is the ONLY part that
+  // repaints as you type in the search box. The <input> itself is never
+  // rebuilt, so it keeps keyboard focus and cursor position character to
+  // character (see the efficiency-pass note above the state block).
+  const matchesEl = el('div','bin-matches');
+  box.appendChild(matchesEl);
+  function renderMatches(){
+    matchesEl.innerHTML = '';
+    const matches = binMatches(binSearch);
+    if(matches.length){
+      matches.forEach(v=>{
+        const row = el('div','bin-match-row');
+        row.appendChild(el('div','bin-match-name', v.name || v.vessel_id));
+        row.appendChild(el('div','bin-match-meta', [v.vessel_id, v.hl_address].filter(Boolean).join(' · ') || 'No HL address set'));
+        row.appendChild(fillButtonRow((level)=> setVesselFillLevel(v.id, level), v.fill_level||null));
+        matchesEl.appendChild(row);
+      });
+    } else {
+      matchesEl.appendChild(el('div','empty-state', allVessels.length ? 'No bins match — create one below.' : 'No bins yet — create the first one below.'));
+    }
+  }
+  searchField.querySelector('#bin-search-input').oninput = (e)=>{ binSearch = e.target.value; renderMatches(); };
+  renderMatches();
+  // Inline create — only offered once the person has something to name it.
+  // Name/address inputs just record state on input; nothing on screen
+  // depends on their value until a fill-level button is actually tapped,
+  // so there's nothing to repaint here at all (and thus no focus loss).
+  const create = el('div','bin-create');
+  create.appendChild(el('div','step-meta','No Match? Create Bin'));
+  const nameField = el('div','field', `<label>Bin name</label><input type="text" id="bin-name-input" value="${(binDraft.name||'').replace(/"/g,'&quot;')}">`);
+  create.appendChild(nameField);
+  nameField.querySelector('#bin-name-input').oninput = (e)=>{ binDraft.name = e.target.value; };
+  const addrField = el('div','field', `<label>HL Address <span class="opt">(optional)</span></label><input type="text" id="bin-addr-input" placeholder="e.g. SH-MM-S3-A1" value="${(binDraft.hlAddr||'').replace(/"/g,'&quot;')}">`);
+  create.appendChild(addrField);
+  addrField.querySelector('#bin-addr-input').oninput = (e)=>{ binDraft.hlAddr = e.target.value; };
+  create.appendChild(el('p','hint','Tap a fill level to create the bin and log it in one step.'));
+  create.appendChild(fillButtonRow((level)=> createVesselAndLog(level), null));
+  box.appendChild(create);
+  container.appendChild(box);
+}
+/* =================================================================
+   MODE SWITCHING
+   ================================================================= */
+let mode = 'screw';
+function setMode(m){
+  mode = m;
+  resetBinDraft();
+  ['Screw','Washer','Nut','Ref'].forEach(t=>{
+    document.getElementById('tab'+t).classList.toggle('active', ('tab'+t)==='tab'+(m==='reference'?'Ref':m.charAt(0).toUpperCase()+m.slice(1)));
+  });
+  document.getElementById('screenWrap').style.display = m==='reference' ? 'none' : 'block';
+  document.getElementById('progress').style.display = m==='screw' ? 'flex' : 'none';
+  document.getElementById('footerNote').style.display = m==='reference' ? 'none' : 'block';
+  renderAll();
+}
+function renderAll(){
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  if(mode==='screw') renderScrewMode(content);
+  if(mode==='washer') renderWasherMode(content);
+  if(mode==='nut') renderNutMode(content);
+  if(mode==='reference') renderReferenceMode(content);
+}
+/* =================================================================
+   SCREW MODE (wizard)
+   ================================================================= */
+const GAUGE_DIA = {2:0.086,3:0.099,4:0.112,5:0.125,6:0.138,7:0.151,8:0.164,9:0.177,10:0.190,12:0.216,14:0.242};
+const FRACTION_SIZES = [["1/4",0.250],["5/16",0.3125],["3/8",0.375]];
+const UNC = {2:56,3:48,4:40,5:40,6:32,8:32,10:24,12:24,"1/4":20,"5/16":18,"3/8":16};
+const UNF = {2:64,3:56,4:48,5:44,6:40,8:36,10:32,12:28,"1/4":28,"5/16":24,"3/8":24};
+const METRIC_SIZES = [
+  ["M2",0.4,0.0787],["M2.5",0.45,0.0984],["M3",0.5,0.1181],["M3.5",0.6,0.1378],
+  ["M4",0.7,0.1575],["M5",0.8,0.1969],["M6",1.0,0.2362],["M8",1.25,0.3150],
+  ["M10",1.5,0.3937],["M12",1.75,0.4724]
+];
+const HEAD_TYPES = [
+  ["flat","Flat","Sits flush, countersunk, top is a flat circle"],
+  ["oval","Oval","Countersunk with a domed top"],
+  ["pan","Pan","Rounded top, flat underside, shallow dome"],
+  ["round","Round","Full dome, rounded on all sides"],
+  ["truss","Truss","Wide, low, mushroom-like"],
+  ["hex","Hex Washer","Six-sided head, often with integrated washer"],
+  ["socket","Socket Cap","Cylindrical head, deep hex recess"],
+  ["button","Button","Low dome, socket drive"]
+];
+const DRIVE_TYPES = [
+  ["phillips","Phillips","Cross / + shaped"],
+  ["slotted","Slotted","Single straight line"],
+  ["robertson","Robertson","Square recess"],
+  ["torx","Torx","Six-point star"],
+  ["hexkey","Hex / Allen","Hexagonal recess"],
+  ["exthex","External Hex","Wrench flats on the outside"],
+  ["combo","Combo","Phillips + slotted together"],
+  ["other","Other / Unsure","—"]
+];
+let sFamily = null, sStepIndex = 0, sAns = {}, sDiaMode = 'list';
+function screwSteps(fam){
+  if(fam==='wood' || fam==='sheet') return ['head','drive','diameter','length','material'];
+  return ['head','drive','diameter','threads','length','material'];
+}
+function gcd(a,b){return b?gcd(b,a%b):a;}
+function toFraction16(decIn){
+  let whole = Math.floor(decIn);
+  let sixteenths = Math.round((decIn-whole)*16);
+  if(sixteenths===16){sixteenths=0;whole+=1;}
+  if(sixteenths===0) return whole+'"';
+  const g = gcd(sixteenths,16);
+  return (whole? whole+'-':'') + (sixteenths/g)+'/'+(16/g)+'"';
+}
+function nearestGauge(decIn){
+  let best=null,bestDiff=999;
+  Object.entries(GAUGE_DIA).forEach(([g,d])=>{ const diff=Math.abs(d-decIn); if(diff<bestDiff){bestDiff=diff;best={label:'#'+g,key:g};} });
+  FRACTION_SIZES.forEach(([label,d])=>{ const diff=Math.abs(d-decIn); if(diff<bestDiff){bestDiff=diff;best={label:label+'"',key:label};} });
+  return best;
+}
+function nearestMetric(mm){
+  let best=null,bestDiff=999;
+  METRIC_SIZES.forEach(([label,pitch])=>{ const num=parseFloat(label.replace('M','')); const diff=Math.abs(num-mm); if(diff<bestDiff){bestDiff=diff;best={label,pitch,key:label};} });
+  return best;
+}
+function renderScrewMode(content){
+  renderScrewScreen();
+  renderScrewProgress();
+  const card = el('div','card');
+  content.appendChild(card);
+  if(!sFamily){ renderFamilyStep(card); return; }
+  const steps = screwSteps(sFamily);
+  if(sStepIndex >= steps.length){ renderScrewResult(card); return; }
+  const step = steps[sStepIndex];
+  card.appendChild(el('div','step-meta',`Step ${sStepIndex+2} of ${steps.length+1}`));
+  if(step==='head') renderHeadStep(card);
+  if(step==='drive') renderDriveStep(card);
+  if(step==='diameter') renderDiameterStep(card);
+  if(step==='threads') renderThreadsStep(card);
+  if(step==='length') renderLengthStep(card);
+  if(step==='material') renderScrewMaterialStep(card);
+}
+function renderScrewScreen(){
+  const scr = document.getElementById('screen');
+  document.getElementById('readoutLabel').textContent = 'Building designation';
+  const d = screwDesignation(true);
+  scr.innerHTML = d ? d : '<span class="ph">— — — — — —</span>';
+}
+function renderScrewProgress(){
+  const bar = document.getElementById('progress');
+  bar.innerHTML='';
+  if(!sFamily) return;
+  const steps = screwSteps(sFamily), total = steps.length+1;
+  for(let i=0;i<total;i++){
+    const seg = document.createElement('i');
+    if(i < sStepIndex+1) seg.className='done';
+    else if(i === sStepIndex+1) seg.className='now';
+    bar.appendChild(seg);
+  }
+}
+function renderFamilyStep(card){
+  card.appendChild(el('div','step-meta','Step 1'));
+  addQuestion(card,"What kind of screw is this?");
+  addHint(card,"Tapered, sharp point with threads that don't reach the head → wood screw. Sharp threads run the full shank on a straight shaft → sheet metal / self-tapping. Blunt tip, uniform shaft meant for a nut or tapped hole → machine screw or bolt.");
+  const grid = el('div','opt-grid wide');
+  card.appendChild(grid);
+  [["wood","Wood Screw","Tapered point, gaps near the head"],
+   ["sheet","Sheet Metal Screw","Sharp threads, full-length, self-tapping"],
+   ["machine-imperial","Machine Screw / Bolt — Imperial","Blunt tip, gauge or inch thread"],
+   ["machine-metric","Machine Screw / Bolt — Metric","Blunt tip, marked or measured in mm"]
+  ].forEach(([key,label,hint])=>{
+    const b = el('button','opt-btn', `${label}<small>${hint}</small>`);
+    b.onclick = ()=>{ sFamily=key; sAns={}; sStepIndex=0; sDiaMode='list'; resetBinDraft(); renderAll(); };
+    grid.appendChild(b);
+  });
+}
+function addNav(card, canNext, nextLabel){
+  const row = el('div','nav-row');
+  const back = el('button','btn btn-back','← Back');
+  back.onclick = ()=>{ if(sStepIndex===0){ sFamily=null; } else { sStepIndex--; } renderAll(); };
+  const next = el('button','btn btn-next', nextLabel||'Next →');
+  next.disabled = !canNext;
+  next.onclick = ()=>{ sStepIndex++; renderAll(); };
+  row.appendChild(back); row.appendChild(next);
+  card.appendChild(row);
+}
+function renderHeadStep(card){
+  addQuestion(card,"What does the head look like?");
+  addHint(card,"Pick the closest match — exact profile doesn't need to be perfect.");
+  const grid = el('div','opt-grid'); card.appendChild(grid);
+  HEAD_TYPES.forEach(([key,label,hint])=>{
+    const b = el('button','opt-btn'+(sAns.head===key?' selected':''), `${label}<small>${hint}</small>`);
+    b.onclick=()=>{sAns.head=key; sAns.headLabel=label; renderAll();};
+    grid.appendChild(b);
+  });
+  addNav(card, !!sAns.head);
+}
+function renderDriveStep(card){
+  addQuestion(card,"What drive / recess does it take?");
+  const grid = el('div','opt-grid'); card.appendChild(grid);
+  DRIVE_TYPES.forEach(([key,label,hint])=>{
+    const b = el('button','opt-btn'+(sAns.drive===key?' selected':''), `${label}<small>${hint}</small>`);
+    b.onclick=()=>{sAns.drive=key; sAns.driveLabel=label; renderAll();};
+    grid.appendChild(b);
+  });
+  addNav(card, !!sAns.drive);
+}
+function renderDiameterStep(card){
+  const isMetric = sFamily==='machine-metric';
+  addQuestion(card,"What's the diameter?");
+  const toggle = el('button','toggle-link', sDiaMode==='list' ? 'I measured it instead →' : '← Pick from common sizes');
+  toggle.onclick = ()=>{ sDiaMode = (sDiaMode==='list'?'measure':'list'); renderAll(); };
+  card.appendChild(toggle);
+  if(sDiaMode==='list'){
+    const grid = el('div','opt-grid'); card.appendChild(grid);
+    if(isMetric){
+      METRIC_SIZES.forEach(([label,pitch])=>{
+        const b = el('button','opt-btn'+(sAns.diaKey===label?' selected':''), label);
+        b.onclick=()=>{sAns.diaKey=label; sAns.diaLabel=label; sAns.metricPitchDefault=pitch; renderAll();};
+        grid.appendChild(b);
+      });
+    } else {
+      Object.keys(GAUGE_DIA).forEach(g=>{
+        const b = el('button','opt-btn'+(sAns.diaKey===g?' selected':''), '#'+g);
+        b.onclick=()=>{sAns.diaKey=g; sAns.diaLabel='#'+g; renderAll();};
+        grid.appendChild(b);
+      });
+      FRACTION_SIZES.forEach(([label])=>{
+        const b = el('button','opt-btn'+(sAns.diaKey===label?' selected':''), label+'"');
+        b.onclick=()=>{sAns.diaKey=label; sAns.diaLabel=label+'"'; renderAll();};
+        grid.appendChild(b);
+      });
+    }
+  } else {
+    const div = el('div','field', `
+      <label>Measured diameter</label>
+      <input type="number" step="0.001" id="diaMeasure" placeholder="${isMetric?'e.g. 4.0':'e.g. 0.164'}" value="${sAns.diaMeasureRaw||''}">
+    `);
+    card.appendChild(div);
+    div.querySelector('#diaMeasure').oninput = (e)=>{
+      const v = parseFloat(e.target.value);
+      sAns.diaMeasureRaw = e.target.value;
+      if(isNaN(v)){sAns.diaKey=null; renderAll(); return;}
+      if(isMetric){ const m = nearestMetric(v); sAns.diaKey=m.key; sAns.diaLabel=m.key; sAns.metricPitchDefault=m.pitch; }
+      else { const g = nearestGauge(v); sAns.diaKey=g.key; sAns.diaLabel=g.label; }
+      renderAll();
+    };
+  }
+  addNav(card, !!sAns.diaKey);
+}
+function renderThreadsStep(card){
+  const isMetric = sFamily==='machine-metric';
+  addQuestion(card, isMetric ? "Confirm thread pitch" : "Coarse or fine thread?");
+  if(isMetric){
+    addHint(card, `Standard coarse pitch for ${sAns.diaLabel} is ${sAns.metricPitchDefault} mm. Adjust if measured differently.`);
+    const div = el('div','field', `<label>Pitch (mm)</label><input type="number" step="0.05" id="pitchInput" value="${sAns.pitch||sAns.metricPitchDefault}">`);
+    card.appendChild(div);
+    if(!sAns.pitch) sAns.pitch = sAns.metricPitchDefault;
+    div.querySelector('#pitchInput').oninput=(e)=>{sAns.pitch=e.target.value; renderAll();};
+  } else {
+    addHint(card, "Coarse (UNC) is the common default. Fine (UNF) has visibly tighter threads.");
+    const wrap = el('div','opt-grid'); card.appendChild(wrap);
+    const coarse = UNC[sAns.diaKey], fine = UNF[sAns.diaKey];
+    const b1 = el('button','opt-btn'+(sAns.threadType==='coarse'?' selected':''), `Coarse (UNC)<small>${coarse? coarse+' threads/in':'—'}</small>`);
+    b1.onclick=()=>{sAns.threadType='coarse'; sAns.tpi=coarse; renderAll();};
+    const b2 = el('button','opt-btn'+(sAns.threadType==='fine'?' selected':''), `Fine (UNF)<small>${fine? fine+' threads/in':'—'}</small>`);
+    b2.onclick=()=>{sAns.threadType='fine'; sAns.tpi=fine; renderAll();};
+    wrap.appendChild(b1); wrap.appendChild(b2);
+  }
+  addNav(card, isMetric ? !!sAns.pitch : !!sAns.tpi);
+}
+function renderLengthStep(card){
+  const isMetric = sFamily==='machine-metric';
+  const guidance = (sAns.head==='flat' || sAns.head==='oval') ? "Measure the full length, head included." : "Measure from under the head to the tip.";
+  addQuestion(card,"How long is it?"); addHint(card, guidance);
+  const div = el('div','field', `<label>Length</label><input type="number" step="0.01" id="lenInput" placeholder="${isMetric?'mm':'decimal inches, e.g. 0.75'}" value="${sAns.lenRaw||''}">`);
+  card.appendChild(div);
+  div.querySelector('#lenInput').oninput=(e)=>{ sAns.lenRaw = e.target.value; const v = parseFloat(e.target.value); sAns.lenValid = !isNaN(v) && v>0; renderAll(); };
+  addNav(card, !!sAns.lenValid);
+}
+function renderScrewMaterialStep(card){
+  addQuestion(card,"Material / finish?"); addHint(card,"Optional — helps the bin label but not required for the ID.");
+  renderMaterialPicker(card, renderAll);
+  addNav(card, true, 'Get Result');
+}
+function screwLengthDisplay(){
+  if(!sAns.lenValid) return null;
+  const v = parseFloat(sAns.lenRaw);
+  return sFamily==='machine-metric' ? v+'mm' : toFraction16(v);
+}
+function screwDesignation(short){
+  if(!sFamily) return null;
+  let parts = [];
+  if(sFamily==='wood' || sFamily==='sheet'){
+    if(sAns.diaLabel) parts.push(sAns.diaLabel);
+    if(sAns.lenValid) parts.push('x '+screwLengthDisplay());
+    if(!short){ if(sAns.headLabel) parts.push(sAns.headLabel+' Head'); if(sAns.driveLabel) parts.push(sAns.driveLabel); parts.push(sFamily==='wood'?'Wood Screw':'Sheet Metal Screw'); if(material) parts.push('— '+material); }
+  } else if(sFamily==='machine-imperial'){
+    if(sAns.diaLabel && sAns.tpi) parts.push(sAns.diaLabel+'-'+sAns.tpi); else if(sAns.diaLabel) parts.push(sAns.diaLabel);
+    if(sAns.lenValid) parts.push('x '+screwLengthDisplay());
+    if(!short){ if(sAns.headLabel) parts.push(sAns.headLabel+' Head'); if(sAns.driveLabel) parts.push(sAns.driveLabel); parts.push('Machine Screw'); if(material) parts.push('— '+material); }
+  } else if(sFamily==='machine-metric'){
+    if(sAns.diaKey) parts.push(sAns.diaKey+(sAns.pitch?' x '+sAns.pitch:''));
+    if(sAns.lenValid) parts.push('x '+screwLengthDisplay());
+    if(!short){ if(sAns.headLabel) parts.push(sAns.headLabel+' Head'); if(sAns.driveLabel) parts.push(sAns.driveLabel); parts.push('Machine Screw'); if(material) parts.push('— '+material); }
+  }
+  return parts.length ? parts.join(' ') : null;
+}
+function screwBinLabel(){
+  if(sFamily==='wood' || sFamily==='sheet') return sAns.diaLabel+' x '+screwLengthDisplay();
+  if(sFamily==='machine-imperial') return (sAns.diaLabel+'-'+(sAns.tpi||''));
+  if(sFamily==='machine-metric') return sAns.diaKey;
+  return '';
+}
+function renderScrewResult(card){
+  const full = screwDesignation(false);
+  card.innerHTML = `
+    <div class="step-meta">Result</div>
+    <p class="question" style="margin-bottom:2px;">Best match</p>
+    <div class="result-designation">${full}</div>
+    <div class="result-row">
+      <div class="stub-label">${screwBinLabel()}<span>bin label</span></div>
+      <div class="stub-label">${material||'Material not set'}<span>finish</span></div>
+    </div>
+    <div class="confidence">Nearest-standard match. If it doesn't thread into a known nut or hole cleanly, re-check the diameter step.</div>
+  `;
+  labelExportBlock(card, ()=>({main:screwBinLabel(), sub:(sFamily==='wood'?'WOOD SCREW':sFamily==='sheet'?'SHEET METAL SCREW':'MACHINE SCREW')}));
+  const nav = el('div','nav-row');
+  const back = el('button','btn btn-back','← Adjust'); back.onclick = ()=>{ sStepIndex--; renderAll(); };
+  const restart = el('button','btn btn-restart','Start Over'); restart.onclick = ()=>{ sFamily=null; sAns={}; sStepIndex=0; sDiaMode='list'; resetBinDraft(); renderAll(); };
+  nav.appendChild(back); nav.appendChild(restart);
+  card.appendChild(nav);
+  renderBinLogBlock(document.getElementById('content'), screwBinLabel());
+}
+/* =================================================================
+   WASHER MODE
+   ================================================================= */
+const SAE_W = [["#6",0.140,0.312,0.049],["#8",0.168,0.375,0.049],["#10",0.195,0.438,0.049],["1/4\"",0.281,0.625,0.065],["5/16\"",0.344,0.688,0.065],["3/8\"",0.406,0.812,0.065],["7/16\"",0.469,0.922,0.065],["1/2\"",0.531,1.062,0.095]];
+const USS_W = [["1/4\"",0.281,0.734,0.065],["5/16\"",0.344,0.875,0.083],["3/8\"",0.406,1.000,0.083],["7/16\"",0.469,1.250,0.083],["1/2\"",0.531,1.375,0.109]];
+const FENDER_W = [["#8",0.177,1.000,0.050],["#10",0.203,1.000,0.050],["1/4\"",0.281,1.500,0.065],["5/16\"",0.344,1.500,0.065]];
+const METRIC_W = [["M3",3.2,7,0.5],["M4",4.3,9,0.8],["M5",5.3,10,1.0],["M6",6.4,12,1.6],["M8",8.4,16,1.6],["M10",10.5,20,2.0],["M12",13,24,2.5]];
+let wUnit='in', wVals={};
+function wMmToIn(v){return v/25.4;}
+function wFmt(v){return v==null?'—':(Math.round(v*1000)/1000)+'"';}
+function renderWasherMode(content){
+  document.getElementById('readoutLabel').textContent = 'OD / ID / Thickness';
+  const m = wReadMeasurements();
+  const scr = document.getElementById('screen');
+  scr.innerHTML = m ? `${m.odRaw}${wUnit==='in'?'"':'mm'} / ${m.idRaw}${wUnit==='in'?'"':'mm'} / ${m.thkRaw}${wUnit==='in'?'"':'mm'}` : '<span class="ph">— / — / —</span>';
+  const card1 = el('div','card');
+  card1.appendChild(el('div','step-meta','Measured dimensions'));
+  const utoggle = el('div','unit-toggle');
+  const bin = el('button','unit-btn'+(wUnit==='in'?' selected':''),'Inches'); bin.onclick=()=>{wUnit='in'; renderAll();};
+  const bmm = el('button','unit-btn'+(wUnit==='mm'?' selected':''),'Millimeters'); bmm.onclick=()=>{wUnit='mm'; renderAll();};
+  utoggle.appendChild(bin); utoggle.appendChild(bmm);
+  card1.appendChild(utoggle);
+  [['od','Outer diameter (OD)','0.625'],['id','Inner / hole diameter (ID)','0.281'],['thk','Thickness','0.065']].forEach(([key,label,ph])=>{
+    const f = el('div','field', `<label>${label}</label><input type="number" step="0.001" id="w_${key}" placeholder="e.g. ${wUnit==='in'?ph:(parseFloat(ph)*25.4).toFixed(2)}" value="${wVals[key]||''}">`);
+    card1.appendChild(f);
+  });
+  content.appendChild(card1);
+  ['od','id','thk'].forEach(key=>{
+    card1.querySelector('#w_'+key).oninput = (e)=>{ wVals[key]=e.target.value; renderAll(); };
+  });
+  const card2 = el('div','card');
+  card2.appendChild(el('div','step-meta','Material / finish'));
+  renderMaterialPicker(card2, renderAll);
+  content.appendChild(card2);
+  const card3 = el('div','card');
+  card3.appendChild(el('div','step-meta','Nearest matches'));
+  content.appendChild(card3);
+  if(!m){ card3.appendChild(el('div','empty-state','Enter OD, ID, and thickness above to see matches.')); return; }
+  const matches = wTopMatches(m,3);
+  matches.forEach((e,i)=>{
+    const closeness = e.dist < 0.02 ? 'Close match' : e.dist < 0.06 ? 'Approximate' : 'Rough match';
+    const div = el('div','match-item'+(i===0?' best':''), `
+      <div class="match-badge">${i===0?'Best match':closeness}</div>
+      <div class="match-title">${e.series} — fits ${e.fits}</div>
+      <div class="match-meta">ID ${wFmt(e.idIn)} · OD ${wFmt(e.odIn)} · Thk ${wFmt(e.thkIn)}${material? ' · '+material:''}</div>
+    `);
+    card3.appendChild(div);
+  });
+  labelExportBlock(card3, ()=>({main:'WASHER '+matches[0].fits, sub:matches[0].series, extra:`ID ${wFmt(matches[0].idIn)}  OD ${wFmt(matches[0].odIn)}`}));
+  renderBinLogBlock(content, 'WASHER ' + matches[0].fits);
+}
+function wReadMeasurements(){
+  const odRaw = parseFloat(wVals.od), idRaw = parseFloat(wVals.id), thkRaw = parseFloat(wVals.thk);
+  if(isNaN(odRaw)||isNaN(idRaw)||isNaN(thkRaw)) return null;
+  const toIn = v => wUnit==='in' ? v : wMmToIn(v);
+  return {odIn:toIn(odRaw), idIn:toIn(idRaw), thkIn:toIn(thkRaw), odRaw, idRaw, thkRaw};
+}
+function wAllEntries(){
+  const list = [];
+  SAE_W.forEach(([fits,id,od,thk])=> list.push({series:'SAE (Narrow)',fits,idIn:id,odIn:od,thkIn:thk}));
+  USS_W.forEach(([fits,id,od,thk])=> list.push({series:'USS (Wide)',fits,idIn:id,odIn:od,thkIn:thk}));
+  FENDER_W.forEach(([fits,id,od,thk])=> list.push({series:'Fender',fits,idIn:id,odIn:od,thkIn:thk}));
+  METRIC_W.forEach(([fits,idmm,odmm,thkmm])=> list.push({series:'Metric DIN 125',fits,idIn:wMmToIn(idmm),odIn:wMmToIn(odmm),thkIn:wMmToIn(thkmm)}));
+  return list;
+}
+function wTopMatches(m,n){
+  return wAllEntries().map(e=>{
+    const dOd=(m.odIn-e.odIn), dId=(m.idIn-e.idIn), dThk=(m.thkIn-e.thkIn);
+    return {...e, dist:Math.sqrt(dOd*dOd*2.5 + dId*dId*2.5 + dThk*dThk)};
+  }).sort((a,b)=>a.dist-b.dist).slice(0,n);
+}
+/* =================================================================
+   NUT MODE
+   ================================================================= */
+const UNC_NUTS = [["#4-40",0.250,0.093,0.112],["#6-32",0.312,0.109,0.138],["#8-32",0.344,0.125,0.164],["#10-24",0.375,0.125,0.190],["1/4-20",0.4375,0.21875,0.250],["5/16-18",0.500,0.265625,0.3125],["3/8-16",0.5625,0.328125,0.375],["7/16-14",0.6875,0.375,0.4375],["1/2-13",0.750,0.4375,0.500]];
+const METRIC_NUTS = [["M3",5.5,2.4,3],["M4",7,3.2,4],["M5",8,4.0,5],["M6",10,5.0,6],["M8",13,6.5,8],["M10",17,8.0,10],["M12",19,10.0,12]];
+let nUnit='in', nVals={};
+function renderNutMode(content){
+  document.getElementById('readoutLabel').textContent = 'Across Flats / Height / Bore';
+  const m = nReadMeasurements();
+  const scr = document.getElementById('screen');
+  scr.innerHTML = m ? `${m.afRaw}${nUnit==='in'?'"':'mm'} / ${m.hRaw}${nUnit==='in'?'"':'mm'} / ${m.boreRaw!=null?m.boreRaw+(nUnit==='in'?'"':'mm'):'—'}` : '<span class="ph">— / — / —</span>';
+  const card1 = el('div','card');
+  card1.appendChild(el('div','step-meta','Measured dimensions'));
+  const utoggle = el('div','unit-toggle');
+  const bin = el('button','unit-btn'+(nUnit==='in'?' selected':''),'Inches'); bin.onclick=()=>{nUnit='in'; renderAll();};
+  const bmm = el('button','unit-btn'+(nUnit==='mm'?' selected':''),'Millimeters'); bmm.onclick=()=>{nUnit='mm'; renderAll();};
+  utoggle.appendChild(bin); utoggle.appendChild(bmm);
+  card1.appendChild(utoggle);
+  const fAf = el('div','field', `<label>Across flats (AF) — wrench size</label><input type="number" step="0.001" id="n_af" placeholder="e.g. 0.4375" value="${nVals.af||''}">`);
+  const fH = el('div','field', `<label>Height / thickness</label><input type="number" step="0.001" id="n_h" placeholder="e.g. 0.219" value="${nVals.h||''}">`);
+  const fBore = el('div','field', `<label>Bore / thread diameter <span class="opt">(optional)</span></label><input type="number" step="0.001" id="n_bore" placeholder="e.g. 0.250" value="${nVals.bore||''}">`);
+  card1.appendChild(fAf); card1.appendChild(fH); card1.appendChild(fBore);
+  content.appendChild(card1);
+  fAf.querySelector('#n_af').oninput=(e)=>{nVals.af=e.target.value; renderAll();};
+  fH.querySelector('#n_h').oninput=(e)=>{nVals.h=e.target.value; renderAll();};
+  fBore.querySelector('#n_bore').oninput=(e)=>{nVals.bore=e.target.value; renderAll();};
+  const card2 = el('div','card');
+  card2.appendChild(el('div','step-meta','Material / finish'));
+  renderMaterialPicker(card2, renderAll);
+  content.appendChild(card2);
+  const card3 = el('div','card');
+  card3.appendChild(el('div','step-meta','Nearest matches'));
+  content.appendChild(card3);
+  if(!m){ card3.appendChild(el('div','empty-state','Enter across-flats and height above to see matches.')); return; }
+  const matches = nTopMatches(m,3);
+  matches.forEach((e,i)=>{
+    const closeness = e.dist < 0.015 ? 'Close match' : e.dist < 0.05 ? 'Approximate' : 'Rough match';
+    const div = el('div','match-item'+(i===0?' best':''), `
+      <div class="match-badge">${i===0?'Best match':closeness}</div>
+      <div class="match-title">${e.series} — ${e.fits}</div>
+      <div class="match-meta">AF ${wFmt(e.afIn)} · Height ${wFmt(e.hIn)} · Thread ≈ ${wFmt(e.diaIn)}${material? ' · '+material:''}</div>
+    `);
+    card3.appendChild(div);
+  });
+  labelExportBlock(card3, ()=>({main:'NUT '+matches[0].fits, sub:matches[0].series, extra:`AF ${wFmt(matches[0].afIn)}  H ${wFmt(matches[0].hIn)}`}));
+  renderBinLogBlock(content, 'NUT ' + matches[0].fits);
+}
+function nReadMeasurements(){
+  const afRaw = parseFloat(nVals.af), hRaw = parseFloat(nVals.h), boreRaw = parseFloat(nVals.bore);
+  if(isNaN(afRaw)||isNaN(hRaw)) return null;
+  const toIn = v => nUnit==='in' ? v : wMmToIn(v);
+  return {afIn:toIn(afRaw), hIn:toIn(hRaw), boreIn:isNaN(boreRaw)?null:toIn(boreRaw), afRaw, hRaw, boreRaw:isNaN(boreRaw)?null:boreRaw};
+}
+function nAllEntries(){
+  const list = [];
+  UNC_NUTS.forEach(([fits,af,h,dia])=> list.push({series:'UNC (Imperial)',fits,afIn:af,hIn:h,diaIn:dia}));
+  METRIC_NUTS.forEach(([fits,af,h,dia])=> list.push({series:'Metric DIN 934',fits,afIn:wMmToIn(af),hIn:wMmToIn(h),diaIn:wMmToIn(dia)}));
+  return list;
+}
+function nTopMatches(m,n){
+  return nAllEntries().map(e=>{
+    const dAf=(m.afIn-e.afIn), dH=(m.hIn-e.hIn);
+    let d = dAf*dAf*3.0 + dH*dH*1.5;
+    if(m.boreIn!=null){ const dBore=(m.boreIn-e.diaIn); d += dBore*dBore*0.8; }
+    return {...e, dist:Math.sqrt(d)};
+  }).sort((a,b)=>a.dist-b.dist).slice(0,n);
+}
+/* =================================================================
+   REFERENCE MODE (consolidated)
+   ================================================================= */
+// clearance hole data: [fits, close_label, close_in, free_label, free_in]
+const CLEARANCE_IMPERIAL = [
+  ["#4-40","#32",0.116,"#30",0.1285],
+  ["#6-32","#27",0.144,"#25",0.1495],
+  ["#8-32","#18",0.1695,"#16",0.177],
+  ["#10-24 / #10-32","#9",0.196,"#2",0.221],
+  ["1/4-20 / 1/4-28","F",0.257,"9/32",0.281],
+  ["5/16-18 / 5/16-24","21/64",0.328,"11/32",0.344],
+  ["3/8-16 / 3/8-24","25/64",0.391,"13/32",0.406],
+  ["7/16-14 / 7/16-20","29/64",0.453,"15/32",0.469],
+  ["1/2-13 / 1/2-20","33/64",0.516,"17/32",0.531]
+];
+const CLEARANCE_METRIC = [["M2",2.2,2.4],["M3",3.2,3.6],["M4",4.3,4.8],["M5",5.3,5.8],["M6",6.4,7.0],["M8",8.4,9.0],["M10",10.5,11.0],["M12",13.0,14.0]];
+function renderReferenceMode(content){
+  const sections = [];
+  sections.push(['Screw Gauge → Diameter', ()=>{
+    let rows='';
+    Object.entries(GAUGE_DIA).forEach(([g,d])=>{ rows+=`<tr><td>#${g}</td><td>${d.toFixed(3)}"</td></tr>`; });
+    FRACTION_SIZES.forEach(([label,d])=>{ rows+=`<tr><td>${label}"</td><td>${d.toFixed(4)}"</td></tr>`; });
+    return `<table><thead><tr><th>Gauge</th><th>Decimal</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['Machine Screw Threads (TPI)', ()=>{
+    let rows='';
+    Object.keys(UNC).forEach(k=>{ rows+=`<tr><td>${k.length<=2?'#':''}${k}</td><td>${UNC[k]}</td><td>${UNF[k]||'—'}</td></tr>`; });
+    return `<table><thead><tr><th>Size</th><th>Coarse</th><th>Fine</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['Metric Coarse Pitch', ()=>{
+    let rows=''; METRIC_SIZES.forEach(([label,pitch,inEq])=>{ rows+=`<tr><td>${label}</td><td>${pitch}mm</td><td>${inEq}"</td></tr>`; });
+    return `<table><thead><tr><th>Size</th><th>Pitch</th><th>≈ Imperial</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['SAE / USS / Fender Washers', ()=>{
+    let rows='';
+    [['SAE',SAE_W],['USS',USS_W],['Fender',FENDER_W]].forEach(([label,arr])=>{
+      arr.forEach(([fits,id,od,thk])=>{ rows+=`<tr><td>${label} ${fits}</td><td>${wFmt(id)}</td><td>${wFmt(od)}</td><td>${wFmt(thk)}</td></tr>`; });
+    });
+    return `<table><thead><tr><th>Series/Fits</th><th>ID</th><th>OD</th><th>Thk</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['Metric Washers (DIN 125)', ()=>{
+    let rows=''; METRIC_W.forEach(([fits,id,od,thk])=>{ rows+=`<tr><td>${fits}</td><td>${id}mm</td><td>${od}mm</td><td>${thk}mm</td></tr>`; });
+    return `<table><thead><tr><th>Size</th><th>ID</th><th>OD</th><th>Thk</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['UNC / Metric Hex Nuts', ()=>{
+    let rows='';
+    UNC_NUTS.forEach(([fits,af,h])=>{ rows+=`<tr><td>${fits}</td><td>${wFmt(af)}</td><td>${wFmt(h)}</td></tr>`; });
+    METRIC_NUTS.forEach(([fits,af,h])=>{ rows+=`<tr><td>${fits}</td><td>${af}mm</td><td>${h}mm</td></tr>`; });
+    return `<table><thead><tr><th>Size</th><th>Across Flats</th><th>Height</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.push(['Clearance Holes — Close / Free Fit', ()=>{
+    let rows='';
+    CLEARANCE_IMPERIAL.forEach(([fits,cl,clv,fr,frv])=>{ rows+=`<tr><td>${fits}</td><td>${cl} (${clv}")</td><td>${fr} (${frv}")</td></tr>`; });
+    CLEARANCE_METRIC.forEach(([fits,cl,fr])=>{ rows+=`<tr><td>${fits}</td><td>${cl}mm</td><td>${fr}mm</td></tr>`; });
+    return `<table><thead><tr><th>Thread</th><th>Close Fit</th><th>Free Fit</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }]);
+  sections.forEach(([title,build])=>{
+    const s = el('div','ref-section');
+    s.appendChild(el('h2',null,title));
+    s.appendChild(el('div',null,build()));
+    content.appendChild(s);
+  });
+}
+/* =================================================================
+   SHELL INIT — public browse (ID wizard needs no auth), sign-in only
+   required to act on the Find/Create Bin step. Same requireAuth:false
+   pattern as hil-exchange.html.
+   ================================================================= */
+async function handleAuth(user){
+  if(!user){
+    vaultUser = null; allVessels = [];
+    renderAll();
+    return;
+  }
+  vaultUser = user;
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+  _collection      = fsdk.collection;
+  _doc             = fsdk.doc;
+  _addDoc          = fsdk.addDoc;
+  _updateDoc       = fsdk.updateDoc;
+  _serverTimestamp = fsdk.serverTimestamp;
+  _query           = fsdk.query;
+  _where           = fsdk.where;
+  // EFFICIENCY FIX (same day as the prefix fix above): this used to
+  // subscribe to the ENTIRE vessels collection — furniture, tool chests,
+  // racks, everything — just to filter it client-side down to fastener
+  // bins for search. This tool never needs to see anything but those, so
+  // it now scopes the query to prefix in ['SP','MS']: 'SP' is what this
+  // tool writes going forward (see the prefix fix in createVesselAndLog),
+  // 'MS' is kept in the query because every bin this tool has EVER created
+  // up to today used that prefix — dropping it here would silently hide
+  // every existing hardware bin from search until each one is individually
+  // re-saved. Assumption worth flagging: if fastener/hardware bins have
+  // ever been created directly through Vault's own Add Vessel modal with
+  // a different prefix, this scoped query won't surface those — widen the
+  // 'in' list (or better, key off a dedicated tag instead of prefix) if
+  // that turns out to be the case.
+  const binsQuery = _query(
+    _collection(window.db, 'users', user.uid, 'vessels'),
+    _where('prefix', 'in', ['SP', 'MS'])
+  );
+  fsdk.onSnapshot(binsQuery, snap => {
+    allVessels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, err => HILShell.toast('Vessel load error: ' + err.message, 'error'));
+}
+if(typeof HILShell === 'undefined'){
+  console.error('HILShell not found — hil-shell.js failed to load or is missing from this deploy path.');
+} else {
+  HILShell.init({
+    toolId:      'hardware-id',
+    toolName:    'Hardware ID',
+    requireAuth: false,
+    onAuth:      handleAuth,
+  });
+}
+/* ---------------- init ---------------- */
+renderAll();
+</script>
+</body>
+</html>
