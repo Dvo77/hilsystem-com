@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Monochrome Thermal Label Tool</title>
+<title>Large-Text Spine Label Generator</title>
 <style>
   * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   body { background: #1a1a1a; color: #eee; padding: 20px; display: flex; gap: 24px; }
   .controls { width: 340px; background: #2a2a2a; padding: 20px; border-radius: 8px; border: 1px solid #444; }
   .preview-panel { flex-grow: 1; background: #2a2a2a; padding: 20px; border-radius: 8px; border: 1px solid #444; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  label { display: block; font-size: 11px; font-weight: bold; margin-top: 10px; text-transform: uppercase; color: #aaa; }
-  input, select { width: 100%; padding: 7px; margin-top: 4px; background: #111; border: 1px solid #555; color: #fff; border-radius: 4px; }
-  .btn-row { margin-top: 18px; display: flex; gap: 10px; }
+  label { display: block; font-size: 11px; font-weight: bold; margin-top: 12px; text-transform: uppercase; color: #aaa; }
+  input, select { width: 100%; padding: 8px; margin-top: 4px; background: #111; border: 1px solid #555; color: #fff; border-radius: 4px; }
+  .btn-row { margin-top: 20px; display: flex; gap: 10px; }
   button { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .btn-svg { background: #2563eb; color: white; }
   .btn-png { background: #16a34a; color: white; }
@@ -21,7 +21,7 @@
 <body>
 
 <div class="controls">
-  <h3 style="margin-top:0;">Monochrome Label Tool</h3>
+  <h3 style="margin-top:0;">2-Line High-Visibility Label</h3>
   
   <label>Label Size (mm)</label>
   <div style="display:flex; gap:8px;">
@@ -29,31 +29,20 @@
     <input type="number" id="lblHeight" value="14" title="Height (mm)">
   </div>
 
-  <label>Kit ID (Bold Header)</label>
+  <label>Kit ID (Header)</label>
   <input type="text" id="txtId" value="KIT-FAST-M3-SS">
 
   <label>Description / Contents</label>
   <input type="text" id="txtDesc" value="M3 Socket Head Screws & Nuts">
 
-  <label>Storage Location</label>
-  <input type="text" id="txtLoc" value="RACK-B / BAY-2">
-
-  <label>Standard / Measurement Badge</label>
-  <select id="stdBadge">
-    <option value="MET" selected>MET (Metric - Inverted Black Badge)</option>
-    <option value="SAE">SAE (Imperial - Inverted Black Badge)</option>
-    <option value="UNIV">UNIV (Universal / None)</option>
-    <option value="DOT_BLACK">Solid Black Dot</option>
-    <option value="DOT_WHITE">Open White Ring</option>
-  </select>
-
-  <label>Drive / Hardware Shape</label>
+  <label>Drive / Hardware Symbol</label>
   <select id="shapeBadge">
     <option value="HEX" selected>Hex Socket (Hexagon)</option>
     <option value="PHILLIPS">Phillips / Cross (+)</option>
-    <option value="TORX">Torx / Star (*)</option>
-    <option value="ELEC">Bolt / Lightning (Electrical)</option>
-    <option value="NONE">None (Omit second badge)</option>
+    <option value="TORX">Torx / Star (★)</option>
+    <option value="SLOTTED">Slotted / Flathead (―)</option>
+    <option value="ELEC">Bolt / Lightning (⚡)</option>
+    <option value="NONE">None (Full Width Text)</option>
   </select>
 
   <div class="btn-row">
@@ -67,7 +56,7 @@
 </div>
 
 <script>
-const DPI = 8; // 203 DPI standard for thermal printers (~8 dots/mm)
+const DPI = 8; // 203 DPI standard (~8 dots/mm)
 
 function renderLabel() {
   const wMm = parseFloat(document.getElementById('lblWidth').value) || 40;
@@ -77,36 +66,18 @@ function renderLabel() {
 
   const id = document.getElementById('txtId').value;
   const desc = document.getElementById('txtDesc').value;
-  const loc = document.getElementById('txtLoc').value;
-  const std = document.getElementById('stdBadge').value;
   const shape = document.getElementById('shapeBadge').value;
 
-  // Layout sizing
-  const badgeW = height * 0.72;
-  const badgeH = height * 0.38;
-  const badgeX = width - badgeW - 6;
-  const badge1Y = 6;
-  const badge2Y = height - badgeH - 6;
+  const padLeft = 8;
+  const padRight = 6;
+  
+  // Icon Layout (Centered vertically across full height)
+  const iconSize = shape === 'NONE' ? 0 : height * 0.70;
+  const cx = width - padRight - (iconSize / 2);
+  const cy = height / 2;
+  const r = iconSize / 2;
 
-  // Standard Badge Markup
-  let stdMarkup = '';
-  if (std === 'MET' || std === 'SAE') {
-    stdMarkup = `
-      <rect x="${badgeX}" y="${badge1Y}" width="${badgeW}" height="${badgeH}" rx="3" fill="#000000"/>
-      <text x="${badgeX + badgeW/2}" y="${badge1Y + badgeH * 0.75}" font-size="${badgeH * 0.65}" font-family="Arial, Helvetica, sans-serif" font-weight="900" fill="#ffffff" text-anchor="middle">${std}</text>
-    `;
-  } else if (std === 'DOT_BLACK') {
-    stdMarkup = `<circle cx="${badgeX + badgeW/2}" cy="${badge1Y + badgeH/2}" r="${badgeH * 0.42}" fill="#000000"/>`;
-  } else if (std === 'DOT_WHITE') {
-    stdMarkup = `<circle cx="${badgeX + badgeW/2}" cy="${badge1Y + badgeH/2}" r="${badgeH * 0.38}" fill="none" stroke="#000000" stroke-width="3"/>`;
-  }
-
-  // Shape Badge Markup
   let shapeMarkup = '';
-  const cx = badgeX + badgeW/2;
-  const cy = badge2Y + badgeH/2;
-  const r = badgeH * 0.42;
-
   if (shape === 'HEX') {
     const pts = [];
     for (let i = 0; i < 6; i++) {
@@ -115,31 +86,36 @@ function renderLabel() {
     }
     shapeMarkup = `<polygon points="${pts.join(' ')}" fill="#000000"/>`;
   } else if (shape === 'PHILLIPS') {
+    const sw = height * 0.12;
     shapeMarkup = `
-      <line x1="${cx - r}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="#000000" stroke-width="4"/>
-      <line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="#000000" stroke-width="4"/>
+      <line x1="${cx - r}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="#000000" stroke-width="${sw}" stroke-linecap="square"/>
+      <line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" stroke="#000000" stroke-width="${sw}" stroke-linecap="square"/>
     `;
   } else if (shape === 'TORX') {
-    shapeMarkup = `<text x="${cx}" y="${cy + r * 0.7}" font-size="${r * 2.2}" font-family="Arial, sans-serif" font-weight="900" fill="#000000" text-anchor="middle">★</text>`;
+    shapeMarkup = `<text x="${cx}" y="${cy + r * 0.78}" font-size="${r * 2.3}" font-family="Arial, sans-serif" font-weight="900" fill="#000000" text-anchor="middle">★</text>`;
+  } else if (shape === 'SLOTTED') {
+    const sw = height * 0.14;
+    shapeMarkup = `<line x1="${cx - r}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="#000000" stroke-width="${sw}" stroke-linecap="square"/>`;
   } else if (shape === 'ELEC') {
     shapeMarkup = `<polygon points="${cx-2},${cy-r} ${cx+r},${cy-2} ${cx},${cy} ${cx+3},${cy+r} ${cx-r},${cy+2} ${cx-1},${cy}" fill="#000000"/>`;
   }
 
-  const textWidthMax = badgeX - 10;
+  // Available text width before hitting the icon
+  const maxTextWidth = shape === 'NONE' ? (width - padLeft - padRight) : (cx - r - padLeft - 6);
 
   const svgContent = `
     <svg id="labelSvg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-      <!-- Outer Label -->
+      <!-- White Base -->
       <rect width="${width}" height="${height}" fill="#ffffff"/>
       
-      <!-- Badges -->
-      ${stdMarkup}
+      <!-- Right Side Drive/Hardware Symbol -->
       ${shapeMarkup}
 
-      <!-- Text Blocks -->
-      <text x="8" y="${height * 0.32}" font-size="${height * 0.23}" font-family="Arial, Helvetica, sans-serif" font-weight="900" fill="#000000" textLength="${Math.min(textWidthMax, width * 0.65)}" lengthAdjust="spacingAndGlyphs">${escapeXml(id)}</text>
-      <text x="8" y="${height * 0.62}" font-size="${height * 0.17}" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#000000">${escapeXml(desc)}</text>
-      <text x="8" y="${height * 0.88}" font-size="${height * 0.15}" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#000000">LOC: ${escapeXml(loc)}</text>
+      <!-- Top Row: Extra Bold Large ID -->
+      <text x="${padLeft}" y="${height * 0.46}" font-size="${height * 0.40}" font-family="Arial, Helvetica, sans-serif" font-weight="900" fill="#000000" textLength="${maxTextWidth}" lengthAdjust="spacingAndGlyphs">${escapeXml(id)}</text>
+      
+      <!-- Bottom Row: Large Clean Description -->
+      <text x="${padLeft}" y="${height * 0.86}" font-size="${height * 0.28}" font-family="Arial, Helvetica, sans-serif" font-weight="700" fill="#000000" textLength="${maxTextWidth}" lengthAdjust="spacingAndGlyphs">${escapeXml(desc)}</text>
     </svg>
   `;
 
