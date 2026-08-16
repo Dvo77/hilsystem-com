@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIL Room Visualizer — Floor Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="./hil-shell.js"></script>
+
+<style>
+  /* ── LAYOUT ── */
+  .hil-container { max-width: 1180px; margin: 0 auto; padding: 24px 16px 100px; }
+
+  .rv-page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .rv-page-head h1 { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--hil-green); text-transform: uppercase; }
+  .rv-page-head .rv-sub { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: 1px; margin-top: 4px; }
+
+  /* ── STRUCTURE TABS ── */
+  .rv-struct-tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .rv-struct-tab {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px;
+    padding: 8px 14px; background: var(--hil-surface); border: 1px solid var(--hil-border);
+    color: var(--hil-text-muted); cursor: pointer; transition: all .15s;
+  }
+  .rv-struct-tab:hover { border-color: var(--hil-text-muted); color: var(--hil-text); }
+  .rv-struct-tab.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-dim); }
+  .rv-struct-add {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px;
+    padding: 8px 12px; background: none; border: 1px dashed var(--hil-border);
+    color: var(--hil-text-muted); cursor: pointer; transition: all .15s;
+  }
+  .rv-struct-add:hover { border-color: var(--hil-green); color: var(--hil-green); }
+
+  /* ── MAIN GRID ── */
+  .rv-main { display: grid; grid-template-columns: 1fr 260px; gap: 16px; }
+  @media (max-width: 860px) { .rv-main { grid-template-columns: 1fr; } }
+
+  /* ── TOOLBAR ── */
+  .rv-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .rv-tool-btn {
+    font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px;
+    padding: 9px 14px; background: var(--hil-surface-2); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer; transition: all .15s;
+  }
+  .rv-tool-btn:hover { border-color: var(--hil-text-muted); }
+  .rv-tool-btn.active { background: var(--hil-green); color: #000; border-color: var(--hil-green); }
+  .rv-tool-btn.danger { color: var(--hil-danger); border-color: var(--hil-border); }
+  .rv-tool-btn.danger:hover { border-color: var(--hil-danger); }
+  .rv-tool-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .rv-hint { font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: .5px; margin-left: auto; }
+
+  /* ── SCALE CONTROL ── */
+  .rv-scale-control { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--hil-text-muted); letter-spacing: .5px; }
+  .rv-scale-control input {
+    width: 52px; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 12px; padding: 6px 6px; text-align: center; outline: none;
+  }
+  .rv-scale-control input:focus { border-color: var(--hil-green); }
+
+  /* ── CANVAS ── */
+  .rv-canvas-wrap {
+    background: var(--hil-surface); border: 1px solid var(--hil-border);
+    overflow: hidden; touch-action: none; position: relative;
+  }
+  .rv-canvas-wrap.drawing { cursor: crosshair; }
+  svg.rv-svg { display: block; width: 100%; height: auto; }
+
+  .rv-zone-poly { stroke-width: 2; cursor: pointer; transition: opacity .15s; }
+  .rv-zone-poly:hover { opacity: .85; }
+  .rv-zone-poly.selected { stroke-width: 3; stroke-dasharray: 6 3; }
+  .rv-zone-label { font-family: var(--font-mono); font-size: 13px; fill: #fff; text-anchor: middle; pointer-events: none; }
+  .rv-zone-code { font-family: var(--font-display); font-size: 10px; fill: rgba(255,255,255,.65); text-anchor: middle; pointer-events: none; letter-spacing: 1px; }
+
+  .rv-draw-point { fill: var(--hil-green); stroke: #000; stroke-width: 1; }
+  .rv-draw-line { stroke: var(--hil-green); stroke-width: 2; stroke-dasharray: 5 4; fill: none; }
+  .rv-draw-fill { fill: rgba(0,204,102,.12); stroke: var(--hil-green); stroke-width: 1.5; stroke-dasharray: 3 3; }
+
+  /* ── VERTEX EDIT HANDLES ── */
+  .rv-vertex-handle { fill: #fff; stroke: var(--hil-green); stroke-width: 2; cursor: grab; }
+  .rv-vertex-handle:hover { fill: var(--hil-green); }
+  .rv-vertex-handle.dragging { cursor: grabbing; fill: var(--hil-amber); stroke: var(--hil-amber); }
+  .rv-dim-readout { font-family: var(--font-mono); font-size: 11px; color: var(--hil-green); margin-top: 6px; letter-spacing: .5px; }
+
+  /* ── DOOR / WINDOW MARKERS ── */
+  .rv-opening { cursor: pointer; }
+  .rv-opening:hover rect { stroke-width: 2.5; }
+  .rv-opening text { font-family: var(--font-mono); font-size: 9px; fill: #000; text-anchor: middle; pointer-events: none; font-weight: bold; }
+
+  /* ── SIDE PANEL ── */
+  .rv-panel { background: var(--hil-surface); border: 1px solid var(--hil-border); padding: 14px; align-self: start; }
+  .rv-panel h3 { font-family: var(--font-display); font-size: 10px; letter-spacing: 2.5px; color: var(--hil-text-muted); text-transform: uppercase; border-bottom: 1px solid var(--hil-border); padding-bottom: 8px; margin-bottom: 10px; }
+  .rv-room-row {
+    display: flex; align-items: center; gap: 8px; padding: 8px 6px; cursor: pointer;
+    border: 1px solid transparent; transition: all .12s;
+  }
+  .rv-room-row:hover { background: var(--hil-surface-2); }
+  .rv-room-row.selected { border-color: var(--hil-green); background: var(--hil-green-dim); }
+  .rv-room-swatch { width: 14px; height: 14px; flex-shrink: 0; border: 1px solid rgba(255,255,255,.3); }
+  .rv-room-info { flex: 1; min-width: 0; }
+  .rv-room-name { font-size: 13px; color: var(--hil-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rv-room-code { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: 1px; }
+  .rv-empty-panel { font-family: var(--font-mono); font-size: 11px; color: var(--hil-text-muted); text-align: center; padding: 20px 8px; line-height: 1.6; }
+
+  /* ── EDIT SUBPANEL ── */
+  .rv-edit-block { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hil-border); }
+  .rv-field { margin-bottom: 10px; }
+  .rv-field label { display: block; font-family: var(--font-mono); font-size: 9px; letter-spacing: 1.5px; color: var(--hil-text-muted); text-transform: uppercase; margin-bottom: 4px; }
+  .rv-field input, .rv-field select {
+    width: 100%; background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text);
+    font-family: var(--font-mono); font-size: 13px; padding: 8px 10px; outline: none;
+  }
+  .rv-field input:focus, .rv-field select:focus { border-color: var(--hil-green); }
+  .rv-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .rv-swatch { width: 26px; height: 26px; cursor: pointer; border: 2px solid transparent; }
+  .rv-swatch.active { border-color: #fff; }
+  .rv-preset-btn {
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: .5px;
+    padding: 8px 12px; background: var(--hil-bg); border: 1px solid var(--hil-border);
+    color: var(--hil-text); cursor: pointer;
+  }
+  .rv-preset-btn.active { border-color: var(--hil-green); color: var(--hil-green); background: var(--hil-green-dim); }
+  .rv-edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rv-edit-actions .rv-tool-btn { flex: 1; text-align: center; }
+
+  /* ── MODAL ── */
+  .rv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .rv-modal-overlay.open { display: flex; }
+  .rv-modal { background: var(--hil-surface); border: 1px solid var(--hil-green); padding: 24px; width: 380px; max-width: 100%; }
+  .rv-modal h2 { font-family: var(--font-display); font-size: 16px; letter-spacing: 2px; color: var(--hil-green); text-transform: uppercase; margin-bottom: 16px; }
+  .rv-modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .rv-modal-actions .rv-tool-btn { flex: 1; text-align: center; }
+
+  .rv-toast-inline { font-family: var(--font-mono); font-size: 10px; color: var(--hil-warning); margin-top: 6px; display: none; }
+  .rv-toast-inline.show { display: block; }
+
+  /* ── ROOM OUTLINES (tier above zones — walls, no HL code) ── */
+  .rv-room-poly { fill: transparent; stroke-width: 2; cursor: pointer; transition: opacity .15s; }
+  .rv-room-poly.selected { stroke-width: 3; stroke-dasharray: 6 3; }
+  .rv-room-outline-label { font-family: var(--font-display); font-size: 10px; letter-spacing: 1.5px; fill: rgba(255,255,255,.55); text-anchor: middle; text-transform: uppercase; pointer-events: none; }
+
+  /* ── OPENINGS LIST MODAL ── */
+  .rv-op-row { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--hil-border); }
+  .rv-op-row:last-child { border-bottom: none; }
+  .rv-op-icon { width: 26px; height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 10px; font-weight: bold; color: #000; }
+  .rv-op-info { flex: 1; min-width: 0; }
+  .rv-op-label { font-size: 13px; color: var(--hil-text); }
+  .rv-op-meta { font-family: var(--font-mono); font-size: 9px; color: var(--hil-text-muted); letter-spacing: .5px; }
+  .rv-op-meta.orphan { color: var(--hil-warning); }
+  .rv-op-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .rv-op-btn { font-family: var(--font-mono); font-size: 9px; letter-spacing: .5px; padding: 6px 8px;
+    background: var(--hil-bg); border: 1px solid var(--hil-border); color: var(--hil-text); cursor: pointer; }
+  .rv-op-btn:hover { border-color: var(--hil-green); color: var(--hil-green); }
+  .rv-op-btn.danger:hover { border-color: var(--hil-danger); color: var(--hil-danger); }
+  .rv-op-list-body { max-height: 50vh; overflow-y: auto; margin: 4px 0 10px; }
+</style>
+</head>
+<body>
+
+<div class="hil-container">
+
+  <div class="rv-page-head">
+    <div>
+      <h1>Room Visualizer</h1>
+      <div class="rv-sub">DRAW ROOMS · PLACE ADDRESSES · REPLACES TYPED HL ENTRY</div>
+    </div>
+  </div>
+
+  <div class="rv-struct-tabs" id="struct-tabs">
+    <!-- populated at runtime -->
+  </div>
+
+  <div class="rv-main">
+    <div>
+      <div class="rv-toolbar">
+        <button class="rv-tool-btn" id="btn-draw" onclick="startDrawRoom()">✎ Draw Room</button>
+        <button class="rv-tool-btn" id="btn-draw-zone" onclick="startDrawZone()" disabled>✎ Draw Zone</button>
+        <button class="rv-tool-btn" id="btn-quickrect" onclick="setMode('quickrect')">▭ Quick Rectangle</button>
+        <button class="rv-tool-btn active" id="btn-select" onclick="setMode('select')">↖ Select</button>
+        <button class="rv-tool-btn" id="btn-door" onclick="setMode('door')">🚪 Door</button>
+        <button class="rv-tool-btn" id="btn-window" onclick="setMode('window')">🪟 Window</button>
+        <button class="rv-tool-btn" id="btn-open" onclick="setMode('open')">▭ Opening</button>
+        <button class="rv-tool-btn" id="btn-finish" onclick="finishShape()" disabled>✓ Close Shape</button>
+        <button class="rv-tool-btn danger" id="btn-cancel-draw" onclick="cancelDraw()" disabled>✕ Cancel</button>
+        <button class="rv-tool-btn" onclick="fitToRooms()">⊡ Fit All Rooms</button>
+        <button class="rv-tool-btn" onclick="openEditStructModal()">⛭ Edit Structure</button>
+        <button class="rv-tool-btn" onclick="openOpeningsListModal()">🗂 Openings</button>
+        <div class="rv-scale-control">
+          1 square = <input type="number" id="scale-input" min="0.25" step="0.25" value="1" onchange="saveScale(this.value)"> ft
+        </div>
+        <span class="rv-hint" id="rv-hint">Select a structure to begin</span>
+      </div>
+
+      <div class="rv-canvas-wrap" id="canvas-wrap">
+        <svg class="rv-svg" id="rv-svg" viewBox="0 0 3000 2000" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#22281f" stroke-width="1"/>
+            </pattern>
+          </defs>
+          <rect x="-2000" y="-2000" width="7000" height="6000" fill="url(#grid)"/>
+          <g id="footprint-layer"></g>
+          <g id="rooms-layer"></g>
+          <g id="zones-layer"></g>
+          <g id="openings-layer"></g>
+          <g id="draw-layer"></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rv-panel">
+      <h3>Rooms <span id="room-count">(0)</span></h3>
+      <div id="room-list"><div class="rv-empty-panel">No rooms drawn yet.<br>Pick a structure, then tap Draw Room.</div></div>
+
+      <div class="rv-edit-block" id="room-edit-block" style="display:none">
+        <h3>Edit Room</h3>
+        <div class="rv-field">
+          <label>Room Name</label>
+          <input type="text" id="redit-label" placeholder="Living Room">
+        </div>
+        <div class="rv-hint" style="display:block;margin:0 0 10px">Tap "Draw Zone" above to subdivide this room into addressable zones.</div>
+        <div class="rv-edit-actions">
+          <button class="rv-tool-btn" onclick="saveRoomEdit()">💾 Save</button>
+          <button class="rv-tool-btn danger" onclick="deleteRoom()">🗑 Delete</button>
+        </div>
+      </div>
+
+      <div class="rv-edit-block" id="edit-block" style="display:none">
+        <h3>Edit Room</h3>
+        <div class="rv-field">
+          <label>Room Name</label>
+          <input type="text" id="edit-label" placeholder="Workshop">
+        </div>
+        <div class="rv-field">
+          <label>Zone Code (permanent)</label>
+          <input type="text" id="edit-code" maxlength="3" disabled style="opacity:.6">
+        </div>
+        <div class="rv-dim-readout" id="edit-dims"></div>
+        <div class="rv-hint" style="margin:6px 0 0;display:block">Drag any corner on the canvas to reshape this room.</div>
+        <div class="rv-edit-actions" style="margin-top:10px">
+          <button class="rv-tool-btn" id="edit-open-room" onclick="openRoomDetail()" style="flex:1;text-align:center">→ Open Room</button>
+        </div>
+        <div class="rv-field">
+          <label>Room Type</label>
+          <select id="edit-type">
+            <option value="workshop">Workshop</option>
+            <option value="kitchen">Kitchen</option>
+            <option value="bedroom">Bedroom</option>
+            <option value="bathroom">Bathroom</option>
+            <option value="garage">Garage</option>
+            <option value="basement">Basement</option>
+            <option value="barn">Barn</option>
+            <option value="studio">Studio</option>
+            <option value="office">Office</option>
+            <option value="storage">Storage</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="rv-field">
+          <label>Color</label>
+          <div class="rv-swatches" id="edit-swatches"></div>
+        </div>
+        <div class="rv-edit-actions">
+          <button class="rv-tool-btn" onclick="saveEdit()">💾 Save</button>
+          <button class="rv-tool-btn danger" onclick="deleteZone()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NEW ROOM MODAL -->
+<div class="rv-modal-overlay" id="new-room-modal">
+  <div class="rv-modal">
+    <h2>New Room</h2>
+    <div class="rv-field">
+      <label>Room Name</label>
+      <input type="text" id="nr-label" placeholder="Workshop" autocomplete="off">
+    </div>
+    <div class="rv-field">
+      <label>Zone Code (2 letters, permanent)</label>
+      <input type="text" id="nr-code" maxlength="3" placeholder="WS" autocomplete="off" style="text-transform:uppercase">
+      <div class="rv-toast-inline" id="nr-code-warn">That code is already used in this structure.</div>
+    </div>
+    <div class="rv-field">
+      <label>Room Type</label>
+      <select id="nr-type">
+        <option value="workshop">Workshop</option>
+        <option value="kitchen">Kitchen</option>
+        <option value="bedroom">Bedroom</option>
+        <option value="bathroom">Bathroom</option>
+        <option value="garage">Garage</option>
+        <option value="basement">Basement</option>
+        <option value="barn">Barn</option>
+        <option value="studio">Studio</option>
+        <option value="office">Office</option>
+        <option value="storage">Storage</option>
+        <option value="outdoor">Outdoor</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="rv-field">
+      <label>Color</label>
+      <div class="rv-swatches" id="nr-swatches"></div>
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveNewRoom()">💾 Save Room</button>
+      <button class="rv-tool-btn danger" onclick="cancelNewRoom()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW ZONE MODAL (sub-area inside a selected Room) -->
+<div class="rv-modal-overlay" id="new-zone-modal">
+  <div class="rv-modal">
+    <h2>New Zone</h2>
+    <div class="rv-hint" style="display:block;margin-bottom:10px">Sub-area inside <span id="nz-room-label"></span>.</div>
+    <div class="rv-field">
+      <label>Zone Name</label>
+      <input type="text" id="nz-label" placeholder="Max-O-Mess" autocomplete="off">
+    </div>
+    <div class="rv-field">
+      <label>Zone Code (2–3 letters, permanent)</label>
+      <input type="text" id="nz-code" maxlength="3" placeholder="MM" autocomplete="off" style="text-transform:uppercase">
+      <div class="rv-toast-inline" id="nz-code-warn">That code is already used in this structure.</div>
+    </div>
+    <div class="rv-field">
+      <label>Zone Type</label>
+      <select id="nz-type">
+        <option value="workshop">Workshop</option>
+        <option value="kitchen">Kitchen</option>
+        <option value="bedroom">Bedroom</option>
+        <option value="bathroom">Bathroom</option>
+        <option value="garage">Garage</option>
+        <option value="basement">Basement</option>
+        <option value="barn">Barn</option>
+        <option value="studio">Studio</option>
+        <option value="office">Office</option>
+        <option value="storage">Storage</option>
+        <option value="outdoor">Outdoor</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="rv-field">
+      <label>Color</label>
+      <div class="rv-swatches" id="nz-swatches"></div>
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveNewZone()">💾 Save Zone</button>
+      <button class="rv-tool-btn danger" onclick="cancelNewZone()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT STRUCTURE MODAL (name + optional footprint) -->
+<div class="rv-modal-overlay" id="edit-struct-modal">
+  <div class="rv-modal">
+    <h2>Edit Structure</h2>
+    <div class="rv-field">
+      <label>Structure Name</label>
+      <input type="text" id="es-name" placeholder="Main House" autocomplete="off">
+    </div>
+    <div class="rv-field">
+      <label>Footprint Width (ft) — optional</label>
+      <input type="number" id="es-width" min="1" step="0.5" placeholder="24">
+    </div>
+    <div class="rv-field">
+      <label>Footprint Depth (ft) — optional</label>
+      <input type="number" id="es-depth" min="1" step="0.5" placeholder="53">
+    </div>
+    <div class="rv-hint" style="display:block;margin-top:2px">Footprint just draws a reference boundary on the canvas for scale — it isn't addressed data.</div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveEditStruct()">💾 Save</button>
+      <button class="rv-tool-btn danger" onclick="closeModal('edit-struct-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- OPENINGS LIST MODAL -->
+<div class="rv-modal-overlay" id="openings-list-modal">
+  <div class="rv-modal" style="width:440px">
+    <h2>Openings — <span id="ol-struct-code"></span></h2>
+    <div class="rv-hint" style="display:block;margin-bottom:6px">Doors, windows, and openings are absolute-positioned — if a wall moves or gets redrawn, one can end up floating disconnected. Amber = more than a couple feet from any wall right now.</div>
+    <div class="rv-op-list-body" id="openings-list-body"></div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" style="flex:1;text-align:center" onclick="closeModal('openings-list-modal')">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW STRUCTURE MODAL -->
+<div class="rv-modal-overlay" id="new-struct-modal">
+  <div class="rv-modal">
+    <h2>New Structure</h2>
+    <div class="rv-field">
+      <label>Structure Code (2 letters, permanent)</label>
+      <input type="text" id="ns-code" maxlength="2" placeholder="HM" autocomplete="off" style="text-transform:uppercase">
+    </div>
+    <div class="rv-field">
+      <label>Structure Name</label>
+      <input type="text" id="ns-name" placeholder="Main House" autocomplete="off">
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveNewStruct()">💾 Add Structure</button>
+      <button class="rv-tool-btn danger" onclick="closeModal('new-struct-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK RECTANGLE DIMENSIONS MODAL -->
+<div class="rv-modal-overlay" id="quickrect-modal">
+  <div class="rv-modal">
+    <h2>Room Size</h2>
+    <div class="rv-field">
+      <label>Width (ft)</label>
+      <input type="number" id="qr-width" min="1" step="0.5" placeholder="12">
+    </div>
+    <div class="rv-field">
+      <label>Depth (ft)</label>
+      <input type="number" id="qr-depth" min="1" step="0.5" placeholder="10.5">
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveQuickRect()">✓ Place Rectangle</button>
+      <button class="rv-tool-btn danger" onclick="cancelQuickRect()">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN SHAPE TO EXISTING ZONE MODAL -->
+<div class="rv-modal-overlay" id="assign-shape-modal">
+  <div class="rv-modal">
+    <h2>Assign This Shape</h2>
+    <div class="rv-hint" style="display:block;margin-bottom:10px">There are rooms already named but not drawn yet — probably from Room Code Generator. Pick one to attach this shape to, or make a brand new room instead.</div>
+    <div class="rv-field">
+      <label>Existing Room</label>
+      <select id="as-zone-select"></select>
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveAssignShape()">✓ Attach Shape</button>
+      <button class="rv-tool-btn" onclick="switchToNewRoomFromAssign()">＋ New Room Instead</button>
+    </div>
+    <div class="rv-modal-actions" style="margin-top:6px">
+      <button class="rv-tool-btn danger" onclick="cancelAssignShape()" style="flex:1;text-align:center">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- OPENING WIDTH MODAL (door / window) -->
+<div class="rv-modal-overlay" id="opening-modal">
+  <div class="rv-modal">
+    <h2 id="opening-modal-title">Door Width</h2>
+    <div class="rv-hint" style="display:block;margin-bottom:10px" id="opening-modal-hint">Pick a standard size, or enter a custom width.</div>
+    <div class="rv-swatches" id="opening-presets" style="margin-bottom:10px"></div>
+    <div class="rv-field">
+      <label>Width (inches)</label>
+      <input type="number" id="opening-width" min="6" max="120" step="1" placeholder="32">
+    </div>
+    <div class="rv-modal-actions">
+      <button class="rv-tool-btn" onclick="saveOpeningSize()">✓ Save</button>
+      <button class="rv-tool-btn danger" id="opening-delete-btn" onclick="deleteOpeningFromModal()" style="display:none">🗑 Delete</button>
+    </div>
+    <div class="rv-modal-actions" style="margin-top:6px">
+      <button class="rv-tool-btn" onclick="cancelOpeningModal()" style="flex:1;text-align:center">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+// PALETTE — matches HIL Shell accent family, distinct per-room
+// ══════════════════════════════════════
+const PALETTE = ['#00cc66','#4a9eed','#ffd84c','#ff5c5c','#cc8800','#8a6de0','#4cd9ff','#ff8fb3'];
+const SNAP = 20; // grid snap in SVG units
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let db, currentUser;
+let _collection,_doc,_setDoc,_addDoc,_updateDoc,_deleteDoc,_onSnapshot,_serverTimestamp,_query,_where,_getDocs,_arrayUnion;
+
+let propertyId = null;
+let property = null;          // property doc data
+let zones = [];                // all zone docs for this property (all structures)
+let activeStruct = null;       // currently viewed struct_code
+let mode = 'select';           // 'draw' | 'select' | 'quickrect'
+let drawPoints = [];           // [{x,y}] while drawing
+let selectedZoneCode = null;
+let pendingPolygon = null;     // polygon points waiting on the New Room modal
+let structScale = {};          // { HM: 1, GR: 2 } — feet per grid square, per structure
+let quickRectAnchor = null;    // {x,y} anchor point while placing a quick rectangle
+let vertexDraft = null;        // live-editable copy of selected zone's points while dragging
+let draggingVertexIdx = null;
+let openings = [];             // structure-level openings: doors/windows/archways, shared across rooms
+let unsubOpenings = null;
+let rooms = [];                 // all room docs for this property (all structures) — wall outline tier, no HL code
+let selectedRoomId = null;      // currently selected room (for editing / enabling Draw Zone)
+let drawTarget = 'room';        // 'room' | 'zone' — which tier the active draw/quickrect action creates
+let structMeta = {};            // { HM: { name, footprint_w_ft, footprint_d_ft } }
+
+// ══════════════════════════════════════
+// SHELL INIT
+// ══════════════════════════════════════
+HILShell.init({
+  toolId:      'room-visualizer',
+  toolName:    'Room Visualizer',
+  requireAuth: true,
+  onAuth:      handleAuth,
+});
+
+async function handleAuth(user) {
+  if (!user) return;
+  currentUser = user;
+
+  const FB_VER  = '10.12.0';
+  const FB_BASE = `https://www.gstatic.com/firebasejs/${FB_VER}`;
+  const fsdk = await import(`${FB_BASE}/firebase-firestore.js`);
+
+  _collection = fsdk.collection; _doc = fsdk.doc; _setDoc = fsdk.setDoc;
+  _addDoc = fsdk.addDoc; _updateDoc = fsdk.updateDoc; _deleteDoc = fsdk.deleteDoc;
+  _onSnapshot = fsdk.onSnapshot; _serverTimestamp = fsdk.serverTimestamp;
+  _query = fsdk.query; _where = fsdk.where; _getDocs = fsdk.getDocs;
+  _arrayUnion = fsdk.arrayUnion;
+
+  db = window.db;
+  await ensureProperty();
+  watchZones();
+  watchOpenings();
+  watchRooms();
+}
+
+// ══════════════════════════════════════
+// PROPERTY — ensure exactly one exists, create if missing
+// ══════════════════════════════════════
+async function ensureProperty() {
+  const propsCol = _collection(db, 'users', currentUser.uid, 'properties');
+  const snap = await _getDocs(propsCol);
+  if (!snap.empty) {
+    const d = snap.docs[0];
+    propertyId = d.id;
+    property = d.data();
+    structScale = (property.floorplan && property.floorplan.struct_scale) || {};
+    structMeta = (property.floorplan && property.floorplan.struct_meta) || {};
+  } else {
+    const ref = await _addDoc(propsCol, {
+      name: 'My Property',
+      address: '',
+      struct_codes: [],
+      floorplan: {
+        url: null, format: 'json', scale: null, source: 'manual_draw',
+        width_px: 3000, height_px: 2000, zones_mapped: false,
+        struct_scale: {},
+        struct_meta: {},
+        uploaded_at: _serverTimestamp(),
+      },
+      owner_uid: currentUser.uid,
+      created_at: _serverTimestamp(),
+    });
+    propertyId = ref.id;
+    property = { name: 'My Property', struct_codes: [] };
+  }
+  renderStructTabs();
+}
+
+// ══════════════════════════════════════
+// STRUCTURE TABS
+// ══════════════════════════════════════
+function renderStructTabs() {
+  const wrap = document.getElementById('struct-tabs');
+  const codes = property.struct_codes || [];
+  if (!activeStruct && codes.length) activeStruct = codes[0];
+
+  wrap.innerHTML = codes.map(c => `
+    <button class="rv-struct-tab ${c === activeStruct ? 'active' : ''}" onclick="switchStruct('${c}')">${c}</button>
+  `).join('') + `<button class="rv-struct-add" onclick="openModal('new-struct-modal')">+ Add Structure</button>`;
+
+  updateHint();
+  updateScaleInput();
+  renderZonesOnCanvas();
+  renderRoomsOnCanvas();
+  renderFootprint();
+  renderRoomList();
+}
+
+function switchStruct(code) {
+  activeStruct = code;
+  selectedZoneCode = null;
+  selectedRoomId = null;
+  vertexDraft = null;
+  hideEditBlock();
+  document.getElementById('room-edit-block').style.display = 'none';
+  document.getElementById('btn-draw-zone').disabled = true;
+  renderStructTabs();
+  setTimeout(fitToRooms, 0); // let the DOM update first
+}
+
+function fitToRooms() {
+  const zoneList = zonesForActiveStruct().filter(z => z.map_polygon && z.map_polygon.points && z.map_polygon.points.length);
+  const roomList = roomsForActiveStruct().filter(r => r.map_polygon && r.map_polygon.points && r.map_polygon.points.length);
+  const svg = document.getElementById('rv-svg');
+  if (!zoneList.length && !roomList.length) {
+    svg.setAttribute('viewBox', '0 0 1200 800'); // sane default for an empty structure
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const scan = pts => pts.forEach(p => {
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+  });
+  zoneList.forEach(z => scan(z.map_polygon.points));
+  roomList.forEach(r => scan(r.map_polygon.points));
+  const pad = 100;
+  svg.setAttribute('viewBox', `${minX - pad} ${minY - pad} ${(maxX - minX) + pad * 2} ${(maxY - minY) + pad * 2}`);
+}
+
+// ══════════════════════════════════════
+// SCALE — feet per grid square, per structure
+// ══════════════════════════════════════
+function currentScale() { return (activeStruct && structScale[activeStruct]) || 1; }
+function pxPerFt() { return SNAP / currentScale(); }
+function ftFromPx(px) { return (px / SNAP) * currentScale(); }
+
+function updateScaleInput() {
+  const input = document.getElementById('scale-input');
+  if (input) input.value = currentScale();
+}
+
+async function saveScale(val) {
+  const num = parseFloat(val);
+  if (!activeStruct || !num || num <= 0) { updateScaleInput(); return; }
+  structScale[activeStruct] = num;
+  const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+  await _updateDoc(propRef, { [`floorplan.struct_scale.${activeStruct}`]: num });
+  HILShell.toast(`Scale set: 1 square = ${num} ft for ${activeStruct}`, 'success');
+  if (selectedZoneCode) selectZone(selectedZoneCode); // refresh dimension readout
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function saveNewStruct() {
+  const code = document.getElementById('ns-code').value.trim().toUpperCase();
+  const name = document.getElementById('ns-name').value.trim();
+  if (!/^[A-Z]{2}$/.test(code)) { HILShell.toast('Structure code must be exactly 2 letters', 'error'); return; }
+  if ((property.struct_codes || []).includes(code)) { HILShell.toast('That structure code already exists', 'error'); return; }
+
+  const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+  await _updateDoc(propRef, { struct_codes: _arrayUnion(code) });
+  property.struct_codes = [...(property.struct_codes || []), code];
+  activeStruct = code;
+
+  document.getElementById('ns-code').value = '';
+  document.getElementById('ns-name').value = '';
+  closeModal('new-struct-modal');
+  HILShell.toast('Structure added: ' + code, 'success');
+  renderStructTabs();
+}
+
+// ══════════════════════════════════════
+// ZONES — realtime listener, scoped to property
+// ══════════════════════════════════════
+function watchZones() {
+  const zonesCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'zones');
+  let firstLoad = true;
+  _onSnapshot(zonesCol, snap => {
+    zones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderZonesOnCanvas();
+    renderRoomList();
+    if (firstLoad) { firstLoad = false; setTimeout(fitToRooms, 0); }
+  }, err => HILShell.toast('Zones load error: ' + err.message, 'error'));
+}
+
+function zonesForActiveStruct() {
+  return zones.filter(z => z.struct_code === activeStruct);
+}
+
+// ══════════════════════════════════════
+// ROOMS — realtime listener, scoped to property. Wall-outline tier above zones.
+// A room carries no HL code — it's a container zones get drawn inside of.
+// ══════════════════════════════════════
+function watchRooms() {
+  const roomsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'rooms');
+  _onSnapshot(roomsCol, snap => {
+    rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderRoomsOnCanvas();
+    renderRoomList();
+  }, err => HILShell.toast('Rooms load error: ' + err.message, 'error'));
+}
+
+function roomsForActiveStruct() {
+  return rooms.filter(r => r.struct_code === activeStruct);
+}
+
+// ══════════════════════════════════════
+// EDIT STRUCTURE — name + optional footprint (reference boundary, not addressed data)
+// ══════════════════════════════════════
+function openEditStructModal() {
+  if (!activeStruct) { HILShell.toast('Select a structure first', 'error'); return; }
+  const meta = structMeta[activeStruct] || {};
+  document.getElementById('es-name').value = meta.name || '';
+  document.getElementById('es-width').value = meta.footprint_w_ft || '';
+  document.getElementById('es-depth').value = meta.footprint_d_ft || '';
+  openModal('edit-struct-modal');
+}
+
+async function saveEditStruct() {
+  if (!activeStruct) return;
+  const name = document.getElementById('es-name').value.trim();
+  const w = parseFloat(document.getElementById('es-width').value) || null;
+  const d = parseFloat(document.getElementById('es-depth').value) || null;
+  structMeta[activeStruct] = { name, footprint_w_ft: w, footprint_d_ft: d };
+  const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+  try {
+    await _updateDoc(propRef, { [`floorplan.struct_meta.${activeStruct}`]: structMeta[activeStruct] });
+    HILShell.toast('Structure updated', 'success');
+    closeModal('edit-struct-modal');
+    renderFootprint();
+    setTimeout(fitToRooms, 0);
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveEditStruct failed', e);
+  }
+}
+
+function renderFootprint() {
+  const layer = document.getElementById('footprint-layer');
+  if (!layer) return;
+  const meta = structMeta[activeStruct];
+  if (!meta || !meta.footprint_w_ft || !meta.footprint_d_ft) { layer.innerHTML = ''; return; }
+  const wPx = meta.footprint_w_ft * pxPerFt();
+  const dPx = meta.footprint_d_ft * pxPerFt();
+  layer.innerHTML = `
+    <rect x="0" y="0" width="${wPx}" height="${dPx}" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-dasharray="10 6"></rect>
+    <text x="6" y="${dPx - 8}" font-family="Space Mono, monospace" font-size="10" fill="rgba(255,255,255,.4)">${meta.footprint_w_ft}' × ${meta.footprint_d_ft}'</text>
+  `;
+}
+
+// ══════════════════════════════════════
+// OPENINGS — structure-level, shared across rooms (not owned by any single zone)
+// ══════════════════════════════════════
+function watchOpenings() {
+  const openingsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'openings');
+  _onSnapshot(openingsCol, snap => {
+    openings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderZonesOnCanvas();
+  }, err => HILShell.toast('Openings load error: ' + err.message, 'error'));
+}
+
+function openingsForActiveStruct() {
+  return openings.filter(o => o.struct_code === activeStruct);
+}
+
+// ══════════════════════════════════════
+// MODE / TOOLBAR
+// ══════════════════════════════════════
+function setMode(m) {
+  const OPENING_MODES = ['door', 'window', 'open'];
+  if ((m === 'draw' || m === 'quickrect' || OPENING_MODES.includes(m)) && !activeStruct) {
+    HILShell.toast('Add or select a structure first', 'error'); return;
+  }
+  if (m === 'draw' && drawTarget === 'zone' && !selectedRoomId) {
+    HILShell.toast('Select a room first', 'error'); return;
+  }
+  mode = m;
+  drawPoints = [];
+  quickRectAnchor = null;
+  const preserveSelection = (m === 'select');
+  selectedZoneCode = preserveSelection ? selectedZoneCode : null;
+  if (!preserveSelection) { vertexDraft = null; hideEditBlock(); }
+  document.getElementById('btn-draw').classList.toggle('active', m === 'draw' && drawTarget === 'room');
+  document.getElementById('btn-draw-zone').classList.toggle('active', m === 'draw' && drawTarget === 'zone');
+  document.getElementById('btn-quickrect').classList.toggle('active', m === 'quickrect');
+  document.getElementById('btn-select').classList.toggle('active', m === 'select');
+  document.getElementById('btn-door').classList.toggle('active', m === 'door');
+  document.getElementById('btn-window').classList.toggle('active', m === 'window');
+  document.getElementById('btn-open').classList.toggle('active', m === 'open');
+  document.getElementById('canvas-wrap').classList.toggle('drawing', m === 'draw' || m === 'quickrect' || OPENING_MODES.includes(m));
+  document.getElementById('btn-finish').disabled = true;
+  document.getElementById('btn-cancel-draw').disabled = (m === 'select');
+  renderDrawLayer();
+  renderZonesOnCanvas();
+  updateHint();
+}
+
+function startDrawRoom() { drawTarget = 'room'; setMode('draw'); }
+function startDrawZone() {
+  if (!selectedRoomId) { HILShell.toast('Select a room first', 'error'); return; }
+  drawTarget = 'zone';
+  setMode('draw');
+}
+
+function openingModeLabel(m) { return m === 'door' ? 'door' : m === 'window' ? 'window' : 'opening'; }
+
+function updateHint() {
+  const hint = document.getElementById('rv-hint');
+  if (!activeStruct) { hint.textContent = 'Select or add a structure to begin'; return; }
+  if (mode === 'draw') {
+    const target = drawTarget === 'zone' ? 'zone' : 'room';
+    hint.textContent = drawPoints.length
+      ? `${drawPoints.length} point${drawPoints.length>1?'s':''} — click near the start to close, or press Close Shape`
+      : `Click to place the first corner of the ${target}`;
+  } else if (mode === 'quickrect') {
+    hint.textContent = 'Click where the room starts (top-left corner)';
+  } else if (mode === 'door' || mode === 'window' || mode === 'open') {
+    hint.textContent = `Click near any wall in this structure to place a ${openingModeLabel(mode)} — snaps to the nearest edge, shared by both rooms if it's between two`;
+  } else if (selectedRoomId) {
+    hint.textContent = 'Room selected — tap Draw Zone to subdivide it, or Draw Room to start a new one';
+  } else {
+    hint.textContent = 'Tap a room to edit it, drag a corner to reshape, or switch to Draw Room';
+  }
+}
+
+function cancelDraw() {
+  drawPoints = [];
+  quickRectAnchor = null;
+  renderDrawLayer();
+  document.getElementById('btn-finish').disabled = true;
+  if (mode === 'door' || mode === 'window' || mode === 'open') setMode('select');
+  updateHint();
+}
+
+// ══════════════════════════════════════
+// SVG COORDINATE HELPERS
+// ══════════════════════════════════════
+function svgPointFromEvent(evt) {
+  const svg = document.getElementById('rv-svg');
+  const pt = svg.createSVGPoint();
+  const t = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+  pt.x = t.clientX; pt.y = t.clientY;
+  const ctm = svg.getScreenCTM().inverse();
+  const loc = pt.matrixTransform(ctm);
+  return { x: snap(loc.x), y: snap(loc.y) };
+}
+function snap(v) { return Math.round(v / SNAP) * SNAP; }
+
+document.getElementById('rv-svg').addEventListener('click', onCanvasClick);
+
+function onCanvasClick(evt) {
+  if (mode === 'quickrect') {
+    quickRectAnchor = svgPointFromEvent(evt);
+    document.getElementById('qr-width').value = '';
+    document.getElementById('qr-depth').value = '';
+    openModal('quickrect-modal');
+    return;
+  }
+  if (mode === 'door' || mode === 'window' || mode === 'open') {
+    beginPlaceOpening(mode, svgPointFromEventUnsnapped(evt));
+    return;
+  }
+  if (mode !== 'draw') {
+    // hit-test zones in select mode (polygons already have their own onclick, this is fallback)
+    return;
+  }
+  const p = svgPointFromEvent(evt);
+
+  // closing gesture: click near first point
+  if (drawPoints.length >= 3) {
+    const first = drawPoints[0];
+    const dist = Math.hypot(p.x - first.x, p.y - first.y);
+    if (dist < 16) { finishShape(); return; }
+  }
+  drawPoints.push(p);
+  document.getElementById('btn-finish').disabled = drawPoints.length < 3;
+  renderDrawLayer();
+  updateHint();
+}
+
+// ══════════════════════════════════════
+// OPENINGS — doors / windows / plain openings. Structure-level, not owned by any
+// single room, so a shared wall between two rooms only ever has one opening object.
+// ══════════════════════════════════════
+const DOOR_PRESETS   = [28, 30, 32, 36];
+const WINDOW_PRESETS = [24, 30, 36, 48];
+const OPEN_PRESETS   = [36, 48, 60, 72];
+
+function svgPointFromEventUnsnapped(evt) {
+  const svg = document.getElementById('rv-svg');
+  const pt = svg.createSVGPoint();
+  const t = evt.touches && evt.touches[0] ? evt.touches[0] : evt;
+  pt.x = t.clientX; pt.y = t.clientY;
+  const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: loc.x, y: loc.y };
+}
+
+function nearestPointOnSegment(pt, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return { x: a.x, y: a.y };
+  let t = ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return { x: a.x + t * dx, y: a.y + t * dy };
+}
+
+function nearestPointAndAngleOnPolygon(pt, poly) {
+  let best = null, bestDist = Infinity, bestAngle = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const cand = nearestPointOnSegment(pt, a, b);
+    const d = Math.hypot(cand.x - pt.x, cand.y - pt.y);
+    if (d < bestDist) {
+      bestDist = d; best = cand;
+      bestAngle = Math.atan2(b.y - a.y, b.x - a.x) * (180 / Math.PI);
+    }
+  }
+  return { point: best, angle: bestAngle, dist: bestDist };
+}
+
+// Scans every room outline AND every zone in the active structure, not just a
+// selected one — a door on a shared wall doesn't belong to any single room/zone,
+// and since the Room tier was added, room outlines are the real "walls" now
+// (rooms with no interior sub-zoning still need their walls scanned).
+function nearestWallAcrossStructure(pt) {
+  let best = null;
+  roomsForActiveStruct().forEach(r => {
+    if (!r.map_polygon || !r.map_polygon.points || r.map_polygon.points.length < 3) return;
+    const candidate = nearestPointAndAngleOnPolygon(pt, r.map_polygon.points);
+    if (!best || candidate.dist < best.dist) best = candidate;
+  });
+  zonesForActiveStruct().forEach(z => {
+    if (!z.map_polygon || !z.map_polygon.points || z.map_polygon.points.length < 3) return;
+    const candidate = nearestPointAndAngleOnPolygon(pt, z.map_polygon.points);
+    if (!best || candidate.dist < best.dist) best = candidate;
+  });
+  return best;
+}
+
+// Orphan threshold — anything farther than this from the nearest wall/room edge
+// is flagged in the Openings list as likely stranded by a redraw.
+const ORPHAN_DIST_PX = 60; // 3 grid squares at default 1 sq = 1 ft snap
+
+// draft state while the width-picker modal is open — either placing a new opening
+// (openingDraft set, openingEditId null) or editing an existing one (openingEditId set)
+let openingDraft = null;
+let openingEditId = null;
+
+function beginPlaceOpening(type, clickPoint) {
+  const nearest = nearestWallAcrossStructure(clickPoint);
+  if (!nearest) { HILShell.toast('Draw a room in this structure first', 'error'); return; }
+  openingDraft = { type, x: Math.round(nearest.point.x), y: Math.round(nearest.point.y), angle: nearest.angle };
+  openingEditId = null;
+  const defaultW = type === 'door' ? 32 : type === 'window' ? 36 : 48;
+  openOpeningModal(type, defaultW);
+  document.getElementById('opening-delete-btn').style.display = 'none';
+}
+
+function presetsFor(type) { return type === 'door' ? DOOR_PRESETS : type === 'window' ? WINDOW_PRESETS : OPEN_PRESETS; }
+function titleFor(type) { return type === 'door' ? 'Door' : type === 'window' ? 'Window' : 'Opening'; }
+
+function openOpeningModal(type, presetActive) {
+  document.getElementById('opening-modal-title').textContent = titleFor(type) + ' Width';
+  document.getElementById('opening-modal-hint').textContent = type === 'open'
+    ? 'A gap with no door — archway, open-concept pass-through. Pick a width.'
+    : 'Pick a standard size, or enter a custom width.';
+  const presets = presetsFor(type);
+  const presetsEl = document.getElementById('opening-presets');
+  presetsEl.innerHTML = presets.map(w => `
+    <button class="rv-preset-btn ${w === presetActive ? 'active' : ''}" data-w="${w}" onclick="pickOpeningPreset(${w})">${w}"</button>
+  `).join('');
+  document.getElementById('opening-width').value = presetActive || '';
+  openModal('opening-modal');
+}
+
+function pickOpeningPreset(w) {
+  document.getElementById('opening-width').value = w;
+  [...document.getElementById('opening-presets').children].forEach(b => b.classList.toggle('active', parseInt(b.dataset.w, 10) === w));
+}
+
+function cancelOpeningModal() {
+  openingDraft = null;
+  openingEditId = null;
+  closeModal('opening-modal');
+}
+
+async function saveOpeningSize() {
+  const widthIn = parseInt(document.getElementById('opening-width').value, 10);
+  if (!widthIn || widthIn < 6 || widthIn > 240) { HILShell.toast('Enter a width between 6 and 240 inches', 'error'); return; }
+
+  const openingsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'openings');
+
+  try {
+    if (openingEditId) {
+      await _updateDoc(_doc(openingsCol, openingEditId), { width_in: widthIn, updated_at: _serverTimestamp() });
+    } else if (openingDraft) {
+      await _addDoc(openingsCol, {
+        struct_code: activeStruct, type: openingDraft.type,
+        x: openingDraft.x, y: openingDraft.y, angle: openingDraft.angle,
+        width_in: widthIn,
+        created_at: _serverTimestamp(), updated_at: _serverTimestamp(),
+      });
+    } else {
+      return;
+    }
+    HILShell.toast('Saved — ' + widthIn + '" opening', 'success');
+    openingDraft = null;
+    openingEditId = null;
+    closeModal('opening-modal');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveOpeningSize failed', e);
+  }
+}
+
+async function deleteOpening(openingId) {
+  const openingsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'openings');
+  try {
+    await _deleteDoc(_doc(openingsCol, openingId));
+    HILShell.toast('Removed', 'success');
+  } catch (e) {
+    HILShell.toast('Delete failed: ' + e.message, 'error');
+    console.error('deleteOpening failed', e);
+  }
+}
+
+function deleteOpeningFromModal() {
+  if (!openingEditId) return;
+  if (!confirm('Remove this opening?')) return;
+  deleteOpening(openingEditId);
+  openingEditId = null;
+  closeModal('opening-modal');
+}
+
+// ══════════════════════════════════════
+// OPENINGS LIST MANAGER — find and fix/delete strays after a room redraw,
+// since doors/windows/openings store an absolute x/y rather than a live
+// reference to the wall they were placed on.
+// ══════════════════════════════════════
+function openOpeningsListModal() {
+  if (!activeStruct) { HILShell.toast('Select a structure first', 'error'); return; }
+  document.getElementById('ol-struct-code').textContent = activeStruct;
+  renderOpeningsListModal();
+  openModal('openings-list-modal');
+}
+
+function renderOpeningsListModal() {
+  const body = document.getElementById('openings-list-body');
+  const list = openingsForActiveStruct();
+  if (!list.length) {
+    body.innerHTML = `<div class="rv-empty-panel">No doors, windows, or openings in this structure yet.</div>`;
+    return;
+  }
+  body.innerHTML = list.map(o => {
+    const color = o.type === 'door' ? '#cc8800' : o.type === 'window' ? '#4cd9ff' : '#8a9a86';
+    const label = o.type === 'door' ? 'D' : o.type === 'window' ? 'W' : 'OP';
+    const typeName = o.type === 'door' ? 'Door' : o.type === 'window' ? 'Window' : 'Opening';
+    const widthIn = o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48);
+    const nearest = nearestWallAcrossStructure({ x: o.x, y: o.y });
+    const isOrphan = !nearest || nearest.dist > ORPHAN_DIST_PX;
+    return `
+      <div class="rv-op-row">
+        <div class="rv-op-icon" style="background:${color}">${label}</div>
+        <div class="rv-op-info">
+          <div class="rv-op-label">${typeName} — ${widthIn}"</div>
+          <div class="rv-op-meta ${isOrphan ? 'orphan' : ''}">${isOrphan ? '⚠ not on a wall right now' : 'on a wall'}</div>
+        </div>
+        <div class="rv-op-actions">
+          <button class="rv-op-btn" onclick="editOpeningFromList('${o.id}')">Edit</button>
+          <button class="rv-op-btn" onclick="resnapOpening('${o.id}')">Re-snap</button>
+          <button class="rv-op-btn danger" onclick="deleteOpeningFromList('${o.id}')">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function editOpeningFromList(openingId) {
+  const o = openings.find(x => x.id === openingId);
+  if (!o) return;
+  closeModal('openings-list-modal');
+  openingDraft = null;
+  openingEditId = openingId;
+  openOpeningModal(o.type, o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48));
+  document.getElementById('opening-delete-btn').style.display = 'block';
+}
+
+async function resnapOpening(openingId) {
+  const o = openings.find(x => x.id === openingId);
+  if (!o) return;
+  const nearest = nearestWallAcrossStructure({ x: o.x, y: o.y });
+  if (!nearest) { HILShell.toast('No wall found in this structure to snap to', 'error'); return; }
+  const openingsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'openings');
+  try {
+    await _updateDoc(_doc(openingsCol, openingId), {
+      x: Math.round(nearest.point.x), y: Math.round(nearest.point.y), angle: nearest.angle,
+      updated_at: _serverTimestamp(),
+    });
+    HILShell.toast('Snapped to nearest wall', 'success');
+    renderOpeningsListModal();
+  } catch (e) {
+    HILShell.toast('Re-snap failed: ' + e.message, 'error');
+    console.error('resnapOpening failed', e);
+  }
+}
+
+async function deleteOpeningFromList(openingId) {
+  if (!confirm('Remove this opening?')) return;
+  await deleteOpening(openingId);
+  renderOpeningsListModal();
+}
+
+function inchesToPx(inches) {
+  return (inches / 12) * pxPerFt();
+}
+
+function renderOpenings() {
+  const layer = document.getElementById('openings-layer');
+  layer.innerHTML = openingsForActiveStruct().map(o => {
+    const isOpen = o.type === 'open';
+    const color = o.type === 'door' ? '#cc8800' : o.type === 'window' ? '#4cd9ff' : '#8a9a86';
+    const label = o.type === 'door' ? 'D' : o.type === 'window' ? 'W' : '';
+    const widthIn = o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48);
+    const lengthPx = Math.max(14, inchesToPx(widthIn));
+    const angle = o.angle || 0;
+    const shape = isOpen
+      ? `<line x1="${-lengthPx/2}" y1="0" x2="${lengthPx/2}" y2="0" stroke="${color}" stroke-width="4" stroke-dasharray="6 4"></line>`
+      : `<rect x="${-lengthPx/2}" y="-5" width="${lengthPx}" height="10" fill="${color}" stroke="#000" stroke-width="1.5"></rect>`;
+    return `
+      <g class="rv-opening" transform="translate(${o.x},${o.y}) rotate(${angle})" onclick="onOpeningClick('${o.id}', event)">
+        ${shape}
+        ${label ? `<text x="0" y="4" transform="rotate(${-angle})">${label}</text>` : ''}
+      </g>
+    `;
+  }).join('');
+}
+
+function onOpeningClick(openingId, evt) {
+  evt.stopPropagation();
+  if (mode === 'door' || mode === 'window' || mode === 'open') return;
+  const o = openings.find(x => x.id === openingId);
+  if (!o) return;
+  openingDraft = null;
+  openingEditId = openingId;
+  openOpeningModal(o.type, o.width_in || (o.type === 'door' ? 32 : o.type === 'window' ? 36 : 48));
+  document.getElementById('opening-delete-btn').style.display = 'block';
+}
+
+function onOpeningClick(zoneId, openingId, evt) {
+  evt.stopPropagation();
+  if (mode === 'door' || mode === 'window') return;
+  const z = zones.find(x => x.id === zoneId);
+  const o = z && (z.openings || []).find(x => x.id === openingId);
+  if (!o) return;
+  openingDraft = null;
+  openingEditId = openingId;
+  openOpeningModal(o.type, o.width_in || (o.type === 'door' ? 32 : 36));
+  document.getElementById('opening-delete-btn').style.display = 'block';
+}
+
+// ══════════════════════════════════════
+// QUICK RECTANGLE
+// ══════════════════════════════════════
+function cancelQuickRect() {
+  quickRectAnchor = null;
+  closeModal('quickrect-modal');
+}
+
+function saveQuickRect() {
+  const wFt = parseFloat(document.getElementById('qr-width').value);
+  const dFt = parseFloat(document.getElementById('qr-depth').value);
+  if (!wFt || !dFt || wFt <= 0 || dFt <= 0 || !quickRectAnchor) {
+    HILShell.toast('Enter a width and depth greater than 0', 'error');
+    return;
+  }
+  const wPx = Math.max(SNAP, Math.round((wFt * pxPerFt()) / SNAP) * SNAP);
+  const dPx = Math.max(SNAP, Math.round((dFt * pxPerFt()) / SNAP) * SNAP);
+  const a = quickRectAnchor;
+  const rectPoints = [
+    { x: a.x,       y: a.y },
+    { x: a.x + wPx, y: a.y },
+    { x: a.x + wPx, y: a.y + dPx },
+    { x: a.x,       y: a.y + dPx },
+  ];
+  closeModal('quickrect-modal');
+  quickRectAnchor = null;
+  shapeFinished(rectPoints);
+}
+
+function renderDrawLayer() {
+  const layer = document.getElementById('draw-layer');
+  if (!drawPoints.length) { layer.innerHTML = ''; return; }
+  const ptsAttr = drawPoints.map(p => `${p.x},${p.y}`).join(' ');
+  const dots = drawPoints.map(p => `<circle class="rv-draw-point" cx="${p.x}" cy="${p.y}" r="5"></circle>`).join('');
+  const shape = drawPoints.length >= 3
+    ? `<polygon class="rv-draw-fill" points="${ptsAttr}"></polygon>`
+    : `<polyline class="rv-draw-line" points="${ptsAttr}"></polyline>`;
+  layer.innerHTML = shape + dots;
+}
+
+// ══════════════════════════════════════
+// FINISH SHAPE → check for unshaped existing zones first, else New Room
+// ══════════════════════════════════════
+function finishShape() {
+  if (drawPoints.length < 3) { HILShell.toast('Add at least 3 points to make a room', 'error'); return; }
+  shapeFinished(drawPoints.slice());
+}
+
+function shapeFinished(polygonPoints) {
+  pendingPolygon = polygonPoints;
+
+  if (drawTarget === 'zone') {
+    if (!selectedRoomId) { HILShell.toast('Select a room first', 'error'); return; }
+    openNewZoneModal();
+    return;
+  }
+
+  // drawTarget === 'room' — only offer to attach to legacy flat zones (no room_id),
+  // e.g. ones seeded by Room Code Generator with no shape yet.
+  const unshaped = zonesForActiveStruct().filter(z =>
+    !(z.map_polygon && z.map_polygon.points && z.map_polygon.points.length) && !z.room_id
+  );
+  if (unshaped.length > 0) {
+    document.getElementById('as-zone-select').innerHTML = unshaped.map(z => `<option value="${z.id}">${escapeHtml(z.label)} (${z.id})</option>`).join('');
+    openModal('assign-shape-modal');
+  } else {
+    openNewRoomModal();
+  }
+}
+
+// ══════════════════════════════════════
+// NEW ZONE (sub-area inside a selected Room)
+// ══════════════════════════════════════
+function openNewZoneModal() {
+  const room = rooms.find(r => r.id === selectedRoomId);
+  document.getElementById('nz-room-label').textContent = room ? room.label : 'this room';
+  document.getElementById('nz-label').value = '';
+  document.getElementById('nz-code').value = '';
+  document.getElementById('nz-code-warn').classList.remove('show');
+  const existingRoomZone = zones.find(z => z.room_id === selectedRoomId);
+  document.getElementById('nz-type').value = existingRoomZone ? (existingRoomZone.canonical_type || 'other') : 'other';
+  buildSwatchPicker('nz-swatches', room ? room.color : PALETTE[zonesForActiveStruct().length % PALETTE.length]);
+  openModal('new-zone-modal');
+}
+
+async function saveNewZone() {
+  const label = document.getElementById('nz-label').value.trim();
+  const code = document.getElementById('nz-code').value.trim().toUpperCase();
+  const type = document.getElementById('nz-type').value;
+  const color = document.getElementById('nz-swatches').dataset.selected || PALETTE[0];
+
+  if (!label) { HILShell.toast('Zone name is required', 'error'); return; }
+  if (!/^[A-Z]{2,3}$/.test(code)) { HILShell.toast('Zone code must be 2–3 letters', 'error'); return; }
+  if (zones.some(z => z.id === code)) {
+    document.getElementById('nz-code-warn').classList.add('show');
+    return;
+  }
+  if (!selectedRoomId || !pendingPolygon) return;
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', code);
+  try {
+    await _setDoc(zoneRef, {
+      code, label, canonical_type: type, struct_code: activeStruct,
+      color, icon: null, room_id: selectedRoomId,
+      label_history: [{ label, changed_at: new Date() }],
+      map_polygon: {
+        points: pendingPolygon,
+        color, opacity: 0.3,
+        label_position: centroid(pendingPolygon),
+      },
+      created_at: _serverTimestamp(),
+      updated_at: _serverTimestamp(),
+    });
+
+    const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+    await _updateDoc(propRef, { 'floorplan.zones_mapped': true });
+
+    pendingPolygon = null;
+    drawPoints = [];
+    closeModal('new-zone-modal');
+    HILShell.toast('Zone saved: ' + label, 'success');
+    setMode('select');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveNewZone failed', e);
+  }
+}
+
+function cancelNewZone() {
+  pendingPolygon = null;
+  drawPoints = [];
+  closeModal('new-zone-modal');
+}
+
+function openNewRoomModal() {
+  document.getElementById('nr-label').value = '';
+  document.getElementById('nr-code').value = '';
+  document.getElementById('nr-code-warn').classList.remove('show');
+  buildSwatchPicker('nr-swatches', PALETTE[zonesForActiveStruct().length % PALETTE.length]);
+  openModal('new-room-modal');
+}
+
+async function saveAssignShape() {
+  const zoneId = document.getElementById('as-zone-select').value;
+  if (!zoneId || !pendingPolygon) return;
+  const z = zones.find(x => x.id === zoneId);
+  if (!z) return;
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', zoneId);
+  try {
+    await _updateDoc(zoneRef, {
+      'map_polygon.points': pendingPolygon,
+      'map_polygon.color': z.color,
+      'map_polygon.opacity': 0.3,
+      'map_polygon.label_position': centroid(pendingPolygon),
+      updated_at: _serverTimestamp(),
+    });
+
+    const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+    await _updateDoc(propRef, { 'floorplan.zones_mapped': true });
+
+    pendingPolygon = null;
+    drawPoints = [];
+    closeModal('assign-shape-modal');
+    HILShell.toast('Shape attached to ' + z.label, 'success');
+    setMode('select');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveAssignShape failed', e);
+  }
+}
+
+function switchToNewRoomFromAssign() {
+  closeModal('assign-shape-modal');
+  openNewRoomModal();
+}
+
+function cancelAssignShape() {
+  pendingPolygon = null;
+  drawPoints = [];
+  closeModal('assign-shape-modal');
+}
+
+function cancelNewRoom() {
+  pendingPolygon = null;
+  closeModal('new-room-modal');
+}
+
+function buildSwatchPicker(containerId, activeColor) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = PALETTE.map(c => `
+    <div class="rv-swatch ${c === activeColor ? 'active' : ''}" style="background:${c}" data-color="${c}" onclick="pickSwatch('${containerId}','${c}')"></div>
+  `).join('');
+  el.dataset.selected = activeColor;
+}
+function pickSwatch(containerId, color) {
+  const el = document.getElementById(containerId);
+  el.dataset.selected = color;
+  [...el.children].forEach(s => s.classList.toggle('active', s.dataset.color === color));
+}
+
+function centroid(points) {
+  let x = 0, y = 0;
+  points.forEach(p => { x += p.x; y += p.y; });
+  return { x: Math.round(x / points.length), y: Math.round(y / points.length) };
+}
+
+async function saveNewRoom() {
+  const label = document.getElementById('nr-label').value.trim();
+  const code = document.getElementById('nr-code').value.trim().toUpperCase();
+  const type = document.getElementById('nr-type').value;
+  const color = document.getElementById('nr-swatches').dataset.selected || PALETTE[0];
+
+  if (!label) { HILShell.toast('Room name is required', 'error'); return; }
+  if (!/^[A-Z]{2,3}$/.test(code)) { HILShell.toast('Zone code must be 2–3 letters', 'error'); return; }
+  if (zones.some(z => z.id === code)) {
+    document.getElementById('nr-code-warn').classList.add('show');
+    return;
+  }
+
+  try {
+    // 1. Room doc — wall outline, no HL code. Container zones live inside.
+    const roomsCol = _collection(db, 'users', currentUser.uid, 'properties', propertyId, 'rooms');
+    const roomRef = await _addDoc(roomsCol, {
+      label, struct_code: activeStruct, color,
+      map_polygon: {
+        points: pendingPolygon,
+        label_position: centroid(pendingPolygon),
+      },
+      created_at: _serverTimestamp(),
+      updated_at: _serverTimestamp(),
+    });
+
+    // 2. Auto-created matching Zone — this is what actually gets an HL code and
+    // becomes addressable. Most rooms stop here; open-concept spaces subdivide
+    // further via Draw Zone.
+    const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', code);
+    await _setDoc(zoneRef, {
+      code, label, canonical_type: type, struct_code: activeStruct,
+      color, icon: null, room_id: roomRef.id,
+      label_history: [{ label, changed_at: new Date() }],
+      map_polygon: {
+        points: pendingPolygon,
+        color, opacity: 0.3,
+        label_position: centroid(pendingPolygon),
+      },
+      created_at: _serverTimestamp(),
+      updated_at: _serverTimestamp(),
+    });
+
+    const propRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId);
+    await _updateDoc(propRef, { 'floorplan.zones_mapped': true });
+
+    pendingPolygon = null;
+    drawPoints = [];
+    closeModal('new-room-modal');
+    HILShell.toast('Room saved: ' + label, 'success');
+    setMode('select');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveNewRoom failed', e);
+  }
+}
+
+// ══════════════════════════════════════
+// RENDER ZONES ON CANVAS
+// ══════════════════════════════════════
+function polygonPoints(z) {
+  if (z.id === selectedZoneCode && vertexDraft) return vertexDraft;
+  return z.map_polygon?.points || [];
+}
+
+function renderZonesOnCanvas() {
+  const layer = document.getElementById('zones-layer');
+  const list = zonesForActiveStruct();
+  layer.innerHTML = list.map(z => {
+    const pts = polygonPoints(z);
+    const ptsAttr = pts.map(p => `${p.x},${p.y}`).join(' ');
+    const lp = pts.length ? centroid(pts) : { x: 0, y: 0 };
+    const selected = z.id === selectedZoneCode;
+    const handles = (selected && mode === 'select')
+      ? pts.map((p, i) => `<circle class="rv-vertex-handle" cx="${p.x}" cy="${p.y}" r="7"
+          onmousedown="startVertexDrag(event,'${z.id}',${i})"
+          ontouchstart="startVertexDrag(event,'${z.id}',${i})"></circle>`).join('')
+      : '';
+    return `
+      <polygon class="rv-zone-poly ${selected ? 'selected' : ''}"
+        points="${ptsAttr}"
+        fill="${z.color}33" stroke="${z.color}"
+        onclick="onZoneClick('${z.id}', event)"></polygon>
+      <text class="rv-zone-label" x="${lp.x}" y="${lp.y - 2}">${escapeHtml(z.label)}</text>
+      <text class="rv-zone-code" x="${lp.x}" y="${lp.y + 14}">${z.id}</text>
+      ${handles}
+    `;
+  }).join('');
+  renderOpenings();
+}
+
+// ══════════════════════════════════════
+// RENDER ROOMS ON CANVAS (outline tier, sits under zones — no HL code, no fill)
+// ══════════════════════════════════════
+function renderRoomsOnCanvas() {
+  const layer = document.getElementById('rooms-layer');
+  if (!layer) return;
+  const list = roomsForActiveStruct();
+  layer.innerHTML = list.map(r => {
+    const pts = (r.map_polygon && r.map_polygon.points) || [];
+    if (!pts.length) return '';
+    const ptsAttr = pts.map(p => `${p.x},${p.y}`).join(' ');
+    const lp = (r.map_polygon && r.map_polygon.label_position) || centroid(pts);
+    const selected = r.id === selectedRoomId;
+    return `
+      <polygon class="rv-room-poly ${selected ? 'selected' : ''}"
+        points="${ptsAttr}"
+        stroke="${selected ? 'var(--hil-green)' : 'rgba(255,255,255,.35)'}"
+        onclick="onRoomClick('${r.id}', event)"></polygon>
+      <text class="rv-room-outline-label" x="${lp.x}" y="${lp.y - 20}">${escapeHtml(r.label)}</text>
+    `;
+  }).join('');
+}
+
+function onRoomClick(roomId, evt) {
+  evt.stopPropagation();
+  if (mode !== 'select') return;
+  selectRoomForEdit(roomId);
+}
+
+function selectRoomForEdit(roomId) {
+  selectedRoomId = roomId;
+  selectedZoneCode = null;
+  hideEditBlock();
+  document.getElementById('btn-draw-zone').disabled = false;
+  const r = rooms.find(x => x.id === roomId);
+  if (r) {
+    document.getElementById('room-edit-block').style.display = 'block';
+    document.getElementById('redit-label').value = r.label;
+  }
+  renderRoomsOnCanvas();
+  renderRoomList();
+  updateHint();
+}
+
+async function saveRoomEdit() {
+  if (!selectedRoomId) return;
+  const newLabel = document.getElementById('redit-label').value.trim();
+  if (!newLabel) { HILShell.toast('Room name is required', 'error'); return; }
+  const roomRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'rooms', selectedRoomId);
+  try {
+    await _updateDoc(roomRef, { label: newLabel, updated_at: _serverTimestamp() });
+    HILShell.toast('Room updated', 'success');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveRoomEdit failed', e);
+  }
+}
+
+async function deleteRoom() {
+  if (!selectedRoomId) return;
+  const zonesInRoom = zones.filter(z => z.room_id === selectedRoomId);
+  if (zonesInRoom.length) {
+    HILShell.toast('Delete or reassign the zone(s) inside this room first', 'error');
+    return;
+  }
+  if (!confirm('Delete this room? This does not affect any zones.')) return;
+  const roomRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'rooms', selectedRoomId);
+  try {
+    await _deleteDoc(roomRef);
+    selectedRoomId = null;
+    document.getElementById('room-edit-block').style.display = 'none';
+    document.getElementById('btn-draw-zone').disabled = true;
+    HILShell.toast('Room deleted', 'success');
+  } catch (e) {
+    HILShell.toast('Delete failed: ' + e.message, 'error');
+    console.error('deleteRoom failed', e);
+  }
+}
+
+// ══════════════════════════════════════
+// VERTEX DRAG (reshape a selected room)
+// ══════════════════════════════════════
+function startVertexDrag(evt, code, idx) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  if (code !== selectedZoneCode) return;
+  draggingVertexIdx = idx;
+  document.addEventListener('mousemove', onVertexDragMove);
+  document.addEventListener('mouseup', onVertexDragEnd);
+  document.addEventListener('touchmove', onVertexDragMove, { passive: false });
+  document.addEventListener('touchend', onVertexDragEnd);
+}
+
+function onVertexDragMove(evt) {
+  if (draggingVertexIdx === null || !vertexDraft) return;
+  evt.preventDefault();
+  vertexDraft[draggingVertexIdx] = svgPointFromEvent(evt);
+  renderZonesOnCanvas();
+  updateDimReadout();
+}
+
+async function onVertexDragEnd() {
+  document.removeEventListener('mousemove', onVertexDragMove);
+  document.removeEventListener('mouseup', onVertexDragEnd);
+  document.removeEventListener('touchmove', onVertexDragMove);
+  document.removeEventListener('touchend', onVertexDragEnd);
+  if (draggingVertexIdx === null || !vertexDraft || !selectedZoneCode) { draggingVertexIdx = null; return; }
+  draggingVertexIdx = null;
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', selectedZoneCode);
+  await _updateDoc(zoneRef, {
+    'map_polygon.points': vertexDraft,
+    'map_polygon.label_position': centroid(vertexDraft),
+    updated_at: _serverTimestamp(),
+  });
+  HILShell.toast('Room shape updated', 'success');
+}
+
+function computeDims(z) {
+  const pts = polygonPoints(z);
+  if (!pts.length) return '';
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const wPx = Math.max(...xs) - Math.min(...xs);
+  const hPx = Math.max(...ys) - Math.min(...ys);
+  const scale = structScale[z.struct_code] || 1;
+  const wFt = (wPx / SNAP) * scale;
+  const hFt = (hPx / SNAP) * scale;
+  return `Approx size: ${wFt.toFixed(1)} × ${hFt.toFixed(1)} ft (bounding box)`;
+}
+
+function updateDimReadout() {
+  if (!selectedZoneCode) return;
+  const z = zones.find(x => x.id === selectedZoneCode);
+  const el = document.getElementById('edit-dims');
+  if (z && el) el.textContent = computeDims(z);
+}
+
+function onZoneClick(code, evt) {
+  if (mode === 'door' || mode === 'window' || mode === 'open') {
+    evt.stopPropagation();
+    beginPlaceOpening(mode, svgPointFromEventUnsnapped(evt));
+    return;
+  }
+  evt.stopPropagation();
+  if (mode === 'draw') return;
+  selectZone(code);
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ══════════════════════════════════════
+// ROOM LIST (side panel)
+// ══════════════════════════════════════
+function zoneRowHtml(z, indentPx) {
+  const hasShape = z.map_polygon && z.map_polygon.points && z.map_polygon.points.length;
+  return `
+    <div class="rv-room-row ${z.id === selectedZoneCode ? 'selected' : ''}" style="padding-left:${indentPx}px" onclick="event.stopPropagation(); selectZone('${z.id}')">
+      <div class="rv-room-swatch" style="background:${z.color}"></div>
+      <div class="rv-room-info">
+        <div class="rv-room-name">${escapeHtml(z.label)}</div>
+        <div class="rv-room-code">${z.id} · ${z.canonical_type}${hasShape ? '' : ' · NO SHAPE YET'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRoomList() {
+  const roomList = roomsForActiveStruct();
+  const zoneList = zonesForActiveStruct();
+  const ungrouped = zoneList.filter(z => !z.room_id);
+  const totalCount = roomList.length + ungrouped.length;
+  document.getElementById('room-count').textContent = `(${totalCount})`;
+  const el = document.getElementById('room-list');
+
+  if (!roomList.length && !ungrouped.length) {
+    el.innerHTML = `<div class="rv-empty-panel">No rooms drawn yet.<br>Pick a structure, then tap Draw Room.</div>`;
+    return;
+  }
+
+  let html = roomList.map(r => {
+    const zonesInRoom = zoneList.filter(z => z.room_id === r.id);
+    const roomRow = `
+      <div class="rv-room-row ${r.id === selectedRoomId ? 'selected' : ''}" onclick="selectRoomForEdit('${r.id}')">
+        <div class="rv-room-swatch" style="background:${r.color}"></div>
+        <div class="rv-room-info">
+          <div class="rv-room-name">${escapeHtml(r.label)}</div>
+          <div class="rv-room-code">ROOM${zonesInRoom.length > 1 ? ' · ' + zonesInRoom.length + ' zones' : ''}</div>
+        </div>
+      </div>
+    `;
+    return roomRow + zonesInRoom.map(z => zoneRowHtml(z, 26)).join('');
+  }).join('');
+
+  html += ungrouped.map(z => zoneRowHtml(z, 6)).join('');
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════
+// SELECT / EDIT ZONE
+// ══════════════════════════════════════
+function selectZone(code) {
+  selectedZoneCode = code;
+  selectedRoomId = null;
+  document.getElementById('room-edit-block').style.display = 'none';
+  document.getElementById('btn-draw-zone').disabled = true;
+  const z = zones.find(x => x.id === code);
+  if (!z) { hideEditBlock(); return; }
+
+  vertexDraft = (z.map_polygon?.points || []).map(p => ({ ...p }));
+
+  document.getElementById('edit-block').style.display = 'block';
+  document.getElementById('edit-label').value = z.label;
+  document.getElementById('edit-code').value = z.id;
+  document.getElementById('edit-type').value = z.canonical_type || 'other';
+  buildSwatchPicker('edit-swatches', z.color);
+  updateDimReadout();
+
+  renderZonesOnCanvas();
+  renderRoomsOnCanvas();
+  renderRoomList();
+}
+
+function hideEditBlock() {
+  document.getElementById('edit-block').style.display = 'none';
+  vertexDraft = null;
+}
+
+function openRoomDetail() {
+  if (!selectedZoneCode || !propertyId) return;
+  const url = `./hil-room-detail.html?property=${encodeURIComponent(propertyId)}&zone=${encodeURIComponent(selectedZoneCode)}`;
+  window.location.href = url;
+}
+
+async function saveEdit() {
+  if (!selectedZoneCode) return;
+  const z = zones.find(x => x.id === selectedZoneCode);
+  const newLabel = document.getElementById('edit-label').value.trim();
+  const newType = document.getElementById('edit-type').value;
+  const newColor = document.getElementById('edit-swatches').dataset.selected || z.color;
+  if (!newLabel) { HILShell.toast('Room name is required', 'error'); return; }
+
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', selectedZoneCode);
+  const updates = {
+    label: newLabel,
+    canonical_type: newType,
+    color: newColor,
+    'map_polygon.color': newColor,
+    updated_at: _serverTimestamp(),
+  };
+  if (newLabel !== z.label) {
+    updates.label_history = _arrayUnion({ label: newLabel, changed_at: new Date() });
+  }
+  try {
+    await _updateDoc(zoneRef, updates);
+    HILShell.toast('Room updated', 'success');
+  } catch (e) {
+    HILShell.toast('Save failed: ' + e.message, 'error');
+    console.error('saveEdit failed', e);
+  }
+}
+
+async function deleteZone() {
+  if (!selectedZoneCode) return;
+  if (!confirm(`Delete room "${document.getElementById('edit-label').value}"? This does not move or delete any items already addressed to it — reassign those first.`)) return;
+  const zoneRef = _doc(db, 'users', currentUser.uid, 'properties', propertyId, 'zones', selectedZoneCode);
+  try {
+    await _deleteDoc(zoneRef);
+    selectedZoneCode = null;
+    hideEditBlock();
+    HILShell.toast('Room deleted', 'success');
+  } catch (e) {
+    HILShell.toast('Delete failed: ' + e.message, 'error');
+    console.error('deleteZone failed', e);
+  }
+}
+
+// init toolbar state
+updateHint();
+</script>
+</body>
+</html>
