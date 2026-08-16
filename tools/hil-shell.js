@@ -1,5 +1,5 @@
 /**
- * HIL SHELL v2.20
+ * HIL SHELL v2.21
  * Universal shell for all HIL/HL tools
  * Provides: Firebase init, Auth (Google + GitHub + Email), Firestore user record,
  *           fixed header, tool nav bar, auth gate overlay, toast system, CSS design tokens,
@@ -20,6 +20,21 @@
  * LIVE URL:    https://hilsystem.com/tools/hil-shell.js
  *
  * CHANGELOG:
+ *   v2.21 — Nav consolidation. NAV_TOOLS cut from 16 entries to 9:
+ *          Hub, Inventory (NEW), People, Ledger, Exchange, Museum, Guild,
+ *          Field, Admin. New 'inventory' entry (/tools/hil-inventory.html)
+ *          replaces standalone Vault/Vessels/Kits/Tags/Labels tabs — those
+ *          tools are UNLISTED, NOT DELETED, still live at their existing
+ *          URLs, just reached via cards on the new Inventory landing page
+ *          instead of top-nav. Same treatment for Fixed Points, Room
+ *          Visualizer, Hardware ID, and Maintenance Calendar, which were
+ *          never in NAV_TOOLS to begin with. Smart Home and Library removed
+ *          from nav and shelved (Smart Home pending stable HA Bridge;
+ *          Library obsolete). Import/Export removed from nav, now reached
+ *          via Admin panel. toolId values for the removed nav entries
+ *          (e.g. 'vault', 'kit-builder') still work fine as HILShell.init()
+ *          toolId params on their own pages — only the array of visible tabs
+ *          changed, not each tool's own identity.
  *   v2.20 — Added People to nav (id: 'people', /tools/hil-people.html), placed
  *          between Museum and Ledger. New standalone tool: person records
  *          (born/died/burial, spouse, parents, children, story, photo) that
@@ -217,22 +232,28 @@
   // ─── NAV TOOLS LIST ─────────────────────────────────────────────────────────
 const NAV_TOOLS = [
   { id: 'hub',           label: 'Hub',          icon: '🧭', href: '/tools/hil-hub.html' },
-  { id: 'vault',         label: 'Vault',        icon: '🗄',  href: '/tools/hl-vault-cloud.html' },
-  { id: 'museum',        label: 'Museum',       icon: '🏛',  href: '/tools/hil-museum.html' },
+  { id: 'inventory',     label: 'Inventory',    icon: '🗄',  href: '/tools/hil-inventory.html' },
   { id: 'people',        label: 'People',       icon: '🪪', href: '/tools/hil-people.html' },
   { id: 'family-ledger', label: 'Ledger',       icon: '👥', href: '/tools/hil-family-ledger.html' },
   { id: 'exchange',      label: 'Exchange',     icon: '⇄',   href: '/tools/hil-exchange.html' },
+  { id: 'museum',        label: 'Museum',       icon: '🏛',  href: '/tools/hil-museum.html' },
   { id: 'guild',         label: 'Guild',        icon: '🏅', href: '/tools/hil-guild.html' },
   { id: 'field-tool',    label: 'Field',        icon: '📍', href: '/tools/hil-field-tool.html' },
-  { id: 'vessel-builder',label: 'Vessels',      icon: '📦', href: '/tools/hil-vessel-builder.html' },
-  { id: 'kit-builder',   label: 'Kits',         icon: '🧰', href: '/tools/hil-kit-builder.html' },
-  { id: 'tag-manager',   label: 'Tags',         icon: '🏬', href: '/tools/hil-tag-manager.html' },
-  { id: 'labels',        label: 'Labels & Signs', icon: '🏷', href: '/tools/hil-label-studio.html' },
-  { id: 'library-hub',   label: 'Library',      icon: '📚', href: '/tools/hil-library-hub.html' },
-  { id: 'smart-home',    label: 'Smart Home',   icon: '🏠', href: '/tools/hil-smart-home.html' },
   { id: 'admin',         label: 'Admin',        icon: '⚙',   href: '/tools/hil-user-admin.html' },
-  { id: 'import-export', label: 'Import/Export', icon: '📤', href: '/tools/hil-import-export.html' },
 ];
+// UNLISTED (not deleted — still live, just off top-nav):
+//   Vault          -> /tools/hl-vault-cloud.html        (now linked from Inventory)
+//   Vessels        -> /tools/hil-vessel-builder.html    (now linked from Inventory)
+//   Kits           -> /tools/hil-kit-builder.html       (now linked from Inventory)
+//   Tags           -> /tools/hil-tag-manager.html       (now linked from Inventory)
+//   Labels & Signs -> /tools/hil-label-studio.html      (now linked from Inventory)
+//   Fixed Points   -> /tools/hil-fixed-points.html      (now linked from Inventory)
+//   Room Visualizer-> /tools/hil-room-visualizer.html   (now linked from Inventory)
+//   Hardware ID    -> /tools/hardware-id.html           (now linked from Inventory)
+//   Maint Calendar -> /tools/hil-maintenance-calendar.html (now linked from Inventory)
+//   Library        -> /tools/hil-library-hub.html       (obsolete, shelved)
+//   Smart Home     -> /tools/hil-smart-home.html         (shelved until HA Bridge is stable)
+//   Import/Export  -> /tools/hil-import-export.html      (now linked from Admin panel)
   // ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
   const SHELL_CSS = `
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap');
